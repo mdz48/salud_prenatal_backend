@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
+from app.users.schemas.user_schema import UserCreate
 
 class PatientBase(BaseModel):
     doctor_id: Optional[int] = None
@@ -34,3 +35,6 @@ class PatientResponse(PatientBase):
     user_id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+class PatientRegistration(UserCreate, PatientBase):
+    pass

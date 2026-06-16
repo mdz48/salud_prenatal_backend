@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
-from app.models.enums import BloodTypeEnum
+from app.core.enums import BloodTypeEnum
 from app.core.database import Base
 
 

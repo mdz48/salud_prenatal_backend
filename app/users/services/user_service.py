@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from app.respositories.user_repository import user_repository
-from app.schemas.user_schema import UserCreate, UserUpdate
+from app.users.respositories.user_repository import user_repository
+from app.users.schemas.user_schema import UserCreate, UserUpdate
 
 class UserService:
     def get_user(self, db: Session, user_id: int):

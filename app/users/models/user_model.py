@@ -2,8 +2,10 @@ from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.models.enums import RoleEnum
+from app.core.enums import RoleEnum
 from app.core.database import Base
+from app.users.models.doctor_model import Doctor
+from app.users.models.patient_model import Patient
 
 
 class Usuario(Base):

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from app.models.user_model import Usuario
-from app.schemas.user_schema import UserCreate, UserUpdate
+from app.users.models.user_model import Usuario
+from app.users.schemas.user_schema import UserCreate, UserUpdate
 
 class UserRepository:
     def get_by_id(self, db: Session, user_id: int):
@@ -18,6 +18,16 @@ class UserRepository:
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
+        return db_user
+
+    def create_from_dict(self, db: Session, user_data: dict, commit: bool = True):
+        db_user = Usuario(**user_data)
+        db.add(db_user)
+        if commit:
+            db.commit()
+            db.refresh(db_user)
+        else:
+            db.flush()
         return db_user
 
     def update(self, db: Session, user_id: int, user_in: UserUpdate):

@@ -1,0 +1,10 @@
+.env
+__pycache__/
+.venv/
+venv/
+.idea/
+.vscode/
+IAContext/
+.agents
+.claude
+firebasecredencials.json

@@ -3,7 +3,7 @@ from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.enums import RoleEnum
-from app.config.database import Base
+from app.core.database import Base
 
 
 class Usuario(Base):

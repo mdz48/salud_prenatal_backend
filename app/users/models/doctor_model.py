@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from app.config.database import Base
+from app.core.database import Base
 
 
 class Doctor(Base):

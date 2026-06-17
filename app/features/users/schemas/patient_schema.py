@@ -1,12 +1,12 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
-from app.users.schemas.user_schema import UserCreate
+from app.features.users.schemas.user_schema import UserCreate
 
 class PatientBase(BaseModel):
     doctor_id: Optional[int] = None
     birthdate: date
-    blood_type: Optional[str] = None
+    blood_type: Optional[str] | None = "O+"
     weeks_at_registration: Optional[int] = None
     last_menstrual_period: Optional[date] = None
     previous_hypertension: Optional[bool] = None
@@ -31,7 +31,7 @@ class PatientUpdate(PatientBase):
     birthdate: Optional[date] = None
 
 class PatientResponse(PatientBase):
-    id: int
+    patient_id: int
     user_id: int
 
     model_config = ConfigDict(from_attributes=True)

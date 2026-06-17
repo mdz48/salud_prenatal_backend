@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.users.schemas.patient_schema import PatientRegistration, PatientResponse
-from app.users.services.patient_service import patient_service
+from app.features.users.schemas.patient_schema import PatientRegistration, PatientResponse
+from app.features.users.services.patient_service import patient_service
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 

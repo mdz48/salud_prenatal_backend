@@ -4,8 +4,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.enums import RoleEnum
 from app.core.database import Base
-from app.users.models.doctor_model import Doctor
-from app.users.models.patient_model import Patient
+from app.features.users.models.doctor_model import Doctor
+from app.features.users.models.patient_model import Patient
 
 
 class Usuario(Base):

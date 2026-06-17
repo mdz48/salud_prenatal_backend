@@ -7,9 +7,9 @@ from app.core.database import Base
 class Patient(Base):
     __tablename__ = "patients"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    patient_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), unique=True, nullable=False)
-    doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=True)
     birthdate = Column(Date, nullable=False)
     blood_type = Column(Enum(BloodTypeEnum), nullable=True)
     weeks_at_registration = Column(Integer, nullable=True)
@@ -40,3 +40,4 @@ class Patient(Base):
     # Relationships
     user = relationship("Usuario", back_populates="patient_profile")
     doctor = relationship("Doctor", back_populates="patients")
+    appointments = relationship("Appointment", back_populates="patient")

@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from app.users.schemas.patient_schema import PatientRegistration
+from app.features.users.schemas.patient_schema import PatientRegistration
 from app.core.security import get_password_hash
 from app.core.enums import RoleEnum
-from app.users.respositories.user_repository import user_repository
-from app.users.respositories.patient_repository import patient_repository
+from app.features.users.repositories.user_repository import user_repository
+from app.features.users.repositories.patient_repository import patient_repository
 
 class PatientService:
     def register_patient(self, db: Session, data: PatientRegistration):

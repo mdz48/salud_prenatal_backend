@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from app.users.models.user_model import Usuario
-from app.users.schemas.user_schema import UserCreate, UserUpdate
+from app.features.users.models.user_model import Usuario
+from app.features.users.schemas.user_schema import UserCreate, UserUpdate
 
 class UserRepository:
     def get_by_id(self, db: Session, user_id: int):

@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from app.users.models.doctor_model import Doctor
+from app.features.users.models.doctor_model import Doctor
 
 class DoctorRepository:
     def get_by_id(self, db: Session, doctor_id: int):
-        return db.query(Doctor).filter(Doctor.id == doctor_id).first()
+        return db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
 
     def get_by_user_id(self, db: Session, user_id: int):
         return db.query(Doctor).filter(Doctor.user_id == user_id).first()

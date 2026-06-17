@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
-from app.users.schemas.user_schema import UserCreate
+from app.features.users.schemas.user_schema import UserCreate
 
 class DoctorBase(BaseModel):
     professional_license: Optional[str] = Field(None, max_length=255)
@@ -14,7 +14,7 @@ class DoctorUpdate(DoctorBase):
     pass
 
 class DoctorResponse(DoctorBase):
-    id: int
+    doctor_id: int
     user_id: int
 
     model_config = ConfigDict(from_attributes=True)

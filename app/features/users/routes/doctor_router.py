@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.users.schemas.doctor_schema import DoctorRegistration, DoctorResponse
-from app.users.services.doctor_service import doctor_service
+from app.features.users.schemas.doctor_schema import DoctorRegistration, DoctorResponse
+from app.features.users.services.doctor_service import doctor_service
 
 router = APIRouter(prefix="/doctors", tags=["Doctors"])
 
@@ -13,4 +13,5 @@ def register_doctor(data: DoctorRegistration, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
+        print(f"Error registering doctor: {repr(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while registering the doctor.")

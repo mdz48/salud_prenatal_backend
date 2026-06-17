@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
-from app.users.schemas.user_schema import UserCreate, UserUpdate, UserResponse
-from app.users.schemas.auth_schema import LoginRequest, Token
-from app.users.services.user_service import user_service
-from app.users.services.auth_service import auth_service
+from app.features.users.schemas.user_schema import UserCreate, UserUpdate, UserResponse
+from app.features.users.schemas.auth_schema import LoginRequest, Token
+from app.features.users.services.user_service import user_service
+from app.features.users.services.auth_service import auth_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
 

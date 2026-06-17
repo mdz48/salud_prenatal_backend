@@ -15,3 +15,9 @@ class BloodTypeEnum(str, Enum):
     AB_neg = "AB-"
     O_pos = "O+"
     O_neg = "O-"
+
+class AppointmentStatusEnum(str, Enum):
+    pending = "pendiente"
+    confirmed = "confirmada"
+    cancelled = "cancelada"
+    rescheduled = "reprogramada"

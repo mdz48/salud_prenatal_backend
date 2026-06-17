@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.users.respositories.user_repository import user_repository
+from app.features.users.repositories.user_repository import user_repository
 from app.core.security import verify_password, create_access_token
 
 class AuthService:

@@ -7,9 +7,9 @@ from app.users.routes.patient_router import router as patient_router
 from app.users.routes.doctor_router import router as doctor_router
 
 app = FastAPI()
-app.include_router(user_router)
-app.include_router(patient_router)
-app.include_router(doctor_router)
+app.include_router(user_router, prefix="/api/v1")
+app.include_router(patient_router, prefix="/api/v1")
+app.include_router(doctor_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,

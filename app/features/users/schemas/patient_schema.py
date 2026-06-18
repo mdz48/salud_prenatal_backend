@@ -2,7 +2,6 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
 from app.features.users.schemas.user_schema import UserCreate
-from app.features.medical_record.schemas.medical_record_schema import MedicalRecordBase, MedicalRecordResponse
 
 class PatientBase(BaseModel):
     doctor_id: Optional[int] = None
@@ -31,4 +30,4 @@ class PatientResponse(PatientBase):
     model_config = ConfigDict(from_attributes=True)
 
 class PatientRegistration(UserCreate, PatientBase):
-    medical_record: Optional[MedicalRecordBase] = None
+    pass

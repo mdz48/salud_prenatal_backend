@@ -25,7 +25,7 @@ class Patient(Base):
     user = relationship("Usuario", back_populates="patient_profile")
     doctor = relationship("Doctor", back_populates="patients")
     appointments = relationship("Appointment", back_populates="patient")
-    medical_record = relationship("MedicalRecord", back_populates="patient", uselist=False)
+    medical_records = relationship("MedicalRecord", back_populates="patient", uselist=True)
     consultations = relationship("Consultation", back_populates="patient")
 
     @property

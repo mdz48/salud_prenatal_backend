@@ -20,10 +20,12 @@ class MedicalRecordBase(BaseModel):
 
 class MedicalRecordCreate(MedicalRecordBase):
     patient_id: int
+    doctor_id: int
 
 class MedicalRecordResponse(MedicalRecordBase):
     medical_record_id: int
     patient_id: int
+    doctor_id: int
 
     model_config = ConfigDict(from_attributes=True)
 

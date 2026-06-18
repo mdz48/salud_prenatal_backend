@@ -3,11 +3,12 @@ from app.core.database import Base
 from sqlalchemy.orm import relationship
 from app.core.enums import AppointmentStatusEnum
 from sqlalchemy.sql import func
+from sqlalchemy.sql import func
 
 class Appointment(Base):
     __tablename__ = "appointments"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    appointment_id = Column(Integer, primary_key=True, autoincrement=True)
     patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False)
     doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False)
     appointment_date = Column(DateTime, nullable=False)

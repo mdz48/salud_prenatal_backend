@@ -18,7 +18,7 @@ class AppointmentUpdate(BaseModel):
     reason: Optional[str] = Field(None, max_length=255)
 
 class AppointmentResponse(AppointmentBase):
-    id: int
+    appointment_id: int
     status: AppointmentStatusEnum
     created_at: datetime
     updated_at: datetime

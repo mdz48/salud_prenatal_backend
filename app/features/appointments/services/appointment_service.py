@@ -2,9 +2,19 @@ from sqlalchemy.orm import Session
 from app.features.appointments.repositories.appointment_repository import appointment_repository
 from app.features.appointments.schemas.appointment_schema import AppointmentCreate, AppointmentUpdate
 from app.features.appointments.models.appointment_model import Appointment
+from app.features.users.repositories.patient_repository import patient_repository
+from app.features.users.repositories.doctor_repository import doctor_repository
 
 class AppointmentService:
     def create_appointment(self, db: Session, data: AppointmentCreate):
+        patient = patient_repository.get_by_id(db, data.patient_id)
+        if not patient:
+            raise ValueError(f"Patient with id {data.patient_id} not found")
+
+        doctor = doctor_repository.get_by_id(db, data.doctor_id)
+        if not doctor:
+            raise ValueError(f"Doctor with id {data.doctor_id} not found")
+
         appointment_data = data.model_dump()
         return appointment_repository.create(db, appointment_data)
 

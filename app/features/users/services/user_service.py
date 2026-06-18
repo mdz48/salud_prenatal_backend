@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.features.users.repositories.user_repository import user_repository
 from app.features.users.schemas.user_schema import UserCreate, UserUpdate
+from app.core.security import get_password_hash
 
 class UserService:
     def get_user(self, db: Session, user_id: int):
@@ -16,9 +17,12 @@ class UserService:
         existing_user = user_repository.get_by_email(db, user.email)
         if existing_user:
             raise ValueError("Email already registered")
+        user.password = get_password_hash(user.password)
         return user_repository.create(db, user)
 
     def update_user(self, db: Session, user_id: int, user: UserUpdate):
+        if user.password:
+            user.password = get_password_hash(user.password)
         return user_repository.update(db, user_id, user)
 
     def delete_user(self, db: Session, user_id: int):

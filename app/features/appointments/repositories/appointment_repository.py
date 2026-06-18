@@ -3,7 +3,7 @@ from app.features.appointments.models.appointment_model import Appointment
 
 class AppointmentRepository:
     def get_by_id(self, db: Session, appointment_id: int):
-        return db.query(Appointment).filter(Appointment.id == appointment_id).first()
+        return db.query(Appointment).filter(Appointment.appointment_id == appointment_id).first()
 
     def get_by_patient_id(self, db: Session, patient_id: int):
         return db.query(Appointment).filter(Appointment.patient_id == patient_id).all()

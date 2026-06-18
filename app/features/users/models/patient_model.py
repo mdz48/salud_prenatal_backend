@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Boolean
+from datetime import date
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Boolean, Float
 from sqlalchemy.orm import relationship
 from app.core.enums import BloodTypeEnum
 from app.core.database import Base
@@ -11,33 +12,33 @@ class Patient(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"), unique=True, nullable=False)
     doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=True)
     birthdate = Column(Date, nullable=False)
-    blood_type = Column(Enum(BloodTypeEnum), nullable=True)
-    weeks_at_registration = Column(Integer, nullable=True)
-    last_menstrual_period = Column(Date, nullable=True)
-
-    # Medical history
-    previous_hypertension = Column(Boolean, nullable=True) # Hipertensión previa
-    diabetes = Column(Boolean, nullable=True) # Diabetes
-    family_history_hypertension = Column(Boolean, nullable=True) # Antecedentes familiares de hipertensión
-
-    # Obstetric history
-    previous_pregnancies = Column(Boolean, nullable=True) # Embarazos previos
-    previous_deliveries = Column(Boolean, nullable=True) # Partos previos
-    previous_miscarriages = Column(Boolean, nullable=True) # Abortos previos
-    previous_cesareans = Column(Boolean, nullable=True) # Cesáreas previas
-    previous_preeclampsia = Column(Boolean, nullable=True) # Preeclampsia previa
-
-    # Chronic / pathological history
-    chronic_kidney_disease = Column(Boolean, nullable=True) # Enfermedad renal cronica
-    chronic_hypertension = Column(Boolean, nullable=True) # Hipertensión crónica
-    multiple_pregnancy = Column(Boolean, nullable=True) # Embarazo múltiple
-    fetal_death = Column(Boolean, nullable=True) # Muerte fetal
-    fetal_growth_restriction = Column(Boolean, nullable=True) # Restricción del crecimiento fetal
-
-    # Family history
-    family_history_heart_disease = Column(Boolean, nullable=True) # Antecedentes familiares de enfermedades cardíacas
+    blood_type = Column(Enum(BloodTypeEnum), nullable=True) # Tipo de sangre
+    weeks_at_registration = Column(Integer, nullable=True) # Semana de gestación al registrarse
+    last_menstrual_period = Column(Date, nullable=True) # Fecha del ultimo periodo menstrual
+    residence = Column(String(100), nullable=False) # Residencia
+    education_level = Column(String(50), nullable=True) # Nivel educativo
+    marital_status = Column(String(50), nullable=True) # Estado civil
+    height_cm = Column(Integer, nullable=True) # Altura en centimetros
+    initial_weight = Column(Float, nullable=True) # Peso inicial en kilogramos
 
     # Relationships
     user = relationship("Usuario", back_populates="patient_profile")
     doctor = relationship("Doctor", back_populates="patients")
     appointments = relationship("Appointment", back_populates="patient")
+    medical_record = relationship("MedicalRecord", back_populates="patient", uselist=False)
+    consultations = relationship("Consultation", back_populates="patient")
+
+    @property
+    def current_gestational_weeks(self) -> int | None:
+        """Calcula las semanas de gestación actuales basándose en la fecha del último periodo."""
+        if self.last_menstrual_period:
+            delta = date.today() - self.last_menstrual_period
+            return delta.days // 7
+        return self.weeks_at_registration
+
+    @property
+    def age(self) -> int | None:
+        if self.birthdate:
+            today = date.today()
+            return today.year - self.birthdate.year - ((today.month, today.day) < (self.birthdate.month, self.birthdate.day))
+        return None

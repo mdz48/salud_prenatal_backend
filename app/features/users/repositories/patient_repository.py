@@ -21,4 +21,12 @@ class PatientRepository:
             db.flush()
         return db_patient
 
+    def update_doctor(self, db: Session, patient_id: int, doctor_id: int):
+        patient = self.get_by_id(db, patient_id)
+        if patient:
+            patient.doctor_id = doctor_id
+            db.commit()
+            db.refresh(patient)
+        return patient
+
 patient_repository = PatientRepository()

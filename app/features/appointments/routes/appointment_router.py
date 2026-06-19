@@ -11,6 +11,8 @@ router = APIRouter(prefix="/appointments", tags=["Appointments"])
 def create_appointment(data: AppointmentCreate, db: Session = Depends(get_db)):
     try:
         return appointment_service.create_appointment(db=db, data=data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 

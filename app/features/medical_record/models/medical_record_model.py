@@ -1,12 +1,14 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Boolean
+from sqlalchemy import Column, Integer, ForeignKey, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 class MedicalRecord(Base):
     __tablename__ = "medical_records"
+    __table_args__ = (UniqueConstraint("patient_id", "doctor_id", name="uq_medical_record_patient_doctor"),)
 
     medical_record_id = Column(Integer, primary_key=True, autoincrement=True)
-    patient_id = Column(Integer, ForeignKey("patients.patient_id"), unique=True, nullable=False)
+    patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False)
 
     # Medical history
     previous_hypertension = Column(Boolean, nullable=True) # Hipertensión previa
@@ -31,4 +33,5 @@ class MedicalRecord(Base):
     family_history_heart_disease = Column(Boolean, nullable=True) # Antecedentes familiares de enfermedades cardíacas
 
     # Relationships
-    patient = relationship("Patient", back_populates="medical_record")
+    patient = relationship("Patient", back_populates="medical_records")
+    doctor = relationship("Doctor")

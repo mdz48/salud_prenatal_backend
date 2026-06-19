@@ -4,6 +4,7 @@ from app.core.security import get_password_hash
 from app.core.enums import RoleEnum
 from app.features.users.repositories.user_repository import user_repository
 from app.features.users.repositories.doctor_repository import doctor_repository
+from app.features.users.repositories.invitation_code_repository import invitation_code_repository
 
 class DoctorService:
     def register_doctor(self, db: Session, data: DoctorRegistration):
@@ -37,5 +38,11 @@ class DoctorService:
         except Exception as e:
             db.rollback()
             raise e
+
+    def generate_invitation_code(self, db: Session, doctor_id: int):
+        doctor = doctor_repository.get_by_id(db, doctor_id)
+        if not doctor:
+            raise ValueError("Doctor not found")
+        return invitation_code_repository.create(db, doctor_id)
 
 doctor_service = DoctorService()

@@ -26,7 +26,6 @@ class Patient(Base):
     doctor = relationship("Doctor", back_populates="patients")
     appointments = relationship("Appointment", back_populates="patient")
     medical_records = relationship("MedicalRecord", back_populates="patient", uselist=True)
-    consultations = relationship("Consultation", back_populates="patient")
 
     @property
     def current_gestational_weeks(self) -> int | None:

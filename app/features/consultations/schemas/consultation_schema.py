@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 class ConsultationBase(BaseModel):
-    patient_id: int
+    medical_record_id: int
     notes: Optional[str] = Field(None, max_length=255)
     objective: Optional[str] = Field(None, max_length=255)
     plan: Optional[str] = Field(None, max_length=255)

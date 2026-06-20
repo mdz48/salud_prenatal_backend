@@ -35,3 +35,5 @@ class MedicalRecord(Base):
     # Relationships
     patient = relationship("Patient", back_populates="medical_records")
     doctor = relationship("Doctor")
+    consultations = relationship("Consultation", back_populates="medical_record")
+    patient_diaries = relationship("PatientDiary", back_populates="medical_record")

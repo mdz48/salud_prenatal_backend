@@ -26,8 +26,8 @@ class MedicalRecordService:
         medical_record = medical_record_repository.get_by_patient_and_doctor(db, patient_id, doctor_id)
 
         consultations_list = []
-        if patient.consultations:
-            for consultation in patient.consultations:
+        if medical_record and medical_record.consultations:
+            for consultation in medical_record.consultations:
                 consultations_list.append({
                     "consultation_id": consultation.consultation_id,
                     "created_at": consultation.created_at

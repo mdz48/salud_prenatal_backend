@@ -29,7 +29,7 @@ class PatientDiaryService:
     def delete(self, db: Session, patient_diary_id: int):
         deleted_diary = patient_diary_repository.delete(db, patient_diary_id)
         if not deleted_diary:
-            raise ValueError("Patient diary not found")
+            raise ValueError("Patient diary not found") 
         return deleted_diary
 
 patient_diary_service = PatientDiaryService()

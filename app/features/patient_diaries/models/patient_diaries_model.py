@@ -18,3 +18,9 @@ class PatientDiary(Base):
 
     # Relationships
     medical_record = relationship("MedicalRecord", back_populates="patient_diaries")
+
+    @property
+    def weight_gain(self) -> float | None:
+        if self.weight_kg and self.medical_record and self.medical_record.patient and self.medical_record.patient.initial_weight:
+            return round(self.weight_kg - self.medical_record.patient.initial_weight, 2)
+        return None

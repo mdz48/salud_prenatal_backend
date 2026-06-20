@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from app.features.users.schemas.user_schema import UserCreate
 
@@ -31,3 +31,22 @@ class PatientResponse(PatientBase):
 
 class PatientRegistration(UserCreate, PatientBase):
     pass
+
+class AppointmentDashboardResponse(BaseModel):
+    appointment_id: int
+    appointment_date: datetime
+    status: str
+    reason: Optional[str] = None
+    doctor_name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PatientDashboardResponse(BaseModel):
+    full_name: str
+    current_gestational_weeks: Optional[int] = None
+    current_doctor: Optional[str] = None
+    current_doctor_image: Optional[str] = None
+    current_doctor_specialty: Optional[str] = None
+    upcoming_appointments: list[AppointmentDashboardResponse]
+
+    model_config = ConfigDict(from_attributes=True)

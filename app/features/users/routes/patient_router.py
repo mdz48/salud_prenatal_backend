@@ -1,12 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.features.users.schemas.patient_schema import PatientRegistration, PatientResponse
+from app.features.users.schemas.patient_schema import PatientRegistration, PatientResponse, PatientDashboardResponse
 from app.features.users.schemas.invitation_code_schema import RedeemCodeRequest
 from app.features.users.services.patient_service import patient_service
 from app.features.users.services.invitation_service import invitation_service
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
+
+@router.get("/{patient_id}/dashboard", response_model=PatientDashboardResponse, status_code=status.HTTP_200_OK)
+def get_patient_dashboard(patient_id: int, db: Session = Depends(get_db)):
+    try:
+        return patient_service.get_patient_dashboard(db=db, patient_id=patient_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while fetching the dashboard.")
+
 
 @router.post("/register", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
 def register_patient(data: PatientRegistration, db: Session = Depends(get_db)):

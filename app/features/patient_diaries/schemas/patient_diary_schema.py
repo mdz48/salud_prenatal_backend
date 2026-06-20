@@ -24,5 +24,6 @@ class PatientDiaryResponse(PatientDiaryBase):
     patient_diary_id: int
     created_at: datetime
     updated_at: datetime
+    weight_gain: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)

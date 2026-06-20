@@ -41,4 +41,46 @@ class PatientService:
     def get_patients_by_doctor(self, db: Session, doctor_id: int):
         return patient_repository.get_by_doctor_id(db, doctor_id)
 
+    def get_patient_dashboard(self, db: Session, patient_id: int):
+        from datetime import datetime
+        patient = patient_repository.get_by_id(db, patient_id)
+        if not patient:
+            raise ValueError("Patient not found")
+
+        full_name = f"{patient.user.name} {patient.user.last_name}"
+        gestational_weeks = patient.current_gestational_weeks
+
+        current_doctor = None
+        current_doctor_image = None
+        current_doctor_specialty = None
+        
+        if patient.doctor and patient.doctor.user:
+            current_doctor = f"{patient.doctor.user.name} {patient.doctor.user.last_name}"
+            current_doctor_image = patient.doctor.user.image_url
+            current_doctor_specialty = patient.doctor.specialty
+
+        now = datetime.utcnow()
+        upcoming_appointments = []
+        for appt in patient.appointments:
+            # We assume timezone-naive datetime or matching timezone
+            if appt.appointment_date >= now:
+                upcoming_appointments.append({
+                    "appointment_id": appt.appointment_id,
+                    "appointment_date": appt.appointment_date,
+                    "status": appt.status.value if hasattr(appt.status, 'value') else str(appt.status),
+                    "reason": appt.reason,
+                    "doctor_name": f"{appt.doctor.user.name} {appt.doctor.user.last_name}" if appt.doctor and appt.doctor.user else "Unknown"
+                })
+
+        upcoming_appointments.sort(key=lambda x: x["appointment_date"])
+
+        return {
+            "full_name": full_name,
+            "current_gestational_weeks": gestational_weeks,
+            "current_doctor": current_doctor,
+            "current_doctor_image": current_doctor_image,
+            "current_doctor_specialty": current_doctor_specialty,
+            "upcoming_appointments": upcoming_appointments
+        }
+
 patient_service = PatientService()

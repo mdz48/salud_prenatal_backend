@@ -5,8 +5,55 @@ from app.core.enums import RoleEnum
 from app.features.users.repositories.user_repository import user_repository
 from app.features.users.repositories.doctor_repository import doctor_repository
 from app.features.users.repositories.invitation_code_repository import invitation_code_repository
+from app.features.users.schemas.receptionist_schema import ReceptionistCreate
+
+from app.features.users.models.receptionist_model import Receptionist
 
 class DoctorService:
+    def create_receptionist(self, db: Session, doctor_id: int, data: ReceptionistCreate):
+        doctor = doctor_repository.get_by_id(db, doctor_id)
+        if not doctor:
+            raise ValueError("Doctor not found")
+            
+        existing_user = user_repository.get_by_email(db, data.email)
+        if existing_user:
+            raise ValueError("Email already registered")
+            
+        user_data = {
+            "name": data.name,
+            "last_name": data.last_name,
+            "email": data.email,
+            "phone": data.phone,
+            "role": RoleEnum.recepcionist,
+            "is_active": True,
+            "password": get_password_hash(data.password)
+        }
+        
+        try:
+            db_user = user_repository.create_from_dict(db, user_data, commit=False)
+            
+            db_receptionist = Receptionist(
+                user_id=db_user.user_id,
+                doctor_id=doctor_id
+            )
+            db.add(db_receptionist)
+            
+            db.commit()
+            db.refresh(db_user)
+            return db_user
+        except Exception as e:
+            db.rollback()
+            raise e
+
+    def get_receptionists_by_doctor(self, db: Session, doctor_id: int):
+        from app.features.users.models.user_model import Usuario
+        
+        doctor = doctor_repository.get_by_id(db, doctor_id)
+        if not doctor:
+            raise ValueError("Doctor not found")
+            
+        return db.query(Usuario).join(Receptionist).filter(Receptionist.doctor_id == doctor_id).all()
+
     def register_doctor(self, db: Session, data: DoctorRegistration):
         existing_user = user_repository.get_by_email(db, data.email)
         if existing_user:

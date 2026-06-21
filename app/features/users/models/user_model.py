@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.enums import RoleEnum
@@ -24,5 +24,6 @@ class Usuario(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
-    doctor_profile = relationship("Doctor", back_populates="user", uselist=False)
-    patient_profile = relationship("Patient", back_populates="user", uselist=False)
+    doctor_profile = relationship("Doctor", back_populates="user", uselist=False, foreign_keys="Doctor.user_id")
+    patient_profile = relationship("Patient", back_populates="user", uselist=False, foreign_keys="Patient.user_id")
+    receptionist_profile = relationship("Receptionist", back_populates="user", uselist=False, foreign_keys="Receptionist.user_id")

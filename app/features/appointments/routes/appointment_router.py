@@ -5,10 +5,16 @@ from app.core.database import get_db
 from app.features.appointments.schemas.appointment_schema import AppointmentCreate, AppointmentUpdate, AppointmentResponse
 from app.features.appointments.services.appointment_service import appointment_service
 
+from app.core.enums import RoleEnum
+from app.core.dependencies import get_current_user, RoleChecker
+from app.features.users.models.user_model import Usuario
+
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
+allow_doctor_or_receptionist = RoleChecker([RoleEnum.doctor, RoleEnum.recepcionist])
+
 @router.post("/", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
-def create_appointment(data: AppointmentCreate, db: Session = Depends(get_db)):
+def create_appointment(data: AppointmentCreate, db: Session = Depends(get_db), current_user: Usuario = Depends(allow_doctor_or_receptionist)):
     try:
         return appointment_service.create_appointment(db=db, data=data)
     except ValueError as e:
@@ -32,14 +38,14 @@ def get_appointments_by_doctor(doctor_id: int, db: Session = Depends(get_db)):
     return appointment_service.get_appointments_by_doctor(db=db, doctor_id=doctor_id)
 
 @router.put("/{appointment_id}", response_model=AppointmentResponse)
-def update_appointment(appointment_id: int, data: AppointmentUpdate, db: Session = Depends(get_db)):
+def update_appointment(appointment_id: int, data: AppointmentUpdate, db: Session = Depends(get_db), current_user: Usuario = Depends(allow_doctor_or_receptionist)):
     try:
         return appointment_service.update_appointment(db=db, appointment_id=appointment_id, data=data)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 @router.delete("/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_appointment(appointment_id: int, db: Session = Depends(get_db)):
+def delete_appointment(appointment_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(allow_doctor_or_receptionist)):
     try:
         appointment_service.delete_appointment(db=db, appointment_id=appointment_id)
     except ValueError as e:

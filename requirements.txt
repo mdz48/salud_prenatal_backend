@@ -9,3 +9,5 @@ python-jose[cryptography]
 cryptography
 google-auth
 httpx
+dotenv
+requests

@@ -15,7 +15,7 @@ class MlPredictionService:
         gestational_trimester = gestational_week // 13
 
         mean_arterial_pressure = 0.0
-        if latest_diary.systolic and latest_diary.diastolic:
+        if latest_diary and latest_diary.systolic and latest_diary.diastolic:
             mean_arterial_pressure = (latest_diary.systolic + 2 * latest_diary.diastolic) / 3
 
         nulliparous = 1 if not medical_record.previous_deliveries else 0
@@ -39,10 +39,10 @@ class MlPredictionService:
             "gestational_trimester": gestational_trimester,
             "height_cm": float(patient.height_cm) if patient.height_cm else 0.0,
             "initial_weight": float(patient.initial_weight) if patient.initial_weight else 0.0,
-            "weight_kg": float(latest_diary.weight_kg) if latest_diary.weight_kg else 0.0,
-            "weight_gain": float(latest_diary.weight_gain) if latest_diary.weight_gain else 0.0,
-            "systolic": float(latest_diary.systolic) if latest_diary.systolic else 0.0,
-            "diastolic": float(latest_diary.diastolic) if latest_diary.diastolic else 0.0,
+            "weight_kg": float(latest_diary.weight_kg) if latest_diary and latest_diary.weight_kg else float(patient.initial_weight or 0.0),
+            "weight_gain": float(latest_diary.weight_gain) if latest_diary and latest_diary.weight_gain else 0.0,
+            "systolic": float(latest_diary.systolic) if latest_diary and latest_diary.systolic else 0.0,
+            "diastolic": float(latest_diary.diastolic) if latest_diary and latest_diary.diastolic else 0.0,
             "mean_arterial_pressure": round(mean_arterial_pressure, 2),
             "diabetes": 1 if medical_record.diabetes else 0,
             "chronic_hypertension": 1 if medical_record.chronic_hypertension else 0,

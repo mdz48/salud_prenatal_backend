@@ -36,8 +36,10 @@ class MedicalRecordService:
                 })
 
         risk_prediction = None
-        if medical_record and medical_record.patient_diaries:
-            latest_diary = sorted(medical_record.patient_diaries, key=lambda d: d.created_at, reverse=True)[0]
+        if medical_record:
+            latest_diary = None
+            if medical_record.patient_diaries:
+                latest_diary = sorted(medical_record.patient_diaries, key=lambda d: d.created_at, reverse=True)[0]
             risk_prediction = ml_prediction_service.predict(patient, medical_record, latest_diary)
 
         return {

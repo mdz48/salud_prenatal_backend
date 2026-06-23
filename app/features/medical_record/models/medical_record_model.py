@@ -16,10 +16,10 @@ class MedicalRecord(Base):
     family_history_hypertension = Column(Boolean, nullable=True) # Antecedentes familiares de hipertensión
 
     # Obstetric history
-    previous_pregnancies = Column(Boolean, nullable=True) # Embarazos previos
-    previous_deliveries = Column(Boolean, nullable=True) # Partos previos
-    previous_miscarriages = Column(Boolean, nullable=True) # Abortos previos
-    previous_cesareans = Column(Boolean, nullable=True) # Cesáreas previas
+    previous_pregnancies = Column(Integer, nullable=True) # Embarazos previos
+    previous_deliveries = Column(Integer, nullable=True) # Partos previos
+    previous_miscarriages = Column(Integer, nullable=True) # Abortos previos
+    previous_cesareans = Column(Integer, nullable=True) # Cesáreas previas
     previous_preeclampsia = Column(Boolean, nullable=True) # Preeclampsia previa
 
     # Chronic / pathological history

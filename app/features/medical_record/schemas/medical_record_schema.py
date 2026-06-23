@@ -6,10 +6,10 @@ class MedicalRecordBase(BaseModel):
     previous_hypertension: Optional[bool] = None
     diabetes: Optional[bool] = None
     family_history_hypertension: Optional[bool] = None
-    previous_pregnancies: Optional[bool] = None
-    previous_deliveries: Optional[bool] = None
-    previous_miscarriages: Optional[bool] = None
-    previous_cesareans: Optional[bool] = None
+    previous_pregnancies: Optional[int] = None
+    previous_deliveries: Optional[int] = None
+    previous_miscarriages: Optional[int] = None
+    previous_cesareans: Optional[int] = None
     previous_preeclampsia: Optional[bool] = None
     chronic_kidney_disease: Optional[bool] = None
     chronic_hypertension: Optional[bool] = None

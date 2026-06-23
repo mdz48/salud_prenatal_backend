@@ -32,6 +32,9 @@ class MedicalRecord(Base):
     # Family history
     family_history_heart_disease = Column(Boolean, nullable=True) # Antecedentes familiares de enfermedades cardíacas
 
+    # Lifestyle
+    active_smoking = Column(Boolean, nullable=True) # Tabaquismo activo
+
     # Relationships
     patient = relationship("Patient", back_populates="medical_records")
     doctor = relationship("Doctor")

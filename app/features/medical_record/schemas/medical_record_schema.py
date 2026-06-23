@@ -17,6 +17,7 @@ class MedicalRecordBase(BaseModel):
     fetal_death: Optional[bool] = None
     fetal_growth_restriction: Optional[bool] = None
     family_history_heart_disease: Optional[bool] = None
+    active_smoking: Optional[bool] = None
 
 class MedicalRecordCreate(MedicalRecordBase):
     patient_id: int
@@ -43,5 +44,6 @@ class PatientMedicalRecordResponse(BaseModel):
     age: Optional[int] = None
     medical_record: Optional[MedicalRecordResponse] = None
     consultations: List[ConsultationSummary]
+    risk_prediction: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)

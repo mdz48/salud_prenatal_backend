@@ -30,6 +30,8 @@ class AuthService:
             patient_id = user.patient_profile.patient_id
         if user.doctor_profile:
             doctor_id = user.doctor_profile.doctor_id
+        if user.receptionist_profile:
+            doctor_id = user.receptionist_profile.doctor_id
 
         return {
             "access_token": access_token,

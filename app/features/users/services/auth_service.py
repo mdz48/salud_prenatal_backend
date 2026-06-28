@@ -25,12 +25,21 @@ class AuthService:
         
         patient_id = None
         doctor_id = None
+        medical_record_id = None
         
         if user.patient_profile:
             patient_id = user.patient_profile.patient_id
-        if user.doctor_profile:
+            doctor_id = user.patient_profile.doctor_id
+            # Get the medical record associated with their assigned doctor
+            if doctor_id and user.patient_profile.medical_records:
+                for mr in user.patient_profile.medical_records:
+                    if mr.doctor_id == doctor_id:
+                        medical_record_id = mr.medical_record_id
+                        break
+
+        elif user.doctor_profile:
             doctor_id = user.doctor_profile.doctor_id
-        if user.receptionist_profile:
+        elif user.receptionist_profile:
             doctor_id = user.receptionist_profile.doctor_id
 
         return {
@@ -39,7 +48,8 @@ class AuthService:
             "user_id": user.user_id,
             "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
             "patient_id": patient_id,
-            "doctor_id": doctor_id
+            "doctor_id": doctor_id,
+            "medical_record_id": medical_record_id
         }
 
 auth_service = AuthService()

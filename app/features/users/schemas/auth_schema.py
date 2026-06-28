@@ -13,3 +13,4 @@ class Token(BaseModel):
     role: str
     patient_id: Optional[int] = None
     doctor_id: Optional[int] = None
+    medical_record_id: Optional[int] = None

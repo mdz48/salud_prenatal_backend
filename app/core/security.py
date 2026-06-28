@@ -27,3 +27,36 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+from sqlalchemy import TypeDecorator, String
+from cryptography.fernet import Fernet
+from cryptography.fernet import InvalidToken
+
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+fernet = Fernet(ENCRYPTION_KEY.encode()) if ENCRYPTION_KEY else None
+
+class EncryptedString(TypeDecorator):
+    """
+    Encrypts string data on the way in, decrypts on the way out.
+    """
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if fernet is None:
+            raise ValueError("ENCRYPTION_KEY is not set in environment variables.")
+        encrypted_bytes = fernet.encrypt(value.encode('utf-8'))
+        return encrypted_bytes.decode('utf-8')
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if fernet is None:
+            return value
+        try:
+            decrypted_bytes = fernet.decrypt(value.encode('utf-8'))
+            return decrypted_bytes.decode('utf-8')
+        except InvalidToken:
+            return value

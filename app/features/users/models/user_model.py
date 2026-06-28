@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.enums import RoleEnum
 from app.core.database import Base
+from app.core.security import EncryptedString
 from app.features.users.models.doctor_model import Doctor
 from app.features.users.models.patient_model import Patient
 
@@ -12,10 +13,10 @@ class Usuario(Base):
     __tablename__ = "users"
 
     user_id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
+    name = Column(EncryptedString, nullable=False)
+    last_name = Column(EncryptedString, nullable=False)
     email = Column(String(100), unique=True, nullable=False)
-    phone = Column(String(20), nullable=True)
+    phone = Column(EncryptedString, nullable=True)
     password = Column(String(255), nullable=False)
     role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.patient)
     is_active = Column(Boolean, default=True)

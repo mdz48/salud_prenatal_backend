@@ -29,11 +29,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 from sqlalchemy import TypeDecorator, String
-from cryptography.fernet import Fernet
-from cryptography.fernet import InvalidToken
+from app.core.crypto.key_manager import EnvKeyManager
+from app.core.crypto.crypto_pipes import FernetCipherPipe, FernetDecryptPipe
 
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
-fernet = Fernet(ENCRYPTION_KEY.encode()) if ENCRYPTION_KEY else None
+# Initialize dependencies for the ORM adapter
+_key_manager = EnvKeyManager()
+_cipher_pipe = FernetCipherPipe(_key_manager)
+_decrypt_pipe = FernetDecryptPipe(_key_manager)
 
 class EncryptedString(TypeDecorator):
     """
@@ -45,18 +47,9 @@ class EncryptedString(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        if fernet is None:
-            raise ValueError("ENCRYPTION_KEY is not set in environment variables.")
-        encrypted_bytes = fernet.encrypt(value.encode('utf-8'))
-        return encrypted_bytes.decode('utf-8')
+        return _cipher_pipe.execute(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        if fernet is None:
-            return value
-        try:
-            decrypted_bytes = fernet.decrypt(value.encode('utf-8'))
-            return decrypted_bytes.decode('utf-8')
-        except InvalidToken:
-            return value
+        return _decrypt_pipe.execute(value)

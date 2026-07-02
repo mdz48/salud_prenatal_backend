@@ -46,19 +46,14 @@ from app.features.users.application.user_usecases import UpdateUserUseCase
 from app.features.users.application.user_usecases import DeleteUserUseCase
 
 from app.features.forums.infrastructure.repositories.forums_repository import ForumsRepository
-from app.features.forums.infrastructure.controllers.forums_controller import ForumsController
-from app.features.forums.application.forums_usecases import (
-    CreateProfileUseCase,
-    GetProfileUseCase,
-    CreateGroupUseCase,
-    GetGroupsUseCase,
-    CreatePostUseCase,
-    GetGlobalFeedUseCase,
-    GetGroupFeedUseCase,
-    AddCommentUseCase,
-    GetCommentsUseCase,
-    CreateReportUseCase
-)
+from app.features.forums.infrastructure.controllers.profiles_controller import ProfilesController
+from app.features.forums.infrastructure.controllers.groups_controller import GroupsController
+from app.features.forums.infrastructure.controllers.posts_controller import PostsController
+from app.features.forums.infrastructure.controllers.reports_controller import ReportsController
+from app.features.forums.application.profiles_usecases import CreateProfileUseCase, GetProfileUseCase
+from app.features.forums.application.groups_usecases import CreateGroupUseCase, GetGroupsUseCase
+from app.features.forums.application.posts_usecases import CreatePostUseCase, GetGlobalFeedUseCase, GetGroupFeedUseCase, AddCommentUseCase, GetCommentsUseCase
+from app.features.forums.application.reports_usecases import CreateReportUseCase
 
 from app.features.appointments.infrastructure.controllers.appointment_controller import AppointmentController
 from app.features.consultations.infrastructure.controllers.consultation_controller import ConsultationController
@@ -82,7 +77,10 @@ class Container(containers.DeclarativeContainer):
             "app.features.users.infrastructure.routes.doctor_router",
             "app.features.users.infrastructure.routes.patient_router",
             "app.features.users.infrastructure.routes.user_router",
-            "app.features.forums.infrastructure.routes.forums_router",
+            "app.features.forums.infrastructure.routes.profiles_router",
+            "app.features.forums.infrastructure.routes.groups_router",
+            "app.features.forums.infrastructure.routes.posts_router",
+            "app.features.forums.infrastructure.routes.reports_router",
         ]
     )
 
@@ -158,16 +156,7 @@ class Container(containers.DeclarativeContainer):
     auth_controller = providers.Factory(AuthController, authenticate_user_use_case)
     patient_controller = providers.Factory(PatientController, register_patient_use_case, get_patients_by_doctor_use_case, get_patient_dashboard_use_case, redeem_invitation_code_use_case)
     doctor_controller = providers.Factory(DoctorController, register_doctor_use_case, create_receptionist_use_case, get_receptionists_by_doctor_use_case, generate_invitation_code_use_case)
-    forums_controller = providers.Factory(
-        ForumsController,
-        create_profile_use_case,
-        get_profile_use_case,
-        create_group_use_case,
-        get_groups_use_case,
-        create_post_use_case,
-        get_global_feed_use_case,
-        get_group_feed_use_case,
-        add_comment_use_case,
-        get_comments_use_case,
-        create_report_use_case
-    )
+    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case)
+    groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case)
+    posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case)
+    reports_controller = providers.Factory(ReportsController, create_report_use_case)

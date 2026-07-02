@@ -47,7 +47,7 @@ class DoctorController:
     def get_patients_by_doctor(self, doctor_id: int):
         try:
             return self.get_patients_by_doctor_use_case.execute(doctor_id=doctor_id)
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while fetching patients.")
 
     def generate_invitation_code(self, doctor_id: int):
@@ -55,5 +55,5 @@ class DoctorController:
             return self.generate_invitation_code_use_case.execute(doctor_id=doctor_id)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while generating the invitation code.")

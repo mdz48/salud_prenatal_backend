@@ -13,7 +13,7 @@ class PatientController:
             return self.get_patient_dashboard_use_case.execute(patient_id=patient_id)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while fetching the dashboard.")
 
     def register_patient(self, data: PatientRegistration):
@@ -21,7 +21,7 @@ class PatientController:
             return self.register_patient_use_case.execute(data=data)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while registering the patient.")
 
     def redeem_code(self, patient_id: int, data: RedeemCodeRequest):
@@ -29,5 +29,5 @@ class PatientController:
             return self.redeem_invitation_code_use_case.execute(patient_id=patient_id, code=data.code)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while redeeming the code.")

@@ -29,27 +29,40 @@ class AuthenticateUserUseCase:
         patient_id = None
         doctor_id = None
         medical_record_id = None
-        
-        patient = self.patient_repository.get_by_user_id(user.user_id)
-        if patient:
-            patient_id = patient.patient_id
-            doctor_id = patient.doctor_id
-            # Omitted medical_record_id as we decouple domain
-        else:
+        receptionist_info = None
+
+        if user.role.value == "paciente":
+            patient = self.patient_repository.get_by_user_id(user.user_id)
+            if patient:
+                patient_id = patient.patient_id
+                doctor_id = patient.doctor_id
+                medical_record_id = patient.medical_record_id
+        elif user.role.value == "medico":
             doctor = self.doctor_repository.get_by_user_id(user.user_id)
             if doctor:
                 doctor_id = doctor.doctor_id
-            else:
-                receptionist = self.receptionist_repository.get_by_user_id(user.user_id)
-                if receptionist:
-                    doctor_id = receptionist.doctor_id
+        elif user.role.value == "recepcionista":
+            receptionist = self.receptionist_repository.get_by_user_id(user.user_id)
+            if receptionist:
+                doctor_id = receptionist.doctor_id
+
+        if doctor_id:
+            receptionists = self.receptionist_repository.get_by_doctor_id(doctor_id)
+            if receptionists:
+                first_receptionist = receptionists[0]
+                receptionist_info = {
+                    "user_id": first_receptionist.user_id,
+                    "name": first_receptionist.name,
+                    "last_name": first_receptionist.last_name
+                }
 
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "user_id": user.user_id,
-            "role": role_str,
+            "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
             "patient_id": patient_id,
             "doctor_id": doctor_id,
-            "medical_record_id": medical_record_id
+            "medical_record_id": medical_record_id,
+            "receptionist": receptionist_info
         }

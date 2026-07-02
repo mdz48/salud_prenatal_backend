@@ -3,7 +3,6 @@ from app.core.database import Base
 from sqlalchemy.orm import relationship
 from app.core.enums import AppointmentStatusEnum
 from sqlalchemy.sql import func
-from sqlalchemy.sql import func
 
 class Appointment(Base):
     __tablename__ = "appointments"

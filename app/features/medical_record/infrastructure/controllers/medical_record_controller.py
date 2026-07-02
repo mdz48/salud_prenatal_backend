@@ -20,7 +20,7 @@ class MedicalRecordController:
             return result_entity
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while creating the medical record.")
 
     def get_patient_medical_record(self, patient_id: int, doctor_id: int):
@@ -28,5 +28,5 @@ class MedicalRecordController:
             return self.get_patient_medical_record_use_case.execute(patient_id=patient_id, doctor_id=doctor_id)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while retrieving the medical record.")

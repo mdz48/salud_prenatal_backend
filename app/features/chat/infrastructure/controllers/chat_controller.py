@@ -1,18 +1,23 @@
 from fastapi import WebSocket, WebSocketDisconnect
-from typing import List
 
 from app.features.chat.application.get_history_usecase import GetHistoryUseCase
 from app.features.chat.application.save_message_usecase import SaveMessageUseCase
+from app.features.chat.application.get_chat_inbox_usecase import GetChatInboxUseCase
 from app.features.chat.infrastructure.websocket_manager import manager
 
 class ChatController:
     def __init__(
         self,
         get_history_usecase: GetHistoryUseCase,
-        save_message_usecase: SaveMessageUseCase
+        save_message_usecase: SaveMessageUseCase,
+        get_chat_inbox_usecase: GetChatInboxUseCase
     ):
         self.get_history_usecase = get_history_usecase
         self.save_message_usecase = save_message_usecase
+        self.get_chat_inbox_usecase = get_chat_inbox_usecase
+
+    def get_inbox(self, current_user_id: int):
+        return self.get_chat_inbox_usecase.execute(current_user_id)
 
     def get_chat_history(self, current_user_id: int, other_user_id: int):
         # Note: current_user_id is passed as query param for testing (RBAC skipped for now)

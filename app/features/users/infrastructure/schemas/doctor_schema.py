@@ -1,0 +1,23 @@
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional
+from app.features.users.infrastructure.schemas.user_schema import UserCreate
+
+class DoctorBase(BaseModel):
+    professional_license: Optional[str] = Field(None, max_length=255)
+    specialty: Optional[str] = Field(None, max_length=100)
+    office: Optional[str] = Field(None, max_length=255)
+
+class DoctorCreate(DoctorBase):
+    user_id: int
+
+class DoctorUpdate(DoctorBase):
+    pass
+
+class DoctorResponse(DoctorBase):
+    doctor_id: int
+    user_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+class DoctorRegistration(UserCreate, DoctorBase):
+    pass

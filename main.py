@@ -2,16 +2,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import engine, Base
-from app.features.users.routes.user_router import router as user_router
-from app.features.users.routes.patient_router import router as patient_router
-from app.features.users.routes.doctor_router import router as doctor_router
-from app.features.appointments.routes.appointment_router import router as appointment_router
-from app.features.consultations.routes.consultation_router import router as consultation_router
-from app.features.medical_record.routes.medical_record_router import router as medical_record_router
-from app.features.patient_diaries.routes.patient_diary_router import router as patient_diary_router
-from app.features.chat.routes.chat_router import router as chat_router
+from app.features.users.infrastructure.routes.user_router import router as user_router
+from app.features.users.infrastructure.routes.patient_router import router as patient_router
+from app.features.users.infrastructure.routes.doctor_router import router as doctor_router
+from app.features.appointments.infrastructure.routes.appointment_router import router as appointment_router
+from app.features.consultations.infrastructure.routes.consultation_router import router as consultation_router
+from app.features.medical_record.infrastructure.routes.medical_record_router import router as medical_record_router
+from app.features.patient_diaries.infrastructure.routes.patient_diary_router import router as patient_diary_router
+from app.features.chat.infrastructure.routes.chat_router import router as chat_router
+from app.core.containers import Container
 
+container = Container()
 app = FastAPI()
+app.container = container
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(patient_router, prefix="/api/v1")
 app.include_router(doctor_router, prefix="/api/v1")

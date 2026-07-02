@@ -1,0 +1,6 @@
+from typing import Protocol, List
+from app.features.chat.domain.entities import ChatMessage
+
+class IChatRepository(Protocol):
+    def get_conversation(self, user1_id: int, user2_id: int) -> List[ChatMessage]: ...
+    def save_message(self, sender_id: int, receiver_id: int, content: str) -> ChatMessage: ...

@@ -11,8 +11,8 @@ class Message(Base):
     __tablename__ = "messages"
 
     message_id = Column(Integer, primary_key=True, index=True)
-    sender_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
-    receiver_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.user_id"), index=True, nullable=False)
+    receiver_id = Column(Integer, ForeignKey("users.user_id"), index=True, nullable=False)
     content = Column(String, nullable=False)
     created_at = Column(DateTime, default=get_mexico_city_time)
     is_read = Column(Boolean, default=False)

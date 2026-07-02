@@ -7,8 +7,8 @@ class MedicalRecord(Base):
     __table_args__ = (UniqueConstraint("patient_id", "doctor_id", name="uq_medical_record_patient_doctor"),)
 
     medical_record_id = Column(Integer, primary_key=True, autoincrement=True)
-    patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False)
-    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False)
+    patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False, index=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False, index=True)
 
     # Medical history
     previous_hypertension = Column(Boolean, nullable=True) # Hipertensión previa

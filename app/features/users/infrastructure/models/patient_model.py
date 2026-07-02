@@ -10,7 +10,7 @@ class Patient(Base):
 
     patient_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), unique=True, nullable=False)
-    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=True, index=True)
     birthdate = Column(Date, nullable=False)
     blood_type = Column(Enum(BloodTypeEnum), nullable=True) # Tipo de sangre
     weeks_at_registration = Column(Integer, nullable=True) # Semana de gestación al registrarse

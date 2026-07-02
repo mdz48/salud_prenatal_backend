@@ -7,7 +7,7 @@ class PatientDiary(Base):
     __tablename__ = "patient_diaries"
 
     patient_diary_id = Column(Integer, primary_key=True, autoincrement=True)
-    medical_record_id = Column(Integer, ForeignKey("medical_records.medical_record_id"), nullable=False)
+    medical_record_id = Column(Integer, ForeignKey("medical_records.medical_record_id"), nullable=False, index=True)
     weight_kg = Column(Float, nullable=True)
     systolic = Column(Integer, nullable=True)
     diastolic = Column(Integer, nullable=True)

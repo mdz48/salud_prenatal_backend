@@ -8,8 +8,8 @@ class Appointment(Base):
     __tablename__ = "appointments"
 
     appointment_id = Column(Integer, primary_key=True, autoincrement=True)
-    patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False)
-    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False)
+    patient_id = Column(Integer, ForeignKey("patients.patient_id"), index=True, nullable=False)
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), index=True, nullable=False)
     appointment_date = Column(DateTime, nullable=False)
     status = Column(Enum(AppointmentStatusEnum), nullable=False, default=AppointmentStatusEnum.pending)
     reason = Column(String(255), nullable=True)

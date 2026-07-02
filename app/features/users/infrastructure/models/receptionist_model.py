@@ -7,7 +7,7 @@ class Receptionist(Base):
 
     receptionist_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, unique=True)
-    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False, index=True)
 
     user = relationship("Usuario", back_populates="receptionist_profile", foreign_keys=[user_id])
     doctor = relationship("Doctor", foreign_keys=[doctor_id])

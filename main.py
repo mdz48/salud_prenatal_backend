@@ -10,6 +10,7 @@ from app.features.consultations.infrastructure.routes.consultation_router import
 from app.features.medical_record.infrastructure.routes.medical_record_router import router as medical_record_router
 from app.features.patient_diaries.infrastructure.routes.patient_diary_router import router as patient_diary_router
 from app.features.chat.infrastructure.routes.chat_router import router as chat_router
+from app.features.forums.infrastructure.routes.forums_router import router as forums_router
 from app.core.containers import Container
 
 container = Container()
@@ -23,6 +24,7 @@ app.include_router(consultation_router, prefix="/api/v1")
 app.include_router(medical_record_router, prefix="/api/v1")
 app.include_router(patient_diary_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(forums_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,

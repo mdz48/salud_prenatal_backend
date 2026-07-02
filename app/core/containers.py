@@ -44,6 +44,16 @@ from app.features.users.application.user_usecases import GetUserUseCase
 from app.features.users.application.user_usecases import UpdateUserUseCase
 from app.features.users.application.user_usecases import DeleteUserUseCase
 
+from app.features.appointments.infrastructure.controllers.appointment_controller import AppointmentController
+from app.features.consultations.infrastructure.controllers.consultation_controller import ConsultationController
+from app.features.medical_record.infrastructure.controllers.medical_record_controller import MedicalRecordController
+from app.features.patient_diaries.infrastructure.controllers.patient_diary_controller import PatientDiaryController
+from app.features.chat.infrastructure.controllers.chat_controller import ChatController
+from app.features.users.infrastructure.controllers.user_controller import UserController
+from app.features.users.infrastructure.controllers.auth_controller import AuthController
+from app.features.users.infrastructure.controllers.patient_controller import PatientController
+from app.features.users.infrastructure.controllers.doctor_controller import DoctorController
+
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         modules=[
@@ -108,3 +118,14 @@ class Container(containers.DeclarativeContainer):
     get_user_use_case = providers.Factory(GetUserUseCase, user_repository=user_repository)
     update_user_use_case = providers.Factory(UpdateUserUseCase, user_repository=user_repository)
     delete_user_use_case = providers.Factory(DeleteUserUseCase, user_repository=user_repository)
+
+    # Controllers
+    appointment_controller = providers.Factory(AppointmentController, create_appointment_use_case, get_appointment_use_case, get_appointments_by_patient_use_case, get_appointments_by_doctor_use_case, update_appointment_use_case, delete_appointment_use_case)
+    consultation_controller = providers.Factory(ConsultationController, create_consultation_use_case, get_consultations_by_medical_record_use_case)
+    medical_record_controller = providers.Factory(MedicalRecordController, create_medical_record_use_case, get_patient_medical_record_use_case)
+    patient_diary_controller = providers.Factory(PatientDiaryController, create_patient_diary_use_case, delete_patient_diary_use_case, get_all_patient_diaries_use_case, get_diaries_by_medical_record_use_case, get_patient_diary_by_id_use_case, update_patient_diary_use_case)
+    chat_controller = providers.Factory(ChatController, get_history_use_case, save_message_use_case)
+    user_controller = providers.Factory(UserController, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case)
+    auth_controller = providers.Factory(AuthController, authenticate_user_use_case)
+    patient_controller = providers.Factory(PatientController, register_patient_use_case, get_patients_by_doctor_use_case, get_patient_dashboard_use_case, redeem_invitation_code_use_case)
+    doctor_controller = providers.Factory(DoctorController, register_doctor_use_case, create_receptionist_use_case, get_receptionists_by_doctor_use_case, generate_invitation_code_use_case)

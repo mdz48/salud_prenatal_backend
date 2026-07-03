@@ -12,13 +12,15 @@ class TestUserUseCases(unittest.TestCase):
         self.patient_repo_mock = MagicMock()
         self.doctor_repo_mock = MagicMock()
         self.receptionist_repo_mock = MagicMock()
+        self.medical_record_repo_mock = MagicMock()
         
     def test_authenticate_user_success(self):
         usecase = AuthenticateUserUseCase(
             self.user_repo_mock,
             self.patient_repo_mock,
             self.doctor_repo_mock,
-            self.receptionist_repo_mock
+            self.receptionist_repo_mock,
+            self.medical_record_repo_mock
         )
         mock_user = MagicMock(spec=UserEntity)
         mock_user.password = get_password_hash("password123")
@@ -46,7 +48,8 @@ class TestUserUseCases(unittest.TestCase):
             self.user_repo_mock,
             self.patient_repo_mock,
             self.doctor_repo_mock,
-            self.receptionist_repo_mock
+            self.receptionist_repo_mock,
+            self.medical_record_repo_mock
         )
         mock_user = MagicMock(spec=UserEntity)
         mock_user.password = get_password_hash("password123")

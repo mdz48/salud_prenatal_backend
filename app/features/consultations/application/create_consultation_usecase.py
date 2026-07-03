@@ -1,5 +1,5 @@
 from app.features.consultations.domain.ports import IConsultationRepository
-from app.features.consultations.domain.entities import ConsultationEntity
+from app.features.consultations.domain.consultation_entity import ConsultationEntity
 
 class CreateConsultationUseCase:
     def __init__(self, consultation_repo: IConsultationRepository):

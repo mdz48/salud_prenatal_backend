@@ -1,18 +1,8 @@
+from typing import List, Optional, Dict
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
-from datetime import datetime
-
-class ConsultationEntity(BaseModel):
-    consultation_id: int
-    created_at: datetime
-    
-    model_config = ConfigDict(from_attributes=True)
-
-class PatientDiaryEntity(BaseModel):
-    patient_diary_id: int
-    created_at: datetime
-    
-    model_config = ConfigDict(from_attributes=True, extra="allow")
+from .consultation_entity import ConsultationEntity
+from .patient_diary_entity import PatientDiaryEntity
 
 class MedicalRecordEntity(BaseModel):
     medical_record_id: Optional[int] = None

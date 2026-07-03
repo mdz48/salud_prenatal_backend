@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.features.users.infrastructure.models.invitation_code_model import InvitationCode
 from app.features.users.domain.ports import IInvitationCodeRepository
-from app.features.users.domain.entities import InvitationCodeEntity
+from app.features.users.domain.invitation_code_entity import InvitationCodeEntity
 from typing import Optional
 
 class InvitationCodeRepository(IInvitationCodeRepository):

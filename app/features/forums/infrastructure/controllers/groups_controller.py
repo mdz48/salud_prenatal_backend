@@ -1,8 +1,9 @@
 from fastapi import HTTPException, status
 from typing import List
-from app.features.forums.domain.entities import CommunityGroupEntity
+from app.features.forums.application.groups.create_group_usecase import CreateGroupUseCase
+from app.features.forums.application.groups.get_groups_usecase import GetGroupsUseCase
+from app.features.forums.domain.community_group_entity import CommunityGroupEntity
 from app.features.forums.infrastructure.schemas.forums_schemas import GroupCreate, GroupResponse
-from app.features.forums.application.groups_usecases import CreateGroupUseCase, GetGroupsUseCase
 
 class GroupsController:
     def __init__(

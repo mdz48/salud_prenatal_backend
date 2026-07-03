@@ -6,7 +6,7 @@ from app.features.appointments.application.get_appointments_by_patient_usecase i
 from app.features.appointments.application.get_appointments_by_doctor_usecase import GetAppointmentsByDoctorUseCase
 from app.features.appointments.application.update_appointment_usecase import UpdateAppointmentUseCase
 from app.features.appointments.application.delete_appointment_usecase import DeleteAppointmentUseCase
-from app.features.appointments.domain.entities import AppointmentEntity
+from app.features.appointments.domain.appointment_entity import AppointmentEntity
 import app.features.users.infrastructure.repositories.patient_repository as pr
 import app.features.users.infrastructure.repositories.doctor_repository as dr
 

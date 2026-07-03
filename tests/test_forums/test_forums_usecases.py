@@ -1,15 +1,13 @@
 import pytest
 from unittest.mock import MagicMock
-from app.features.forums.application.profiles_usecases import CreateProfileUseCase
-from app.features.forums.application.groups_usecases import CreateGroupUseCase
-from app.features.forums.application.posts_usecases import CreatePostUseCase
-from app.features.forums.application.reports_usecases import CreateReportUseCase
-from app.features.forums.domain.entities import (
-    SocialProfileEntity,
-    CommunityGroupEntity,
-    PostEntity,
-    ReportEntity
-)
+from app.features.forums.application.profiles.create_profile_usecase import CreateProfileUseCase
+from app.features.forums.application.groups.create_group_usecase import CreateGroupUseCase
+from app.features.forums.application.posts.create_post_usecase import CreatePostUseCase
+from app.features.forums.application.reports.create_report_usecase import CreateReportUseCase
+from app.features.forums.domain.social_profile_entity import SocialProfileEntity
+from app.features.forums.domain.community_group_entity import CommunityGroupEntity
+from app.features.forums.domain.post_entity import PostEntity
+from app.features.forums.domain.report_entity import ReportEntity
 from app.features.forums.domain.ports import IForumsRepository
 
 @pytest.fixture

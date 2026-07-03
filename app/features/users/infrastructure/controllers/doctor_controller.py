@@ -1,5 +1,9 @@
 from fastapi import HTTPException, status
 from app.features.users.infrastructure.schemas.doctor_schema import DoctorRegistration
+from app.features.users.application.doctor.register_doctor_usecase import RegisterDoctorUseCase
+from app.features.users.application.doctor.create_receptionist_usecase import CreateReceptionistUseCase
+from app.features.users.application.doctor.get_receptionists_by_doctor_usecase import GetReceptionistsByDoctorUseCase
+from app.features.users.application.doctor.generate_invitation_code_usecase import GenerateInvitationCodeUseCase
 from app.features.users.infrastructure.schemas.receptionist_schema import ReceptionistCreate
 
 class DoctorController:

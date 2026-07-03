@@ -1,5 +1,5 @@
 from app.features.forums.domain.ports import IForumsRepository
-from app.features.forums.domain.entities import ReportEntity
+from app.features.forums.domain.report_entity import ReportEntity
 
 class CreateReportUseCase:
     def __init__(self, forums_repo: IForumsRepository):

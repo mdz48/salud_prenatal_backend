@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.features.users.infrastructure.models.doctor_model import Doctor
 from app.features.users.domain.ports import IDoctorRepository
-from app.features.users.domain.entities import DoctorEntity
+from app.features.users.domain.doctor_entity import DoctorEntity
 from typing import Optional
 
 class DoctorRepository(IDoctorRepository):

@@ -1,19 +1,15 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from app.features.forums.domain.entities import (
-    SocialProfileEntity,
-    CommunityGroupEntity,
-    PostEntity,
-    CommentEntity,
-    ReportEntity
-)
-from app.features.forums.infrastructure.models.forums_model import (
-    SocialProfileModel,
-    CommunityGroupModel,
-    PostModel,
-    CommentModel,
-    ReportModel
-)
+from app.features.forums.domain.social_profile_entity import SocialProfileEntity
+from app.features.forums.domain.community_group_entity import CommunityGroupEntity
+from app.features.forums.domain.post_entity import PostEntity
+from app.features.forums.domain.comment_entity import CommentEntity
+from app.features.forums.domain.report_entity import ReportEntity
+from app.features.forums.infrastructure.models.social_profile_model import SocialProfileModel
+from app.features.forums.infrastructure.models.community_group_model import CommunityGroupModel
+from app.features.forums.infrastructure.models.post_model import PostModel
+from app.features.forums.infrastructure.models.comment_model import CommentModel
+from app.features.forums.infrastructure.models.report_model import ReportModel
 
 class ForumsRepository:
     def __init__(self, db: Session):

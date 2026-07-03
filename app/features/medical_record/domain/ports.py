@@ -1,5 +1,5 @@
 from typing import Protocol, Optional
-from .entities import MedicalRecordEntity
+from .medical_record_entity import MedicalRecordEntity
 
 class IMedicalRecordRepository(Protocol):
     def get_by_patient_and_doctor(self, patient_id: int, doctor_id: int) -> Optional[MedicalRecordEntity]:

@@ -1,8 +1,9 @@
+from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 from app.features.users.infrastructure.models.user_model import Usuario
 from app.features.users.domain.ports import IUserRepository
-from app.features.users.domain.entities import UserEntity
-from typing import Optional, List
+from app.features.users.domain.user_entity import UserEntity
+from typing import Optional
 
 class UserRepository(IUserRepository):
     def __init__(self, db: Session):

@@ -1,5 +1,9 @@
 from fastapi import HTTPException, status
 from app.features.users.infrastructure.schemas.user_schema import UserUpdate
+from app.features.users.application.user.get_users_usecase import GetUsersUseCase
+from app.features.users.application.user.get_user_usecase import GetUserUseCase
+from app.features.users.application.user.update_user_usecase import UpdateUserUseCase
+from app.features.users.application.user.delete_user_usecase import DeleteUserUseCase
 
 class UserController:
     def __init__(self, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case):

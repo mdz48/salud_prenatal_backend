@@ -1,6 +1,6 @@
 from typing import List
 from app.features.chat.domain.ports import IChatRepository
-from app.features.chat.domain.entities import InboxItemResponse
+from app.features.chat.domain.inbox_item_response import InboxItemResponse
 
 class GetChatInboxUseCase:
     def __init__(self, chat_repository: IChatRepository):

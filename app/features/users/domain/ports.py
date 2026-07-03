@@ -1,5 +1,10 @@
+from typing import List, Optional, Dict
 from typing import Protocol, Optional, List
-from app.features.users.domain.entities import UserEntity, DoctorEntity, PatientEntity, ReceptionistEntity, InvitationCodeEntity
+from app.features.users.domain.user_entity import UserEntity
+from app.features.users.domain.doctor_entity import DoctorEntity
+from app.features.users.domain.patient_entity import PatientEntity
+from app.features.users.domain.receptionist_entity import ReceptionistEntity
+from app.features.users.domain.invitation_code_entity import InvitationCodeEntity
 
 class IUserRepository(Protocol):
     def get_by_email(self, email: str) -> Optional[UserEntity]: ...

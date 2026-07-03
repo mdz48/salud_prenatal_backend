@@ -31,29 +31,35 @@ from app.features.patient_diaries.application.get_all_patient_diaries_usecase im
 from app.features.patient_diaries.application.get_diaries_by_medical_record_usecase import GetDiariesByMedicalRecordUseCase
 from app.features.patient_diaries.application.get_patient_diary_by_id_usecase import GetPatientDiaryByIdUseCase
 from app.features.patient_diaries.application.update_patient_diary_usecase import UpdatePatientDiaryUseCase
-from app.features.users.application.auth_usecases import AuthenticateUserUseCase
-from app.features.users.application.doctor_usecases import RegisterDoctorUseCase
-from app.features.users.application.doctor_usecases import CreateReceptionistUseCase
-from app.features.users.application.doctor_usecases import GetReceptionistsByDoctorUseCase
-from app.features.users.application.doctor_usecases import GenerateInvitationCodeUseCase
-from app.features.users.application.invitation_usecases import RedeemInvitationCodeUseCase
-from app.features.users.application.patient_usecases import RegisterPatientUseCase
-from app.features.users.application.patient_usecases import GetPatientsByDoctorUseCase
-from app.features.users.application.patient_usecases import GetPatientDashboardUseCase
-from app.features.users.application.user_usecases import GetUsersUseCase
-from app.features.users.application.user_usecases import GetUserUseCase
-from app.features.users.application.user_usecases import UpdateUserUseCase
-from app.features.users.application.user_usecases import DeleteUserUseCase
+from app.features.users.application.auth.authenticate_user_usecase import AuthenticateUserUseCase
+from app.features.users.application.doctor.register_doctor_usecase import RegisterDoctorUseCase
+from app.features.users.application.doctor.create_receptionist_usecase import CreateReceptionistUseCase
+from app.features.users.application.doctor.get_receptionists_by_doctor_usecase import GetReceptionistsByDoctorUseCase
+from app.features.users.application.doctor.generate_invitation_code_usecase import GenerateInvitationCodeUseCase
+from app.features.users.application.invitation.redeem_invitation_code_usecase import RedeemInvitationCodeUseCase
+from app.features.users.application.patient.register_patient_usecase import RegisterPatientUseCase
+from app.features.users.application.patient.get_patients_by_doctor_usecase import GetPatientsByDoctorUseCase
+from app.features.users.application.patient.get_patient_dashboard_usecase import GetPatientDashboardUseCase
+from app.features.users.application.user.get_users_usecase import GetUsersUseCase
+from app.features.users.application.user.get_user_usecase import GetUserUseCase
+from app.features.users.application.user.update_user_usecase import UpdateUserUseCase
+from app.features.users.application.user.delete_user_usecase import DeleteUserUseCase
 
 from app.features.forums.infrastructure.repositories.forums_repository import ForumsRepository
 from app.features.forums.infrastructure.controllers.profiles_controller import ProfilesController
 from app.features.forums.infrastructure.controllers.groups_controller import GroupsController
 from app.features.forums.infrastructure.controllers.posts_controller import PostsController
 from app.features.forums.infrastructure.controllers.reports_controller import ReportsController
-from app.features.forums.application.profiles_usecases import CreateProfileUseCase, GetProfileUseCase
-from app.features.forums.application.groups_usecases import CreateGroupUseCase, GetGroupsUseCase
-from app.features.forums.application.posts_usecases import CreatePostUseCase, GetGlobalFeedUseCase, GetGroupFeedUseCase, AddCommentUseCase, GetCommentsUseCase
-from app.features.forums.application.reports_usecases import CreateReportUseCase
+from app.features.forums.application.profiles.create_profile_usecase import CreateProfileUseCase
+from app.features.forums.application.profiles.get_profile_usecase import GetProfileUseCase
+from app.features.forums.application.groups.create_group_usecase import CreateGroupUseCase
+from app.features.forums.application.groups.get_groups_usecase import GetGroupsUseCase
+from app.features.forums.application.posts.create_post_usecase import CreatePostUseCase
+from app.features.forums.application.posts.get_global_feed_usecase import GetGlobalFeedUseCase
+from app.features.forums.application.posts.get_group_feed_usecase import GetGroupFeedUseCase
+from app.features.forums.application.posts.add_comment_usecase import AddCommentUseCase
+from app.features.forums.application.posts.get_comments_usecase import GetCommentsUseCase
+from app.features.forums.application.reports.create_report_usecase import CreateReportUseCase
 
 from app.features.appointments.infrastructure.controllers.appointment_controller import AppointmentController
 from app.features.consultations.infrastructure.controllers.consultation_controller import ConsultationController

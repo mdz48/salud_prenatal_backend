@@ -1,46 +1,6 @@
 from datetime import datetime, timezone
-from app.features.users.domain.ports import IUserRepository, IPatientRepository, IDoctorRepository
-from app.features.users.domain.entities import UserEntity, PatientEntity
-from app.features.users.infrastructure.schemas.patient_schema import PatientRegistration
+from app.features.users.domain.ports import IPatientRepository, IUserRepository, IDoctorRepository
 from app.features.appointments.domain.ports import IAppointmentRepository
-from app.core.security import get_password_hash
-from app.core.enums import RoleEnum
-
-class RegisterPatientUseCase:
-    def __init__(self, user_repository: IUserRepository, patient_repository: IPatientRepository):
-        self.user_repository = user_repository
-        self.patient_repository = patient_repository
-
-    def execute(self, data: PatientRegistration) -> PatientEntity:
-        existing_user = self.user_repository.get_by_email(data.email)
-        if existing_user:
-            raise ValueError("Email already registered")
-        
-        user_entity = UserEntity(
-            name=data.name,
-            last_name=data.last_name,
-            email=data.email,
-            phone=data.phone,
-            role=RoleEnum.patient,
-            is_active=True,
-            password=get_password_hash(data.password)
-        )
-        
-        db_user = self.user_repository.create(user_entity)
-        
-        patient_data_dict = data.model_dump(exclude={"name", "last_name", "email", "phone", "password", "role", "is_active", "image_url"})
-        patient_data_dict["user_id"] = db_user.user_id
-        
-        patient_entity = PatientEntity(**patient_data_dict)
-        db_patient = self.patient_repository.create(patient_entity)
-        return db_patient
-
-class GetPatientsByDoctorUseCase:
-    def __init__(self, patient_repository: IPatientRepository):
-        self.patient_repository = patient_repository
-
-    def execute(self, doctor_id: int):
-        return self.patient_repository.get_patients_by_doctor(doctor_id)
 
 class GetPatientDashboardUseCase:
     def __init__(self, 

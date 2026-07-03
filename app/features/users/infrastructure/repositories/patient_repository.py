@@ -1,8 +1,9 @@
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.features.users.infrastructure.models.patient_model import Patient
 from app.features.users.domain.ports import IPatientRepository
-from app.features.users.domain.entities import PatientEntity
-from typing import Optional, List
+from app.features.users.domain.patient_entity import PatientEntity
+from typing import Optional
 
 class PatientRepository(IPatientRepository):
     def __init__(self, db: Session):

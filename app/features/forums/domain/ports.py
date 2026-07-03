@@ -1,11 +1,9 @@
 from typing import List, Optional, Protocol
-from app.features.forums.domain.entities import (
-    SocialProfileEntity,
-    CommunityGroupEntity,
-    PostEntity,
-    CommentEntity,
-    ReportEntity
-)
+from app.features.forums.domain.social_profile_entity import SocialProfileEntity
+from app.features.forums.domain.community_group_entity import CommunityGroupEntity
+from app.features.forums.domain.post_entity import PostEntity
+from app.features.forums.domain.comment_entity import CommentEntity
+from app.features.forums.domain.report_entity import ReportEntity
 
 class IForumsRepository(Protocol):
     def create_profile(self, profile: SocialProfileEntity) -> SocialProfileEntity:...

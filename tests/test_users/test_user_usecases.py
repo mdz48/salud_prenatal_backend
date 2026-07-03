@@ -1,9 +1,10 @@
 import unittest
 from unittest.mock import MagicMock
-from app.features.users.application.auth_usecases import AuthenticateUserUseCase
-from app.features.users.application.user_usecases import GetUserUseCase
+from app.features.users.application.auth.authenticate_user_usecase import AuthenticateUserUseCase
+from app.features.users.application.user.get_user_usecase import GetUserUseCase
 from app.core.security import get_password_hash
-from app.features.users.domain.entities import UserEntity, DoctorEntity
+from app.features.users.domain.user_entity import UserEntity
+from app.features.users.domain.doctor_entity import DoctorEntity
 
 class TestUserUseCases(unittest.TestCase):
     def setUp(self):

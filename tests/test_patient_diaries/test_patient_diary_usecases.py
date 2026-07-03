@@ -6,7 +6,7 @@ from app.features.patient_diaries.application.get_patient_diary_by_id_usecase im
 from app.features.patient_diaries.application.get_diaries_by_medical_record_usecase import GetDiariesByMedicalRecordUseCase
 from app.features.patient_diaries.application.update_patient_diary_usecase import UpdatePatientDiaryUseCase
 from app.features.patient_diaries.application.delete_patient_diary_usecase import DeletePatientDiaryUseCase
-from app.features.patient_diaries.domain.entities import PatientDiaryEntity
+from app.features.patient_diaries.domain.patient_diary_entity import PatientDiaryEntity
 
 def test_create_patient_diary_usecase():
     repo = MagicMock()

@@ -1,6 +1,6 @@
 from typing import List
 from app.features.appointments.domain.ports import IAppointmentRepository
-from app.features.appointments.domain.entities import AppointmentEntity
+from app.features.appointments.domain.appointment_entity import AppointmentEntity
 
 class GetAppointmentsByDoctorUseCase:
     def __init__(self, appointment_repo: IAppointmentRepository):

@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 from app.features.consultations.application.create_consultation_usecase import CreateConsultationUseCase
 from app.features.consultations.application.get_consultations_by_medical_record_usecase import GetConsultationsByMedicalRecordUseCase
-from app.features.consultations.domain.entities import ConsultationEntity
+from app.features.consultations.domain.consultation_entity import ConsultationEntity
 
 class TestConsultationUseCases(unittest.TestCase):
     def setUp(self):

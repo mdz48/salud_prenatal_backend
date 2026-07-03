@@ -1,6 +1,6 @@
 from typing import List
 from app.features.consultations.domain.ports import IConsultationRepository
-from app.features.consultations.domain.entities import ConsultationEntity
+from app.features.consultations.domain.consultation_entity import ConsultationEntity
 
 class GetConsultationsByMedicalRecordUseCase:
     def __init__(self, consultation_repo: IConsultationRepository):

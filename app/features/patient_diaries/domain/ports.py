@@ -1,5 +1,6 @@
+from typing import List, Optional, Dict
 from typing import Protocol, Optional, List
-from .entities import PatientDiaryEntity
+from .patient_diary_entity import PatientDiaryEntity
 
 class IPatientDiaryRepository(Protocol):
     def get_all(self, skip: int = 0, limit: int = 100) -> List[PatientDiaryEntity]:

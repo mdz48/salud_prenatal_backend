@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.features.appointments.infrastructure.models.appointment_model import Appointment
 from app.features.appointments.domain.ports import IAppointmentRepository
-from app.features.appointments.domain.entities import AppointmentEntity
+from app.features.appointments.domain.appointment_entity import AppointmentEntity
 
 class AppointmentRepository(IAppointmentRepository):
     def __init__(self, db: Session):

@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
-from app.features.forums.domain.entities import ReportEntity
+from app.features.forums.domain.report_entity import ReportEntity
+from app.features.forums.application.reports.create_report_usecase import CreateReportUseCase
 from app.features.forums.infrastructure.schemas.forums_schemas import ReportCreate, ReportResponse
-from app.features.forums.application.reports_usecases import CreateReportUseCase
 
 class ReportsController:
     def __init__(self, create_report_uc: CreateReportUseCase):

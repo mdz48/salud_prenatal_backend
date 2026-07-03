@@ -1,5 +1,7 @@
+from typing import List, Optional, Dict
 from typing import Protocol, List
-from app.features.chat.domain.entities import ChatMessage, InboxItemResponse
+from app.features.chat.domain.chat_message_entity import ChatMessage
+from app.features.chat.domain.inbox_item_response import InboxItemResponse
 
 class IChatRepository(Protocol):
     def get_conversation(self, user1_id: int, user2_id: int) -> List[ChatMessage]: ...

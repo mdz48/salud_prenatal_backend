@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from app.features.medical_record.application.create_medical_record_usecase import CreateMedicalRecordUseCase
-from app.features.medical_record.domain.entities import MedicalRecordEntity
+from app.features.medical_record.domain.medical_record_entity import MedicalRecordEntity
 
 def test_create_medical_record_success():
     mr_repo = MagicMock()

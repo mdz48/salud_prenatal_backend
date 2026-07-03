@@ -1,12 +1,14 @@
 from fastapi import HTTPException, status
 from typing import List
-from app.features.forums.domain.entities import PostEntity, CommentEntity
+from app.features.forums.application.posts.create_post_usecase import CreatePostUseCase
+from app.features.forums.application.posts.get_global_feed_usecase import GetGlobalFeedUseCase
+from app.features.forums.application.posts.get_group_feed_usecase import GetGroupFeedUseCase
+from app.features.forums.application.posts.add_comment_usecase import AddCommentUseCase
+from app.features.forums.application.posts.get_comments_usecase import GetCommentsUseCase
+from app.features.forums.domain.post_entity import PostEntity
+from app.features.forums.domain.comment_entity import CommentEntity
 from app.features.forums.infrastructure.schemas.forums_schemas import (
     PostCreate, PostResponse, CommentCreate, CommentResponse
-)
-from app.features.forums.application.posts_usecases import (
-    CreatePostUseCase, GetGlobalFeedUseCase, GetGroupFeedUseCase,
-    AddCommentUseCase, GetCommentsUseCase
 )
 
 class PostsController:

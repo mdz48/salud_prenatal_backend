@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 
-from app.features.consultations.domain.entities import ConsultationEntity
+from app.features.consultations.domain.consultation_entity import ConsultationEntity
 from app.features.consultations.infrastructure.schemas.consultation_schema import ConsultationCreate
 
 from app.features.consultations.application.create_consultation_usecase import CreateConsultationUseCase

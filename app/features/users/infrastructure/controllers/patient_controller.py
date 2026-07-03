@@ -1,5 +1,9 @@
 from fastapi import HTTPException, status
 from app.features.users.infrastructure.schemas.patient_schema import PatientRegistration
+from app.features.users.application.patient.register_patient_usecase import RegisterPatientUseCase
+from app.features.users.application.patient.get_patients_by_doctor_usecase import GetPatientsByDoctorUseCase
+from app.features.users.application.patient.get_patient_dashboard_usecase import GetPatientDashboardUseCase
+from app.features.users.application.invitation.redeem_invitation_code_usecase import RedeemInvitationCodeUseCase
 from app.features.users.infrastructure.schemas.invitation_code_schema import RedeemCodeRequest
 
 class PatientController:

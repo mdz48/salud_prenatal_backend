@@ -1,5 +1,5 @@
 from app.features.patient_diaries.domain.ports import IPatientDiaryRepository
-from app.features.patient_diaries.domain.entities import PatientDiaryEntity
+from app.features.patient_diaries.domain.patient_diary_entity import PatientDiaryEntity
 
 class UpdatePatientDiaryUseCase:
     def __init__(self, repository: IPatientDiaryRepository):

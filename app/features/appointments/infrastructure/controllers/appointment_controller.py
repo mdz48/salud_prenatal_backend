@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 
-from app.features.appointments.domain.entities import AppointmentEntity
+from app.features.appointments.domain.appointment_entity import AppointmentEntity
 from app.features.appointments.infrastructure.schemas.appointment_schema import AppointmentCreate, AppointmentUpdate
 
 from app.features.appointments.application.create_appointment_usecase import CreateAppointmentUseCase

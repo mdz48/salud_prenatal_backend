@@ -1,9 +1,11 @@
+from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 from app.features.users.infrastructure.models.receptionist_model import Receptionist
 from app.features.users.infrastructure.models.user_model import Usuario
 from app.features.users.domain.ports import IReceptionistRepository
-from app.features.users.domain.entities import ReceptionistEntity, UserEntity
-from typing import Optional, List
+from app.features.users.domain.receptionist_entity import ReceptionistEntity
+from app.features.users.domain.user_entity import UserEntity
+from typing import Optional
 
 class ReceptionistRepository(IReceptionistRepository):
     def __init__(self, db: Session):

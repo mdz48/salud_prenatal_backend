@@ -2,7 +2,8 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.features.chat.infrastructure.models.chat_model import Message
 from app.features.users.infrastructure.models.user_model import Usuario
-from app.features.chat.domain.entities import ChatMessage, InboxItemResponse
+from app.features.chat.domain.chat_message_entity import ChatMessage
+from app.features.chat.domain.inbox_item_response import InboxItemResponse
 from app.features.chat.domain.ports import IChatRepository
 
 class ChatRepository(IChatRepository):

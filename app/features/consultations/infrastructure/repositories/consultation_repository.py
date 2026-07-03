@@ -2,7 +2,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.features.consultations.infrastructure.models.consultation_model import Consultation
 from app.features.consultations.domain.ports import IConsultationRepository
-from app.features.consultations.domain.entities import ConsultationEntity
+from app.features.consultations.domain.consultation_entity import ConsultationEntity
 
 class ConsultationRepository(IConsultationRepository):
     def __init__(self, db: Session):

@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 from app.features.users.infrastructure.schemas.auth_schema import LoginRequest
+from app.features.users.application.auth.authenticate_user_usecase import AuthenticateUserUseCase
 
 class AuthController:
     def __init__(self, authenticate_user_use_case):

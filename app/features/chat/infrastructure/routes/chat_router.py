@@ -3,10 +3,10 @@ from app.core.containers import Container
 from fastapi import APIRouter, WebSocket, Depends
 from app.features.chat.infrastructure.controllers.chat_controller import ChatController
 from app.features.chat.infrastructure.schemas.chat_schema import MessageResponse
-from app.features.chat.domain.entities import InboxItemResponse
+from app.features.chat.domain.inbox_item_response import InboxItemResponse
 from typing import List
 
-router = APIRouter(prefix="/chat", tags=["Chat"])
+router= APIRouter(prefix="/chat", tags=["Chat"])
 
 @router.get("/inbox", response_model=List[InboxItemResponse])
 @inject

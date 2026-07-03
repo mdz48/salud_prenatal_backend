@@ -1,5 +1,6 @@
+from typing import List, Optional, Dict
 from typing import Protocol, List, Optional
-from app.features.appointments.domain.entities import AppointmentEntity
+from app.features.appointments.domain.appointment_entity import AppointmentEntity
 
 class IAppointmentRepository(Protocol):
     def get_by_id(self, appointment_id: int) -> Optional[AppointmentEntity]: ...

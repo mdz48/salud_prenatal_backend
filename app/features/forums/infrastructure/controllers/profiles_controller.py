@@ -1,7 +1,8 @@
 from fastapi import HTTPException, status
-from app.features.forums.domain.entities import SocialProfileEntity
+from app.features.forums.domain.social_profile_entity import SocialProfileEntity
+from app.features.forums.application.profiles.create_profile_usecase import CreateProfileUseCase
+from app.features.forums.application.profiles.get_profile_usecase import GetProfileUseCase
 from app.features.forums.infrastructure.schemas.forums_schemas import ProfileCreate, ProfileResponse
-from app.features.forums.application.profiles_usecases import CreateProfileUseCase, GetProfileUseCase
 
 class ProfilesController:
     def __init__(

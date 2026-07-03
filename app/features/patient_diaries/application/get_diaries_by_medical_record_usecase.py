@@ -1,6 +1,6 @@
 from app.features.patient_diaries.domain.ports import IPatientDiaryRepository
 from typing import List
-from app.features.patient_diaries.domain.entities import PatientDiaryEntity
+from app.features.patient_diaries.domain.patient_diary_entity import PatientDiaryEntity
 
 class GetDiariesByMedicalRecordUseCase:
     def __init__(self, repository: IPatientDiaryRepository):

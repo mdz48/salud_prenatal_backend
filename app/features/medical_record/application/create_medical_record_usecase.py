@@ -1,5 +1,5 @@
 from app.features.medical_record.domain.ports import IMedicalRecordRepository, IPatientRepository
-from app.features.medical_record.domain.entities import MedicalRecordEntity
+from app.features.medical_record.domain.medical_record_entity import MedicalRecordEntity
 
 class CreateMedicalRecordUseCase:
     def __init__(self, medical_record_repository: IMedicalRecordRepository, patient_repository: IPatientRepository):

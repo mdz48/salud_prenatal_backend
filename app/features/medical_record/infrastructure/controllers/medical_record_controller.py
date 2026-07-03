@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from app.features.medical_record.infrastructure.schemas.medical_record_schema import MedicalRecordCreate
 from app.features.medical_record.application.create_medical_record_usecase import CreateMedicalRecordUseCase
 from app.features.medical_record.application.get_patient_medical_record_usecase import GetPatientMedicalRecordUseCase
-from app.features.medical_record.domain.entities import MedicalRecordEntity
+from app.features.medical_record.domain.medical_record_entity import MedicalRecordEntity
 
 class MedicalRecordController:
     def __init__(

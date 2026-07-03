@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import SECRET_KEY, ALGORITHM
-from app.features.users.domain.entities import UserEntity
+from app.features.users.domain.user_entity import UserEntity
 from app.features.users.infrastructure.repositories.user_repository import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")

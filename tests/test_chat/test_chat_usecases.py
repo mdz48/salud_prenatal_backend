@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 from app.features.chat.application.get_history_usecase import GetHistoryUseCase
 from app.features.chat.application.save_message_usecase import SaveMessageUseCase
-from app.features.chat.domain.entities import ChatMessage
+from app.features.chat.domain.chat_message_entity import ChatMessage
 
 def test_get_history_usecase():
     # Arrange

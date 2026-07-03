@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.features.medical_record.infrastructure.models.medical_record_model import MedicalRecord
 from app.features.medical_record.domain.ports import IMedicalRecordRepository
-from app.features.medical_record.domain.entities import MedicalRecordEntity
+from app.features.medical_record.domain.medical_record_entity import MedicalRecordEntity
 
 class MedicalRecordRepository(IMedicalRecordRepository):
     def __init__(self, db: Session):

@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
 from app.core.enums import BloodTypeEnum
+from .user_entity import UserEntity
 
 class PatientEntity(BaseModel):
     patient_id: Optional[int] = None
@@ -16,6 +17,7 @@ class PatientEntity(BaseModel):
     marital_status: Optional[str] = None
     height_cm: Optional[int] = None
     initial_weight: Optional[float] = None
+    user: Optional[UserEntity] = None
 
     @property
     def current_gestational_weeks(self) -> int | None:

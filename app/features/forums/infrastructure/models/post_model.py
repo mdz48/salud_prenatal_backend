@@ -1,0 +1,13 @@
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
+from sqlalchemy.sql import func
+from app.core.database import Base
+
+class PostModel(Base):
+    __tablename__ = "posts"
+
+    post_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    author_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, index=True)
+    group_id = Column(Integer, ForeignKey("community_groups.group_id"), nullable=True, index=True)
+    title = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

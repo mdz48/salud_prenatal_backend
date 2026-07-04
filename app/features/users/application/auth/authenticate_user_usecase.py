@@ -42,7 +42,7 @@ class AuthenticateUserUseCase:
                 medical_record = self.medical_record_repository.get_by_patient_and_doctor(patient.patient_id, patient.doctor_id)
                 if medical_record:
                     medical_record_id = medical_record.medical_record_id
-        elif user.role.value == "medico":
+        elif user.role.value == "doctor":
             doctor = self.doctor_repository.get_by_user_id(user.user_id)
             if doctor:
                 doctor_id = doctor.doctor_id

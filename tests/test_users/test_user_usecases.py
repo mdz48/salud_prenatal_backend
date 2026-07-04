@@ -29,8 +29,8 @@ class TestUserUseCases(unittest.TestCase):
         mock_user.email = "test@example.com"
         
         class MockRole:
-            value = "medico"
-            def __str__(self): return "medico"
+            value = "doctor"
+            def __str__(self): return "doctor"
         mock_user.role = MockRole()
         
         self.user_repo_mock.get_by_email.return_value = mock_user

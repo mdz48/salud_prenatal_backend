@@ -1,0 +1,38 @@
+from dependency_injector.wiring import inject, Provide
+from app.core.containers import Container
+from fastapi import APIRouter, Depends, status
+from app.features.users.infrastructure.schemas.doctor_schema import DoctorRegistration, DoctorResponse
+from app.features.users.infrastructure.schemas.patient_schema import PatientResponse
+from app.features.users.infrastructure.schemas.invitation_code_schema import InvitationCodeResponse
+from app.features.users.infrastructure.schemas.receptionist_schema import ReceptionistCreate, ReceptionistResponse
+from typing import List
+
+from app.features.users.infrastructure.controllers.doctor_controller import DoctorController
+
+
+router = APIRouter(prefix="/doctors", tags=["Doctors"])
+
+@router.post("/{doctor_id}/receptionists", response_model=ReceptionistResponse, status_code=status.HTTP_201_CREATED)
+@inject
+def create_receptionist(doctor_id: int, data: ReceptionistCreate, controller: DoctorController = Depends(Provide[Container.doctor_controller])):
+    return controller.create_receptionist(doctor_id=doctor_id, data=data)
+
+@router.get("/{doctor_id}/receptionists", response_model=List[ReceptionistResponse], status_code=status.HTTP_200_OK)
+@inject
+def get_receptionists_by_doctor(doctor_id: int, controller: DoctorController = Depends(Provide[Container.doctor_controller])):
+    return controller.get_receptionists_by_doctor(doctor_id=doctor_id)
+
+@router.post("/register", response_model=DoctorResponse, status_code=status.HTTP_201_CREATED)
+@inject
+def register_doctor(data: DoctorRegistration, controller: DoctorController = Depends(Provide[Container.doctor_controller])):
+    return controller.register_doctor(data=data)
+
+@router.get("/{doctor_id}/patients", response_model=List[PatientResponse], status_code=status.HTTP_200_OK)
+@inject
+def get_patients_by_doctor(doctor_id: int, controller: DoctorController = Depends(Provide[Container.doctor_controller])):
+    return controller.get_patients_by_doctor(doctor_id=doctor_id)
+
+@router.post("/{doctor_id}/invitation-code", response_model=InvitationCodeResponse, status_code=status.HTTP_201_CREATED)
+@inject
+def generate_invitation_code(doctor_id: int, controller: DoctorController = Depends(Provide[Container.doctor_controller])):
+    return controller.generate_invitation_code(doctor_id=doctor_id)

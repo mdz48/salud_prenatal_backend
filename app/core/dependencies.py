@@ -36,7 +36,9 @@ class RoleChecker:
         self.allowed_roles = allowed_roles
 
     def __call__(self, current_user: UserEntity = Depends(get_current_user)):
-        if current_user.role not in self.allowed_roles:
+        user_role_str = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+        allowed_strs = [r.value if hasattr(r, 'value') else str(r) for r in self.allowed_roles]
+        if user_role_str not in allowed_strs:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Operation not permitted for this role"

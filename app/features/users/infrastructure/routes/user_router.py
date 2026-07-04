@@ -3,12 +3,20 @@ from app.core.containers import Container
 from fastapi import APIRouter, Depends, status, Request, HTTPException
 from typing import List
 
-from app.features.users.infrastructure.schemas.user_schema import UserUpdate, UserResponse
+from app.features.users.infrastructure.schemas.user_schema import UserCreate, UserUpdate, UserResponse
 from app.features.users.infrastructure.schemas.auth_schema import LoginRequest, Token
 from app.features.users.infrastructure.controllers.user_controller import UserController
 from app.features.users.infrastructure.controllers.auth_controller import AuthController
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@inject
+def create_user(
+    data: UserCreate,
+    controller: UserController = Depends(Provide[Container.user_controller])
+):
+    return controller.create_user(data)
 
 @router.post("/login", response_model=Token)
 @inject

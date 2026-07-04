@@ -24,6 +24,9 @@ class MedicalRecordCreate(MedicalRecordBase):
     patient_id: int
     doctor_id: int
 
+class MedicalRecordUpdate(MedicalRecordBase):
+    pass
+
 class MedicalRecordResponse(MedicalRecordBase):
     medical_record_id: int
     patient_id: int

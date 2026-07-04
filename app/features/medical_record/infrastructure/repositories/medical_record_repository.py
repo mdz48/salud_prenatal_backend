@@ -16,9 +16,28 @@ class MedicalRecordRepository(IMedicalRecordRepository):
             return MedicalRecordEntity.model_validate(db_obj)
         return None
 
+    def get_by_id(self, medical_record_id: int) -> MedicalRecordEntity | None:
+        db_obj = self.db.query(MedicalRecord).filter(MedicalRecord.medical_record_id == medical_record_id).first()
+        if db_obj:
+            return MedicalRecordEntity.model_validate(db_obj)
+        return None
+
     def create(self, data: MedicalRecordEntity) -> MedicalRecordEntity:
         db_obj = MedicalRecord(**data.model_dump(exclude_unset=True, exclude={"medical_record_id"}))
         self.db.add(db_obj)
+        self.db.commit()
+        self.db.refresh(db_obj)
+        return MedicalRecordEntity.model_validate(db_obj)
+
+    def update(self, medical_record_id: int, data: MedicalRecordEntity) -> MedicalRecordEntity | None:
+        db_obj = self.db.query(MedicalRecord).filter(MedicalRecord.medical_record_id == medical_record_id).first()
+        if not db_obj:
+            return None
+        
+        update_data = data.model_dump(exclude={"medical_record_id", "patient_id", "doctor_id", "consultations", "patient_diaries"}, exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_obj, key, value)
+            
         self.db.commit()
         self.db.refresh(db_obj)
         return MedicalRecordEntity.model_validate(db_obj)

@@ -25,6 +25,7 @@ from app.features.consultations.application.create_consultation_usecase import C
 from app.features.consultations.application.get_consultations_by_medical_record_usecase import GetConsultationsByMedicalRecordUseCase
 from app.features.medical_record.application.create_medical_record_usecase import CreateMedicalRecordUseCase
 from app.features.medical_record.application.get_patient_medical_record_usecase import GetPatientMedicalRecordUseCase
+from app.features.medical_record.application.update_medical_record_usecase import UpdateMedicalRecordUseCase
 from app.features.patient_diaries.application.create_patient_diary_usecase import CreatePatientDiaryUseCase
 from app.features.patient_diaries.application.delete_patient_diary_usecase import DeletePatientDiaryUseCase
 from app.features.patient_diaries.application.get_all_patient_diaries_usecase import GetAllPatientDiariesUseCase
@@ -40,6 +41,7 @@ from app.features.users.application.invitation.redeem_invitation_code_usecase im
 from app.features.users.application.patient.register_patient_usecase import RegisterPatientUseCase
 from app.features.users.application.patient.get_patients_by_doctor_usecase import GetPatientsByDoctorUseCase
 from app.features.users.application.patient.get_patient_dashboard_usecase import GetPatientDashboardUseCase
+from app.features.users.application.user.create_user_usecase import CreateUserUseCase
 from app.features.users.application.user.get_users_usecase import GetUsersUseCase
 from app.features.users.application.user.get_user_usecase import GetUserUseCase
 from app.features.users.application.user.update_user_usecase import UpdateUserUseCase
@@ -122,6 +124,7 @@ class Container(containers.DeclarativeContainer):
     get_consultations_by_medical_record_use_case = providers.Factory(GetConsultationsByMedicalRecordUseCase, consultation_repo=consultation_repository)
     create_medical_record_use_case = providers.Factory(CreateMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_repository)
     get_patient_medical_record_use_case = providers.Factory(GetPatientMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_repository, ml_prediction_service=ml_prediction_service)
+    update_medical_record_use_case = providers.Factory(UpdateMedicalRecordUseCase, medical_record_repository=medical_record_repository)
     create_patient_diary_use_case = providers.Factory(CreatePatientDiaryUseCase, repository=patient_diary_repository)
     delete_patient_diary_use_case = providers.Factory(DeletePatientDiaryUseCase, repository=patient_diary_repository)
     get_all_patient_diaries_use_case = providers.Factory(GetAllPatientDiariesUseCase, repository=patient_diary_repository)
@@ -137,6 +140,7 @@ class Container(containers.DeclarativeContainer):
     register_patient_use_case = providers.Factory(RegisterPatientUseCase, user_repository=user_repository, patient_repository=patient_repository)
     get_patients_by_doctor_use_case = providers.Factory(GetPatientsByDoctorUseCase, patient_repository=patient_repository)
     get_patient_dashboard_use_case = providers.Factory(GetPatientDashboardUseCase, patient_repository=patient_repository, user_repository=user_repository, doctor_repository=doctor_repository, appointment_repository=appointment_repository)
+    create_user_use_case = providers.Factory(CreateUserUseCase, user_repository=user_repository)
     get_users_use_case = providers.Factory(GetUsersUseCase, user_repository=user_repository)
     get_user_use_case = providers.Factory(GetUserUseCase, user_repository=user_repository)
     update_user_use_case = providers.Factory(UpdateUserUseCase, user_repository=user_repository)
@@ -155,10 +159,10 @@ class Container(containers.DeclarativeContainer):
     # Controllers
     appointment_controller = providers.Factory(AppointmentController, create_appointment_use_case, get_appointment_use_case, get_appointments_by_patient_use_case, get_appointments_by_doctor_use_case, update_appointment_use_case, delete_appointment_use_case)
     consultation_controller = providers.Factory(ConsultationController, create_consultation_use_case, get_consultations_by_medical_record_use_case)
-    medical_record_controller = providers.Factory(MedicalRecordController, create_medical_record_use_case, get_patient_medical_record_use_case)
+    medical_record_controller = providers.Factory(MedicalRecordController, create_medical_record_use_case, get_patient_medical_record_use_case, update_medical_record_use_case)
     patient_diary_controller = providers.Factory(PatientDiaryController, create_patient_diary_use_case, get_all_patient_diaries_use_case, get_diaries_by_medical_record_use_case, get_patient_diary_by_id_use_case, update_patient_diary_use_case, delete_patient_diary_use_case)
     chat_controller = providers.Factory(ChatController, get_history_use_case, save_message_use_case, get_chat_inbox_use_case)
-    user_controller = providers.Factory(UserController, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case)
+    user_controller = providers.Factory(UserController, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case, create_user_use_case)
     auth_controller = providers.Factory(AuthController, authenticate_user_use_case)
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)
     doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case)

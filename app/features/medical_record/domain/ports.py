@@ -5,7 +5,13 @@ class IMedicalRecordRepository(Protocol):
     def get_by_patient_and_doctor(self, patient_id: int, doctor_id: int) -> Optional[MedicalRecordEntity]:
         ...
         
+    def get_by_id(self, medical_record_id: int) -> Optional[MedicalRecordEntity]:
+        ...
+
     def create(self, data: MedicalRecordEntity) -> MedicalRecordEntity:
+        ...
+
+    def update(self, medical_record_id: int, data: MedicalRecordEntity) -> Optional[MedicalRecordEntity]:
         ...
 
 class IPatientRepository(Protocol):

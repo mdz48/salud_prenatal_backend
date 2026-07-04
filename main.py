@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import engine, Base
+from app.core.database import get_engine, Base
 from app.features.users.infrastructure.routes.user_router import router as user_router
 from app.features.users.infrastructure.routes.patient_router import router as patient_router
 from app.features.users.infrastructure.routes.doctor_router import router as doctor_router
@@ -44,4 +44,4 @@ app.add_middleware(
 async def health_check():
     return {"status": "ok"}
 
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=get_engine())

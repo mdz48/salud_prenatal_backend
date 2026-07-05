@@ -3,8 +3,9 @@ from app.core.containers import Container
 from fastapi import APIRouter, Depends, status
 from app.core.dependencies import RoleChecker
 from app.core.enums import RoleEnum
+from typing import List, Optional
 from app.features.medical_record.infrastructure.schemas.medical_record_schema import (
-    MedicalRecordCreate, MedicalRecordUpdate, MedicalRecordResponse, PatientMedicalRecordResponse
+    MedicalRecordCreate, MedicalRecordUpdate, MedicalRecordResponse, PatientMedicalRecordResponse, MedicalRecordSearchResult
 )
 from app.features.medical_record.infrastructure.controllers.medical_record_controller import MedicalRecordController
 
@@ -19,6 +20,16 @@ def create_medical_record(
     controller: MedicalRecordController = Depends(Provide[Container.medical_record_controller])
 ):
     return controller.create_medical_record(data)
+
+@router.get("/search", response_model=List[MedicalRecordSearchResult], status_code=status.HTTP_200_OK)
+@inject
+def search_medical_records(
+    doctor_id: int,
+    name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    controller: MedicalRecordController = Depends(Provide[Container.medical_record_controller])
+):
+    return controller.search_medical_records(doctor_id=doctor_id, name=name, last_name=last_name)
 
 @router.get("/patient/{patient_id}", response_model=PatientMedicalRecordResponse, status_code=status.HTTP_200_OK)
 @inject

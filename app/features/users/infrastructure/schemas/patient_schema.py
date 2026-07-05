@@ -24,13 +24,23 @@ class PatientUpdate(PatientBase):
 class PatientResponse(PatientBase):
     patient_id: int
     user_id: int
-    current_gestational_weeks: int
-    age: int
+    current_gestational_weeks: Optional[int] = None
+    age: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 class PatientRegistration(UserCreate, PatientBase):
     pass
+
+class PatientSearchResult(BaseModel):
+    patient_id: int
+    user_id: int
+    name: str
+    last_name: str
+    age: Optional[int] = None
+    current_gestational_weeks: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class AppointmentDashboardResponse(BaseModel):
     appointment_id: int

@@ -8,7 +8,7 @@ from app.features.appointments.infrastructure.controllers.appointment_controller
 
 from app.core.enums import RoleEnum
 from app.core.dependencies import RoleChecker
-from app.features.users.infrastructure.models.user_model import Usuario
+from app.features.users.domain.user_entity import UserEntity
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -19,7 +19,7 @@ allow_doctor_or_receptionist = RoleChecker([RoleEnum.doctor, RoleEnum.recepcioni
 def create_appointment(
     data: AppointmentCreate, 
     controller: AppointmentController = Depends(Provide[Container.appointment_controller]),
-    current_user: Usuario = Depends(allow_doctor_or_receptionist)
+    current_user: UserEntity = Depends(allow_doctor_or_receptionist)
 ):
     return controller.create_appointment(data)
 
@@ -53,7 +53,7 @@ def update_appointment(
     appointment_id: int, 
     data: AppointmentUpdate, 
     controller: AppointmentController = Depends(Provide[Container.appointment_controller]),
-    current_user: Usuario = Depends(allow_doctor_or_receptionist)
+    current_user: UserEntity = Depends(allow_doctor_or_receptionist)
 ):
     return controller.update_appointment(appointment_id, data)
 
@@ -62,6 +62,6 @@ def update_appointment(
 def delete_appointment(
     appointment_id: int, 
     controller: AppointmentController = Depends(Provide[Container.appointment_controller]),
-    current_user: Usuario = Depends(allow_doctor_or_receptionist)
+    current_user: UserEntity = Depends(allow_doctor_or_receptionist)
 ):
     return controller.delete_appointment(appointment_id)

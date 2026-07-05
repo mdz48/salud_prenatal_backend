@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
 from app.core.enums import BloodTypeEnum
+from .pregnancy_calculations import age_years, gestational_weeks
 from .user_entity import UserEntity
 
 class PatientEntity(BaseModel):
@@ -21,16 +22,10 @@ class PatientEntity(BaseModel):
 
     @property
     def current_gestational_weeks(self) -> int | None:
-        if self.last_menstrual_period:
-            delta = date.today() - self.last_menstrual_period
-            return delta.days // 7
-        return self.weeks_at_registration
+        return gestational_weeks(self.last_menstrual_period, self.weeks_at_registration)
 
     @property
     def age(self) -> int | None:
-        if self.birthdate:
-            today = date.today()
-            return today.year - self.birthdate.year - ((today.month, today.day) < (self.birthdate.month, self.birthdate.day))
-        return None
+        return age_years(self.birthdate)
 
     model_config = ConfigDict(from_attributes=True)

@@ -1,8 +1,8 @@
-from datetime import date
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Float
 from sqlalchemy.orm import relationship
 from app.core.enums import BloodTypeEnum
 from app.core.database import Base
+from app.features.users.domain.pregnancy_calculations import age_years, gestational_weeks
 
 
 class Patient(Base):
@@ -29,15 +29,8 @@ class Patient(Base):
 
     @property
     def current_gestational_weeks(self) -> int | None:
-        """Calcula las semanas de gestación actuales basándose en la fecha del último periodo."""
-        if self.last_menstrual_period:
-            delta = date.today() - self.last_menstrual_period
-            return delta.days // 7
-        return self.weeks_at_registration
+        return gestational_weeks(self.last_menstrual_period, self.weeks_at_registration)
 
     @property
     def age(self) -> int | None:
-        if self.birthdate:
-            today = date.today()
-            return today.year - self.birthdate.year - ((today.month, today.day) < (self.birthdate.month, self.birthdate.day))
-        return None
+        return age_years(self.birthdate)

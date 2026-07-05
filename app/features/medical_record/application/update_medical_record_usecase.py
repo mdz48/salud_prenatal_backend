@@ -5,7 +5,7 @@ class UpdateMedicalRecordUseCase:
     def __init__(self, medical_record_repository: IMedicalRecordRepository):
         self.medical_record_repository = medical_record_repository
 
-    def execute(self, medical_record_id: int, data: MedicalRecordEntity) -> MedicalRecordEntity:
+    def execute(self, medical_record_id: int, data: dict) -> MedicalRecordEntity:
         existing = self.medical_record_repository.get_by_id(medical_record_id)
         if not existing:
             raise ValueError("Medical record not found")

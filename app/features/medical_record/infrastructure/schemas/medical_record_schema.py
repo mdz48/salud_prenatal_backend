@@ -40,6 +40,17 @@ class ConsultationSummary(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
+class MedicalRecordSearchResult(BaseModel):
+    patient_id: int
+    user_id: int
+    name: str
+    last_name: str
+    current_gestational_weeks: Optional[int] = None
+    age: Optional[int] = None
+    medical_record: MedicalRecordResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
 class PatientMedicalRecordResponse(BaseModel):
     user_id: int
     name: str

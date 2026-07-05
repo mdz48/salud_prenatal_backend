@@ -29,14 +29,14 @@ class MedicalRecordRepository(IMedicalRecordRepository):
         self.db.refresh(db_obj)
         return MedicalRecordEntity.model_validate(db_obj)
 
-    def update(self, medical_record_id: int, data: MedicalRecordEntity) -> MedicalRecordEntity | None:
+    def update(self, medical_record_id: int, data: dict) -> MedicalRecordEntity | None:
         db_obj = self.db.query(MedicalRecord).filter(MedicalRecord.medical_record_id == medical_record_id).first()
         if not db_obj:
             return None
         
-        update_data = data.model_dump(exclude={"medical_record_id", "patient_id", "doctor_id", "consultations", "patient_diaries"}, exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(db_obj, key, value)
+        for key, value in data.items():
+            if key not in {"medical_record_id", "patient_id", "doctor_id", "consultations", "patient_diaries"}:
+                setattr(db_obj, key, value)
             
         self.db.commit()
         self.db.refresh(db_obj)

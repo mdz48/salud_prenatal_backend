@@ -1,6 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.features.users.infrastructure.models.patient_model import Patient
+from app.features.users.infrastructure.models.user_model import Usuario
 from app.features.users.domain.ports import IPatientRepository
 from app.features.users.domain.patient_entity import PatientEntity
 from typing import Optional
@@ -18,7 +19,12 @@ class PatientRepository(IPatientRepository):
         return PatientEntity.model_validate(db_patient) if db_patient else None
 
     def get_patients_by_doctor(self, doctor_id: int) -> List[PatientEntity]:
-        db_patients = self.db.query(Patient).filter(Patient.doctor_id == doctor_id).all()
+        db_patients = (
+            self.db.query(Patient)
+            .join(Usuario, Patient.user_id == Usuario.user_id)
+            .filter(Patient.doctor_id == doctor_id, Usuario.is_active == True)
+            .all()
+        )
         return [PatientEntity.model_validate(p) for p in db_patients]
 
     def create(self, patient: PatientEntity) -> PatientEntity:

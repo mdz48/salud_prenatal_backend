@@ -12,11 +12,11 @@ All commands run through the local venv — never invoke global `pip`/`python`.
 
 ```
 .venv\Scripts\pip install -r requirements.txt      # install deps
-.venv\Scripts\python main.py                        # not typical entrypoint; use uvicorn instead
 .venv\Scripts\python -m uvicorn main:app --reload    # run dev server (http://localhost:8000)
 .venv\Scripts\python -m pytest                       # run full test suite
 .venv\Scripts\python -m pytest tests/test_medical_record/test_create_medical_record_usecase.py  # single file
 .venv\Scripts\python -m pytest tests/test_medical_record -k create                                # by keyword
+.venv\Scripts\python -m pytest -m integration        # only integration tests (app + SQLite)
 .venv\Scripts\python scripts/apply_indexes.py        # apply DB indexes (see script for what it manages)
 ```
 
@@ -32,37 +32,45 @@ Docker: `Dockerfile` builds a slim image running `uvicorn main:app --host 0.0.0.
 
 ### Hexagonal / Clean Architecture per feature
 
-Each feature under `app/features/<feature>/` is being migrated to this layout:
+Every feature under `app/features/<feature>/` follows this layout (legacy flat directories were removed in the clean-architecture migration — if you see a `models/` or `services/` directly under a feature, it shouldn't exist):
 
-- `domain/` — entities (plain dataclass-like objects, no ORM) and `ports.py` (`Protocol` interfaces for repositories/external services the use cases depend on).
-- `application/` — one use case class per file (e.g. `create_medical_record_usecase.py`), each with a single `execute(...)` method. Depends only on domain ports, never on infrastructure directly.
-- `infrastructure/` — concrete adapters: `models/` (SQLAlchemy ORM models), `repositories/` (implement the domain ports against the ORM), `controllers/` (translate HTTP schemas ↔ domain entities, catch exceptions and raise `HTTPException`), `routes/` (FastAPI `APIRouter`, thin — just wires request → controller method), `schemas/` (Pydantic request/response models), and feature-specific `adapters/` for external services (e.g. `medical_record/infrastructure/adapters/ml_prediction_adapter.py` calls the ML microservice over HTTP).
+- `domain/` — entities (Pydantic models, no ORM imports) and `ports.py` (`Protocol` interfaces for repositories/external services the use cases depend on).
+- `application/` — one use case class per file (e.g. `create_medical_record_usecase.py`), each with a single `execute(...)` method. Depends only on domain ports and application DTOs, never on infrastructure. Where use cases need input shapes, they take plain dataclass DTOs from `application/dtos.py` (see `users`); controllers map Pydantic schema → DTO.
+- `infrastructure/` — concrete adapters: `models/` (SQLAlchemy ORM), `repositories/` (implement domain ports against the ORM), `controllers/` (schema ↔ entity/DTO mapping, catch exceptions → `HTTPException`), `routes/` (thin FastAPI `APIRouter`), `schemas/` (Pydantic request/response), and `adapters/` for external services or cross-feature access.
 
-**Important:** several features (`appointments`, `medical_record`, etc.) still have legacy flat directories (`models/`, `repositories/`, `routes/`, `schemas/`, `services/`) left over from before the hexagonal migration. `main.py` and `app/core/containers.py` only wire up the `infrastructure/`+`application/`+`domain/` versions — the legacy sibling files are dead code not imported anywhere. When editing a feature, always confirm which version is actually wired in `containers.py`/`main.py` before touching a file; don't assume the flat-layout file is live.
+### Cross-feature access pattern (ports propios + adapters)
 
-Features not yet needing a `models`/legacy split (e.g. `chat`, `forums`) only have the new three-layer structure.
+A feature never imports another feature's repositories or ORM models. Instead, the consuming feature defines its OWN port in its `domain/ports.py`, typed with its own DTO, and an adapter in its `infrastructure/adapters/` wraps the other feature's repository:
+
+- `medical_record` → `users`: `IPatientInfoPort` + `PatientInfo` DTO ([ports.py](app/features/medical_record/domain/ports.py)), implemented by `PatientInfoAdapter` (resolves `patient.user` lazy-load inside the request's live session).
+- `users` → `appointments`/`medical_record`: `IAppointmentLookup` / `IMedicalRecordLookup` in users' ports, implemented by thin adapters in `users/infrastructure/adapters/`.
+
+Routers may import another feature's **domain entity** (e.g. `UserEntity` for the `get_current_user` dependency) but never its ORM model.
+
+Accepted pragmatic exceptions (documented decision — do not "fix"): `patient_entity` nests `UserEntity`, and `medical_record_entity` nests consultation/diary entities.
 
 ### Dependency Injection
 
-`app/core/containers.py` is the single composition root (`dependency_injector.containers.DeclarativeContainer`). It wires: DB session (`providers.Resource(get_db)`) → repositories → use cases → controllers, all as `providers.Factory`. Routers pull controllers via `@inject` + `Depends(Provide[Container.<controller_name>])`. When adding a new use case or repository, register it here and add its module to `wiring_config.modules` if it uses `@inject`.
+`app/core/containers.py` is the single composition root (`dependency_injector.containers.DeclarativeContainer`). It wires: DB session (`providers.Resource(get_db)`) → repositories → adapters → use cases → controllers, all as `providers.Factory`. Wiring is declared ONCE in `Container.wiring_config` (includes `app.core.dependencies` and every router module) — do not add a second `container.wire(...)` call elsewhere. `main.py`'s lifespan only runs `Base.metadata.create_all(bind=get_engine())` on startup. When adding a use case/repository/adapter, register it here and add its module to `wiring_config.modules` if it uses `@inject`.
 
 ### Auth & authorization
 
-- `app/core/dependencies.py`: `get_current_user` decodes the JWT (via `app/core/security.py`'s `SECRET_KEY`/`ALGORITHM`) and loads the user directly through `UserRepository` (bypasses the DI container intentionally, since it's a raw `Depends`, not injected via container).
+- `app/core/dependencies.py`: `get_current_user` decodes the JWT and gets its `IUserRepository` via the container (`@inject` + `Provide[Container.user_repository]`) — tests can override with `app.container.user_repository.override(...)`.
+- `app/core/security.py`: `get_secret_key()` raises `RuntimeError` if `SECRET_KEY` is unset (never add a hardcoded fallback — that lets anyone forge JWTs). Crypto pipes for `EncryptedString` are lazy via `@lru_cache`.
 - `RoleChecker([RoleEnum...])` is a reusable dependency factory for role-gating routes (see `require_doctor = RoleChecker([RoleEnum.doctor])` pattern in routers).
 
 ### Database
 
-`app/core/database.py` builds the Postgres URL from env vars (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`); on connection failure it falls back to `LOCAL_URL` for local dev. `TimestampMixin` (uses `app/core/time.py`'s `now_cdmx` for CDMX-local timestamps) provides `created_at`/`updated_at` for models that include it. Tables are created via `Base.metadata.create_all(bind=engine)` at the bottom of `main.py` (no Alembic migrations in use — schema changes go straight into SQLAlchemy models).
+`app/core/database.py` is fully lazy — nothing connects at import time. `get_engine()`/`get_session_factory()` are `@lru_cache` factories; `DATABASE_URL` env var overrides everything (tests use SQLite through it), otherwise the URL is built from `DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT`/`DB_NAME` with fallback to `LOCAL_URL` on connection failure. `TimestampMixin` (uses `app/core/time.py`'s `now_cdmx`) provides `created_at`/`updated_at`. Schema is created via `create_all` in `main.py`'s lifespan (no Alembic — schema changes go straight into SQLAlchemy models).
+
+### Partial updates
+
+Update endpoints pass `schema.model_dump(exclude_unset=True)` as a plain dict down to `repository.update(id, changes)`, which does selective `setattr` with an immutable-keys blacklist (see `medical_record_repository.update`). Never construct domain entities with dummy IDs to represent partial updates.
 
 ### Crypto
 
-`app/core/crypto/` holds `crypto_pipes.py` and `key_manager.py` for field-level encryption; covered by `tests/test_crypto_pipes.py` and `tests/test_key_manager.py`.
-
-### Cross-feature calls
-
-Some use cases reach across feature boundaries directly against another feature's repository (e.g. `medical_record`'s use cases take a `patient_repository` from `users`, `authenticate_user_usecase` pulls in `patient_repository`/`doctor_repository`/`receptionist_repository`/`medical_record_repository`). There's no anti-corruption layer between features — ports typically type cross-feature dependencies loosely (e.g. `IPatientRepository.get_by_id` returns `Optional[object]`) rather than importing the other feature's entity.
+`app/core/crypto/` holds `crypto_pipes.py` and `key_manager.py` for field-level encryption (`ENCRYPTION_KEY` env var, Fernet); covered by `tests/test_crypto_pipes.py` and `tests/test_key_manager.py`.
 
 ### Tests
 
-Tests under `tests/` mirror feature names (`tests/test_<feature>/test_<feature>_usecases.py`) and mostly unit-test use cases with mocked repositories/ports — no live DB required for most tests. `tests/test_integration_endpoints.py` is the exception (hits actual routes/DB). Run a feature's tests directory or a single test function with `-k` as shown above.
+`tests/conftest.py` sets test env (SQLite via `DATABASE_URL`, `SECRET_KEY`, `ENCRYPTION_KEY`) BEFORE importing `main` — keep any new env-dependent config lazy so this keeps working. Unit tests mirror feature names (`tests/test_<feature>/`) and mock ports with `MagicMock`. Integration tests are marked `@pytest.mark.integration` (registered in `pytest.ini`) and run the real app against SQLite: `test_smoke.py` guards `/health` plus a **route snapshot** (`app.openapi()["paths"]` — the public API surface must not change unintentionally; update `EXPECTED_ROUTES` deliberately when adding endpoints), and `test_medical_record_e2e.py` exercises the cross-feature `PatientInfoAdapter` end to end.

@@ -1,10 +1,10 @@
-from app.features.medical_record.domain.ports import IMedicalRecordRepository, IPatientRepository, IMLPredictionService
+from app.features.medical_record.domain.ports import IMedicalRecordRepository, IPatientInfoPort, IMLPredictionService
 
 class GetPatientMedicalRecordUseCase:
     def __init__(
         self,
         medical_record_repository: IMedicalRecordRepository,
-        patient_repository: IPatientRepository,
+        patient_repository: IPatientInfoPort,
         ml_prediction_service: IMLPredictionService
     ):
         self.medical_record_repository = medical_record_repository
@@ -12,7 +12,7 @@ class GetPatientMedicalRecordUseCase:
         self.ml_prediction_service = ml_prediction_service
 
     def execute(self, patient_id: int, doctor_id: int) -> dict:
-        patient = self.patient_repository.get_by_id(patient_id)
+        patient = self.patient_repository.get_patient_info(patient_id)
         if not patient:
             raise ValueError("Patient not found")
 
@@ -35,8 +35,8 @@ class GetPatientMedicalRecordUseCase:
 
         return {
             "user_id": patient.user_id,
-            "name": patient.user.name,
-            "last_name": patient.user.last_name,
+            "name": patient.name,
+            "last_name": patient.last_name,
             "current_gestational_weeks": patient.current_gestational_weeks,
             "age": patient.age,
             "medical_record": medical_record,

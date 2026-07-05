@@ -1,17 +1,16 @@
 from datetime import datetime, timezone
-from app.features.users.domain.ports import IPatientRepository, IUserRepository, IDoctorRepository
-from app.features.appointments.domain.ports import IAppointmentRepository
+from app.features.users.domain.ports import IPatientRepository, IUserRepository, IDoctorRepository, IAppointmentLookup
 
 class GetPatientDashboardUseCase:
     def __init__(self, 
                  patient_repository: IPatientRepository,
                  user_repository: IUserRepository,
                  doctor_repository: IDoctorRepository,
-                 appointment_repository: IAppointmentRepository):
+                 appointment_lookup: IAppointmentLookup):
         self.patient_repository = patient_repository
         self.user_repository = user_repository
         self.doctor_repository = doctor_repository
-        self.appointment_repository = appointment_repository
+        self.appointment_lookup = appointment_lookup
 
     def execute(self, patient_id: int):
         patient = self.patient_repository.get_by_id(patient_id)
@@ -39,7 +38,7 @@ class GetPatientDashboardUseCase:
                     current_doctor_specialty = doctor.specialty
 
         now = datetime.now(timezone.utc)
-        appointments = self.appointment_repository.get_by_patient_id(patient_id)
+        appointments = self.appointment_lookup.get_appointments_by_patient_id(patient_id)
         upcoming_appointments = []
         for appt in appointments:
             if appt.appointment_date.replace(tzinfo=timezone.utc) >= now:

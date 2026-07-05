@@ -32,7 +32,9 @@ class UserController:
         return user
 
     def update_user(self, user_id: int, user: UserUpdate):
-        updated_user = self.update_user_use_case.execute(user_id=user_id, user=user)
+        from app.features.users.application.dtos import UserUpdateDTO
+        dto = UserUpdateDTO(**user.model_dump(exclude_unset=True))
+        updated_user = self.update_user_use_case.execute(user_id=user_id, user=dto)
         if not updated_user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         return updated_user

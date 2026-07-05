@@ -17,7 +17,15 @@ from app.features.forums.infrastructure.routes.reports_router import router as r
 from app.core.containers import Container
 
 container = Container()
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # El wiring lo declara Container.wiring_config; aqui solo se inicializa el esquema.
+    Base.metadata.create_all(bind=get_engine())
+    yield
+
+app = FastAPI(lifespan=lifespan)
 app.container = container
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(patient_router, prefix="/api/v1")
@@ -43,5 +51,3 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
-
-Base.metadata.create_all(bind=get_engine())

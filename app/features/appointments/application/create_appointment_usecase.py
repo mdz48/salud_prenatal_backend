@@ -1,13 +1,12 @@
-from app.features.appointments.domain.ports import IAppointmentRepository
-from app.features.users.domain.ports import IPatientRepository, IDoctorRepository
+from app.features.appointments.domain.ports import IAppointmentRepository, IPatientLookup, IDoctorLookup
 from app.features.appointments.domain.appointment_entity import AppointmentEntity
 
 class CreateAppointmentUseCase:
     def __init__(
-        self, 
+        self,
         appointment_repo: IAppointmentRepository,
-        patient_repo: IPatientRepository,
-        doctor_repo: IDoctorRepository
+        patient_repo: IPatientLookup,
+        doctor_repo: IDoctorLookup
     ):
         self.appointment_repo = appointment_repo
         self.patient_repo = patient_repo

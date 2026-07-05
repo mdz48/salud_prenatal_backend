@@ -1,5 +1,6 @@
 from typing import List
-from app.features.chat.domain.ports import IChatUserLookup, ChatUser
+from app.features.chat.domain.ports import IChatUserLookup
+from app.features.chat.domain.dtos import ChatUser
 from app.features.users.infrastructure.repositories.user_repository import UserRepository
 
 

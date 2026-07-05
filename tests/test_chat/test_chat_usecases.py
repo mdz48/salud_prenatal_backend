@@ -4,7 +4,7 @@ from app.features.chat.application.get_history_usecase import GetHistoryUseCase
 from app.features.chat.application.save_message_usecase import SaveMessageUseCase
 from app.features.chat.application.get_chat_inbox_usecase import GetChatInboxUseCase
 from app.features.chat.domain.chat_message_entity import ChatMessage
-from app.features.chat.domain.ports import ChatUser, InboxSummary
+from app.features.chat.domain.dtos import ChatUser, InboxSummary
 
 def test_get_history_usecase():
     # Arrange

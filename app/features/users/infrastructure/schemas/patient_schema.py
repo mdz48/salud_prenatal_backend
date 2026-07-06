@@ -17,6 +17,8 @@ class PatientUpdate(PatientBase):
 class PatientResponse(PatientBase):
     patient_id: int
     user_id: int
+    full_name: Optional[str] = None
+    current_gestational_weeks: Optional[int] = None
     age: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)

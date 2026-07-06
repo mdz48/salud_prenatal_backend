@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.features.users.infrastructure.models.patient_model import Patient
 from app.features.users.infrastructure.models.user_model import Usuario
 from app.features.users.domain.ports import IPatientRepository
@@ -21,6 +21,7 @@ class PatientRepository(IPatientRepository):
     def get_patients_by_doctor(self, doctor_id: int) -> List[PatientEntity]:
         db_patients = (
             self.db.query(Patient)
+            .options(joinedload(Patient.user))
             .join(Usuario, Patient.user_id == Usuario.user_id)
             .filter(Patient.doctor_id == doctor_id, Usuario.is_active == True)
             .all()
@@ -39,11 +40,11 @@ class PatientRepository(IPatientRepository):
         db_patient = self.db.query(Patient).filter(Patient.patient_id == patient_id).first()
         if not db_patient:
             return None
-        
+
         update_data = patient_data.model_dump(exclude={'patient_id'}, exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_patient, key, value)
-            
+
         self.db.commit()
         self.db.refresh(db_patient)
         return PatientEntity.model_validate(db_patient)

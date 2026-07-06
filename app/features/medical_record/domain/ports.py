@@ -1,5 +1,6 @@
 from typing import Protocol, Optional, List
 from .medical_record_entity import MedicalRecordEntity
+from .risk_prediction_entity import RiskPredictionEntity
 from .dtos import PatientInfo
 
 class IMedicalRecordRepository(Protocol):
@@ -14,3 +15,7 @@ class IPatientInfoPort(Protocol):
 
 class IMLPredictionService(Protocol):
     def predict(self, patient: PatientInfo, medical_record: MedicalRecordEntity, latest_diary: Optional[object]) -> Optional[dict]:...
+
+class IRiskPredictionRepository(Protocol):
+    def create(self, data: RiskPredictionEntity) -> RiskPredictionEntity:...
+    def get_latest_for_medical_record(self, medical_record_id: int) -> Optional[RiskPredictionEntity]:...

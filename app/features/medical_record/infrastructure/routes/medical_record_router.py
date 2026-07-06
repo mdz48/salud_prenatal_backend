@@ -5,7 +5,7 @@ from app.core.dependencies import RoleChecker
 from app.core.enums import RoleEnum
 from typing import List, Optional
 from app.features.medical_record.infrastructure.schemas.medical_record_schema import (
-    MedicalRecordCreate, MedicalRecordUpdate, MedicalRecordResponse, PatientMedicalRecordResponse, MedicalRecordSearchResult
+    MedicalRecordCreate, MedicalRecordUpdate, MedicalRecordResponse, PatientMedicalRecordResponse, MedicalRecordSearchResult, RiskEvaluationResponse
 )
 from app.features.medical_record.infrastructure.controllers.medical_record_controller import MedicalRecordController
 
@@ -39,6 +39,15 @@ def get_patient_medical_record(
     controller: MedicalRecordController = Depends(Provide[Container.medical_record_controller])
 ):
     return controller.get_patient_medical_record(patient_id, doctor_id)
+
+@router.post("/{medical_record_id}/risk-evaluation", response_model=RiskEvaluationResponse, status_code=status.HTTP_201_CREATED)
+@inject
+def evaluate_risk(
+    medical_record_id: int,
+    current_user = Depends(require_doctor),
+    controller: MedicalRecordController = Depends(Provide[Container.medical_record_controller])
+):
+    return controller.evaluate_risk(medical_record_id)
 
 @router.put("/{medical_record_id}", response_model=MedicalRecordResponse, status_code=status.HTTP_200_OK)
 @inject

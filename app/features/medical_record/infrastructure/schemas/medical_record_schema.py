@@ -65,6 +65,15 @@ class MedicalRecordSearchResult(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class RiskEvaluationResponse(BaseModel):
+    status: str  # ok | insufficient_data | ml_unavailable
+    prediction: Optional[dict] = None
+    missing_fields: Optional[List[str]] = None
+    ml_model_version: Optional[str] = None
+    predicted_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
 class PatientMedicalRecordResponse(BaseModel):
     user_id: int
     name: str

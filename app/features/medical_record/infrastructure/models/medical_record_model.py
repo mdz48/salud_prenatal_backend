@@ -21,6 +21,8 @@ class MedicalRecord(Base):
     marital_status = Column(String(50), nullable=True) # Estado civil
     height_cm = Column(Integer, nullable=True) # Altura en centimetros
     initial_weight = Column(Float, nullable=True) # Peso inicial en kilogramos
+    initial_systolic = Column(Integer, nullable=True) # Presion sistolica de la primera visita
+    initial_diastolic = Column(Integer, nullable=True) # Presion diastolica de la primera visita
 
     # Medical history
     previous_hypertension = Column(Boolean, nullable=True) # Hipertensión previa

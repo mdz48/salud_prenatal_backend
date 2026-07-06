@@ -47,6 +47,8 @@ def test_medical_record_flow_exercises_patient_info_adapter(client):
             "height_cm": 160,
             "initial_weight": 60.5,
             "weeks_at_registration": 12,
+            "initial_systolic": 118,
+            "initial_diastolic": 76,
         },
     )
     assert record_resp.status_code == 201, record_resp.text
@@ -65,3 +67,5 @@ def test_medical_record_flow_exercises_patient_info_adapter(client):
     assert body["current_gestational_weeks"] == 12
     assert body["medical_record"]["residence"] == "urbana"
     assert body["medical_record"]["height_cm"] == 160
+    assert body["medical_record"]["initial_systolic"] == 118
+    assert body["medical_record"]["initial_diastolic"] == 76

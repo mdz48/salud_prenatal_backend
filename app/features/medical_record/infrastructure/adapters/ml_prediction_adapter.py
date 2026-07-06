@@ -15,9 +15,14 @@ class MlPredictionServiceAdapter(IMLPredictionService):
         gestational_week = medical_record.current_gestational_weeks or 0
         gestational_trimester = gestational_week // 13
 
+        # Presion efectiva: la de la bitacora si existe, si no la basal del expediente
+        # (mismo patron que el peso). Asi el ML siempre tiene presion real, no ceros.
+        systolic = latest_diary.systolic if (latest_diary and latest_diary.systolic) else medical_record.initial_systolic
+        diastolic = latest_diary.diastolic if (latest_diary and latest_diary.diastolic) else medical_record.initial_diastolic
+
         mean_arterial_pressure = 0.0
-        if latest_diary and latest_diary.systolic and latest_diary.diastolic:
-            mean_arterial_pressure = (latest_diary.systolic + 2 * latest_diary.diastolic) / 3
+        if systolic and diastolic:
+            mean_arterial_pressure = (systolic + 2 * diastolic) / 3
 
         nulliparous = 1 if not medical_record.previous_deliveries else 0
 
@@ -42,8 +47,8 @@ class MlPredictionServiceAdapter(IMLPredictionService):
             "initial_weight": float(medical_record.initial_weight) if medical_record.initial_weight else 0.0,
             "weight_kg": float(latest_diary.weight_kg) if latest_diary and latest_diary.weight_kg else float(medical_record.initial_weight or 0.0),
             "weight_gain": float(latest_diary.weight_gain) if latest_diary and latest_diary.weight_gain else 0.0,
-            "systolic": float(latest_diary.systolic) if latest_diary and latest_diary.systolic else 0.0,
-            "diastolic": float(latest_diary.diastolic) if latest_diary and latest_diary.diastolic else 0.0,
+            "systolic": float(systolic) if systolic else 0.0,
+            "diastolic": float(diastolic) if diastolic else 0.0,
             "mean_arterial_pressure": round(mean_arterial_pressure, 2),
             "diabetes": 1 if medical_record.diabetes else 0,
             "chronic_hypertension": 1 if medical_record.chronic_hypertension else 0,

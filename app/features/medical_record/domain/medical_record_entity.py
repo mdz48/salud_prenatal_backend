@@ -21,6 +21,8 @@ class MedicalRecordEntity(BaseModel):
     marital_status: Optional[str] = None
     height_cm: Optional[int] = None
     initial_weight: Optional[float] = None
+    initial_systolic: Optional[int] = None
+    initial_diastolic: Optional[int] = None
 
     # Medical history
     previous_hypertension: Optional[bool] = None

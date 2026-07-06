@@ -30,15 +30,7 @@ class RegisterPatientUseCase:
         patient_entity = PatientEntity(
             user_id=db_user.user_id,
             birthdate=data.birthdate,
-            residence=data.residence,
             doctor_id=data.doctor_id,
-            blood_type=data.blood_type,
-            weeks_at_registration=data.weeks_at_registration,
-            last_menstrual_period=data.last_menstrual_period,
-            education_level=data.education_level,
-            marital_status=data.marital_status,
-            height_cm=data.height_cm,
-            initial_weight=data.initial_weight
         )
         db_patient = self.patient_repository.create(patient_entity)
         return db_patient

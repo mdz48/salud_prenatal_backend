@@ -37,7 +37,7 @@ class GetPatientMedicalRecordUseCase:
             "user_id": patient.user_id,
             "name": patient.name,
             "last_name": patient.last_name,
-            "current_gestational_weeks": patient.current_gestational_weeks,
+            "current_gestational_weeks": medical_record.current_gestational_weeks if medical_record else None,
             "age": patient.age,
             "medical_record": medical_record,
             "consultations": consultations_list,

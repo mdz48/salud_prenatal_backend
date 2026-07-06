@@ -1,9 +1,20 @@
 from typing import List, Optional, Dict
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
+from app.core.enums import BloodTypeEnum
 
 class MedicalRecordBase(BaseModel):
+    # Perfil clinico (capturado por el doctor al crear/editar el expediente)
+    blood_type: Optional[BloodTypeEnum] = None
+    weeks_at_registration: Optional[int] = None
+    last_menstrual_period: Optional[date] = None
+    residence: Optional[str] = None
+    education_level: Optional[str] = None
+    marital_status: Optional[str] = None
+    height_cm: Optional[int] = None
+    initial_weight: Optional[float] = None
+
     previous_hypertension: Optional[bool] = None
     diabetes: Optional[bool] = None
     family_history_hypertension: Optional[bool] = None
@@ -31,6 +42,7 @@ class MedicalRecordResponse(MedicalRecordBase):
     medical_record_id: int
     patient_id: int
     doctor_id: int
+    current_gestational_weeks: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

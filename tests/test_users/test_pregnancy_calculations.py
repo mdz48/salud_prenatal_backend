@@ -1,6 +1,6 @@
 from datetime import date
 
-from app.features.users.domain.pregnancy_calculations import age_years, gestational_weeks
+from app.core.pregnancy_calculations import age_years, gestational_weeks
 
 
 class TestGestationalWeeks:

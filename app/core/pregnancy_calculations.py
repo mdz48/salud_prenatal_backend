@@ -1,4 +1,4 @@
-"""Calculos de embarazo/edad compartidos por la entidad de dominio y el modelo ORM.
+"""Calculos de embarazo/edad compartidos por features (users, medical_record).
 
 Funciones puras: reciben la fecha de referencia explicita (default: hoy en CDMX)
 para que sean deterministas en tests.

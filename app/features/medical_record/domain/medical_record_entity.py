@@ -1,6 +1,9 @@
+from datetime import date
 from typing import List, Optional, Dict
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
+from app.core.enums import BloodTypeEnum
+from app.core.pregnancy_calculations import gestational_weeks
 from .consultation_entity import ConsultationEntity
 from .patient_diary_entity import PatientDiaryEntity
 
@@ -8,7 +11,17 @@ class MedicalRecordEntity(BaseModel):
     medical_record_id: Optional[int] = None
     patient_id: int
     doctor_id: int
-    
+
+    # Clinical profile (del expediente, capturado por el doctor)
+    blood_type: Optional[BloodTypeEnum] = None
+    weeks_at_registration: Optional[int] = None
+    last_menstrual_period: Optional[date] = None
+    residence: Optional[str] = None
+    education_level: Optional[str] = None
+    marital_status: Optional[str] = None
+    height_cm: Optional[int] = None
+    initial_weight: Optional[float] = None
+
     # Medical history
     previous_hypertension: Optional[bool] = None
     diabetes: Optional[bool] = None
@@ -36,5 +49,9 @@ class MedicalRecordEntity(BaseModel):
 
     consultations: Optional[List[ConsultationEntity]] = []
     patient_diaries: Optional[List[PatientDiaryEntity]] = []
+
+    @property
+    def current_gestational_weeks(self) -> int | None:
+        return gestational_weeks(self.last_menstrual_period, self.weeks_at_registration)
 
     model_config = ConfigDict(from_attributes=True)

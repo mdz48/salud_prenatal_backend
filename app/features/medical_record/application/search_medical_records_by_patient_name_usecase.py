@@ -26,7 +26,7 @@ class SearchMedicalRecordsByPatientNameUseCase:
                 "user_id": patient.user_id,
                 "name": patient.name,
                 "last_name": patient.last_name,
-                "current_gestational_weeks": patient.current_gestational_weeks,
+                "current_gestational_weeks": record.current_gestational_weeks,
                 "age": patient.age,
                 "medical_record": record,
             })

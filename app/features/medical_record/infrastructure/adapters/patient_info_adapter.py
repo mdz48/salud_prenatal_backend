@@ -33,14 +33,7 @@ class PatientInfoAdapter(IPatientInfoPort):
             user_id=patient_entity.user_id,
             name=user.name,
             last_name=user.last_name,
-            current_gestational_weeks=patient_entity.current_gestational_weeks,
             age=patient_entity.age,
             doctor_id=patient_entity.doctor_id,
             birthdate=str(patient_entity.birthdate) if patient_entity.birthdate else None,
-            residence=patient_entity.residence,
-            education_level=patient_entity.education_level,
-            marital_status=patient_entity.marital_status,
-            height_cm=patient_entity.height_cm,
-            initial_weight=patient_entity.initial_weight,
-            blood_type=patient_entity.blood_type
         )

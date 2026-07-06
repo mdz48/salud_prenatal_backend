@@ -1,16 +1,18 @@
 from datetime import datetime, timezone
-from app.features.users.domain.ports import IPatientRepository, IUserRepository, IDoctorRepository, IAppointmentLookup
+from app.features.users.domain.ports import IPatientRepository, IUserRepository, IDoctorRepository, IAppointmentLookup, IMedicalRecordLookup
 
 class GetPatientDashboardUseCase:
-    def __init__(self, 
+    def __init__(self,
                  patient_repository: IPatientRepository,
                  user_repository: IUserRepository,
                  doctor_repository: IDoctorRepository,
-                 appointment_lookup: IAppointmentLookup):
+                 appointment_lookup: IAppointmentLookup,
+                 medical_record_lookup: IMedicalRecordLookup):
         self.patient_repository = patient_repository
         self.user_repository = user_repository
         self.doctor_repository = doctor_repository
         self.appointment_lookup = appointment_lookup
+        self.medical_record_lookup = medical_record_lookup
 
     def execute(self, patient_id: int):
         patient = self.patient_repository.get_by_id(patient_id)
@@ -22,7 +24,11 @@ class GetPatientDashboardUseCase:
             raise ValueError("User associated with patient not found")
 
         full_name = f"{user.name} {user.last_name}"
-        gestational_weeks = patient.current_gestational_weeks
+        # Las semanas de gestacion viven en el expediente (del doctor actual del paciente).
+        gestational_weeks = (
+            self.medical_record_lookup.get_current_gestational_weeks(patient_id, patient.doctor_id)
+            if patient.doctor_id else None
+        )
 
         current_doctor = None
         current_doctor_image = None

@@ -71,7 +71,6 @@ class DoctorController:
                     name=p.user.name,
                     last_name=p.user.last_name,
                     age=p.age,
-                    current_gestational_weeks=p.current_gestational_weeks,
                 )
                 for p in patients
             ]

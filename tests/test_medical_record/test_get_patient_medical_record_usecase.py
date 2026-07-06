@@ -13,12 +13,12 @@ def test_get_patient_medical_record_success():
     patient_mock.user_id = 1
     patient_mock.name = "Test"
     patient_mock.last_name = "User"
-    patient_mock.current_gestational_weeks = 20
     patient_mock.age = 30
-    
+
     patient_repo.get_patient_info.return_value = patient_mock
 
     mr_mock = MagicMock()
+    mr_mock.current_gestational_weeks = 20  # ahora vive en el expediente
     mr_mock.consultations = [MagicMock(consultation_id=1, created_at="2023-01-01")]
     mr_mock.patient_diaries = []
     mr_repo.get_by_patient_and_doctor.return_value = mr_mock

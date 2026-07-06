@@ -30,7 +30,6 @@ def test_search_patients_and_medical_records_by_name(client):
             "password": "secret123",
             "role": "paciente",
             "birthdate": "1995-04-10",
-            "residence": "urbana",
             "doctor_id": doctor_id,
         },
     )

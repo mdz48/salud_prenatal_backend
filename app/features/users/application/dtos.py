@@ -32,19 +32,11 @@ class PatientRegistrationDTO:
     email: str
     password: str
     birthdate: date
-    residence: str
     phone: Optional[str] = None
     role: RoleEnum = RoleEnum.patient
     is_active: bool = True
     image_url: Optional[str] = None
     doctor_id: Optional[int] = None
-    blood_type: Optional[str] = "O+"
-    weeks_at_registration: Optional[int] = None
-    last_menstrual_period: Optional[date] = None
-    education_level: Optional[str] = None
-    marital_status: Optional[str] = None
-    height_cm: Optional[int] = None
-    initial_weight: Optional[float] = None
 
 @dataclass
 class UserUpdateDTO:

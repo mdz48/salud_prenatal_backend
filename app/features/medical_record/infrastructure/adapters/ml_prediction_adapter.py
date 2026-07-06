@@ -7,11 +7,12 @@ load_dotenv()
 
 class MlPredictionServiceAdapter(IMLPredictionService):
     def build_payload(self, patient, medical_record, latest_diary: object) -> dict:
+        # Lo clinico vive en el expediente; de `patient` solo se usa la edad (deriva de birthdate).
         bmi_initial = 0.0
-        if patient.initial_weight and patient.height_cm:
-            bmi_initial = patient.initial_weight / ((patient.height_cm / 100.0) ** 2)
+        if medical_record.initial_weight and medical_record.height_cm:
+            bmi_initial = medical_record.initial_weight / ((medical_record.height_cm / 100.0) ** 2)
 
-        gestational_week = patient.current_gestational_weeks or 0
+        gestational_week = medical_record.current_gestational_weeks or 0
         gestational_trimester = gestational_week // 13
 
         mean_arterial_pressure = 0.0
@@ -20,15 +21,15 @@ class MlPredictionServiceAdapter(IMLPredictionService):
 
         nulliparous = 1 if not medical_record.previous_deliveries else 0
 
-        ed_lvl = (patient.education_level or "superior").lower()
+        ed_lvl = (medical_record.education_level or "superior").lower()
         if ed_lvl not in ["primaria", "secundaria", "superior"]:
             ed_lvl = "superior"
 
-        res = (patient.residence or "urbana").lower()
+        res = (medical_record.residence or "urbana").lower()
         if res not in ["rural", "urbana"]:
             res = "urbana"
 
-        ms = (patient.marital_status or "married").lower()
+        ms = (medical_record.marital_status or "married").lower()
         if ms not in ["single", "married"]:
             ms = "married"
 
@@ -37,9 +38,9 @@ class MlPredictionServiceAdapter(IMLPredictionService):
             "bmi_initial": round(bmi_initial, 2),
             "gestational_week": gestational_week,
             "gestational_trimester": gestational_trimester,
-            "height_cm": float(patient.height_cm) if patient.height_cm else 0.0,
-            "initial_weight": float(patient.initial_weight) if patient.initial_weight else 0.0,
-            "weight_kg": float(latest_diary.weight_kg) if latest_diary and latest_diary.weight_kg else float(patient.initial_weight or 0.0),
+            "height_cm": float(medical_record.height_cm) if medical_record.height_cm else 0.0,
+            "initial_weight": float(medical_record.initial_weight) if medical_record.initial_weight else 0.0,
+            "weight_kg": float(latest_diary.weight_kg) if latest_diary and latest_diary.weight_kg else float(medical_record.initial_weight or 0.0),
             "weight_gain": float(latest_diary.weight_gain) if latest_diary and latest_diary.weight_gain else 0.0,
             "systolic": float(latest_diary.systolic) if latest_diary and latest_diary.systolic else 0.0,
             "diastolic": float(latest_diary.diastolic) if latest_diary and latest_diary.diastolic else 0.0,

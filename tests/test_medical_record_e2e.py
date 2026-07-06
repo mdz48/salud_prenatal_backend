@@ -21,6 +21,7 @@ def test_medical_record_flow_exercises_patient_info_adapter(client):
     assert doctor_resp.status_code == 201, doctor_resp.text
     doctor_id = doctor_resp.json()["doctor_id"]
 
+    # Registro de paciente: solo identidad + birthdate + liga (lo clinico ya no va aqui).
     patient_resp = client.post(
         "/api/v1/patients/register",
         json={
@@ -30,22 +31,28 @@ def test_medical_record_flow_exercises_patient_info_adapter(client):
             "password": "secret123",
             "role": "paciente",
             "birthdate": "1995-04-10",
-            "residence": "urbana",
             "doctor_id": doctor_id,
-            "height_cm": 160,
-            "initial_weight": 60.5,
         },
     )
     assert patient_resp.status_code == 201, patient_resp.text
     patient_id = patient_resp.json()["patient_id"]
 
+    # El clinico se captura al CREAR el expediente (lo hace el doctor).
     record_resp = client.post(
         "/api/v1/medical-records/",
-        json={"patient_id": patient_id, "doctor_id": doctor_id},
+        json={
+            "patient_id": patient_id,
+            "doctor_id": doctor_id,
+            "residence": "urbana",
+            "height_cm": 160,
+            "initial_weight": 60.5,
+            "weeks_at_registration": 12,
+        },
     )
     assert record_resp.status_code == 201, record_resp.text
 
-    # GET cruza a users via IPatientInfoPort/PatientInfoAdapter (nombre desde patient.user)
+    # GET cruza a users via IPatientInfoPort/PatientInfoAdapter (nombre desde patient.user);
+    # lo clinico + semanas de gestacion salen del expediente.
     get_resp = client.get(
         f"/api/v1/medical-records/patient/{patient_id}",
         params={"doctor_id": doctor_id},
@@ -55,3 +62,6 @@ def test_medical_record_flow_exercises_patient_info_adapter(client):
     assert body["name"] == "Maria"
     assert body["last_name"] == "Lopez"
     assert body["age"] is not None
+    assert body["current_gestational_weeks"] == 12
+    assert body["medical_record"]["residence"] == "urbana"
+    assert body["medical_record"]["height_cm"] == 160

@@ -38,7 +38,7 @@ def test_get_patients_by_doctor_excludes_inactive_users(db_session):
     inactive = _make_user(db_session, "inactiva@example.com", is_active=False)
     for user in (active, inactive):
         db_session.add(
-            Patient(user_id=user.user_id, doctor_id=77, birthdate=date(1995, 5, 4), residence="CDMX")
+            Patient(user_id=user.user_id, doctor_id=77, birthdate=date(1995, 5, 4))
         )
     db_session.commit()
 

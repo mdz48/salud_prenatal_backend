@@ -13,6 +13,7 @@ from app.features.users.infrastructure.repositories.patient_repository import Pa
 from app.features.medical_record.infrastructure.adapters.patient_info_adapter import PatientInfoAdapter
 from app.features.medical_record.infrastructure.adapters.social_cluster_adapter import SocialClusterAdapter
 from app.features.forums.infrastructure.adapters.patient_cluster_adapter import PatientClusterAdapter
+from app.features.forums.infrastructure.adapters.author_role_adapter import AuthorRoleAdapter
 from app.features.users.infrastructure.adapters.medical_record_lookup_adapter import MedicalRecordLookupAdapter
 from app.features.users.infrastructure.adapters.appointment_lookup_adapter import AppointmentLookupAdapter
 from app.features.chat.infrastructure.adapters.chat_user_lookup_adapter import ChatUserLookupAdapter
@@ -126,6 +127,7 @@ class Container(containers.DeclarativeContainer):
     forums_repository = providers.Factory(ForumsRepository, db=db)
     social_cluster_adapter = providers.Factory(SocialClusterAdapter, forums_repository=forums_repository)
     patient_cluster_adapter = providers.Factory(PatientClusterAdapter, patient_repository=patient_repository, medical_record_repository=medical_record_repository, risk_prediction_repository=risk_prediction_repository)
+    author_role_adapter = providers.Factory(AuthorRoleAdapter, user_repository=user_repository)
 
     # Use Cases
     create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=patient_repository, doctor_repo=doctor_repository)
@@ -175,7 +177,7 @@ class Container(containers.DeclarativeContainer):
     create_group_use_case = providers.Factory(CreateGroupUseCase, forums_repo=forums_repository)
     get_groups_use_case = providers.Factory(GetGroupsUseCase, forums_repo=forums_repository)
     get_recommended_groups_use_case = providers.Factory(GetRecommendedGroupsUseCase, forums_repo=forums_repository)
-    create_post_use_case = providers.Factory(CreatePostUseCase, forums_repo=forums_repository)
+    create_post_use_case = providers.Factory(CreatePostUseCase, forums_repo=forums_repository, author_role_lookup=author_role_adapter)
     get_global_feed_use_case = providers.Factory(GetGlobalFeedUseCase, forums_repo=forums_repository)
     get_recommended_feed_use_case = providers.Factory(GetRecommendedFeedUseCase, forums_repo=forums_repository)
     get_group_feed_use_case = providers.Factory(GetGroupFeedUseCase, forums_repo=forums_repository)

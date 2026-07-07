@@ -39,7 +39,8 @@ def test_create_group_usecase(mock_forums_repo):
     assert result.name == "Test Group"
 
 def test_create_post_usecase(mock_forums_repo):
-    usecase = CreatePostUseCase(mock_forums_repo)
+    role_lookup = MagicMock()
+    usecase = CreatePostUseCase(mock_forums_repo, role_lookup)
     post_in = PostEntity(author_id=1, title="Test Post", content="This is a test post.")
     mock_forums_repo.create_post.return_value = post_in
     

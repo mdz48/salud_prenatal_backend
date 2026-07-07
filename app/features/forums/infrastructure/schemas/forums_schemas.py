@@ -41,6 +41,7 @@ class PostCreate(BaseModel):
     group_id: Optional[int] = None
     title: str
     content: str
+    is_ad: bool = False  # solo doctores pueden marcarlo (se valida en el usecase)
 
 class PostResponse(BaseModel):
     post_id: Optional[int] = None
@@ -48,6 +49,7 @@ class PostResponse(BaseModel):
     group_id: Optional[int] = None
     title: str
     content: str
+    is_ad: bool = False
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

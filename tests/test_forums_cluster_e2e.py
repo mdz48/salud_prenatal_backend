@@ -105,3 +105,30 @@ def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app):
     assert len(feed_bea.json()) == 2
     grupos_bea = client.get("/api/v1/forums/groups/recommended", headers=bea_headers)
     assert len(grupos_bea.json()) == 2
+
+    # --- Publicidad de doctores intercalada ---
+    # Un doctor necesita perfil social para autorar posts; el gating es por rol.
+    doctor_user_id = doctor_resp.json()["user_id"]
+    client.post("/api/v1/forums/profiles", json={"user_id": doctor_user_id, "alias": "dra"})
+
+    # Paciente NO puede marcar is_ad -> 400
+    ana_ad = client.post(
+        "/api/v1/forums/posts",
+        json={"author_id": ana["user_id"], "title": "spam", "content": "x", "is_ad": True},
+    )
+    assert ana_ad.status_code == 400, ana_ad.text
+
+    # Doctor SÍ puede publicar publicidad
+    doc_ad = client.post(
+        "/api/v1/forums/posts",
+        json={"author_id": doctor_user_id, "title": "Consultorio Dra Cluster", "content": "Agenda tu cita", "is_ad": True},
+    )
+    assert doc_ad.status_code == 201, doc_ad.text
+    assert doc_ad.json()["is_ad"] is True
+
+    # El anuncio aparece intercalado en el feed de la paciente, marcado is_ad
+    feed_con_ad = client.get("/api/v1/forums/posts/recommended", headers=ana_headers).json()
+    anuncios = [p for p in feed_con_ad if p["is_ad"]]
+    assert [a["title"] for a in anuncios] == ["Consultorio Dra Cluster"]
+    # el post normal del cluster sigue presente y NO marcado como anuncio
+    assert any(p["title"] == "Mi dia a dia bajando de peso" and not p["is_ad"] for p in feed_con_ad)

@@ -74,14 +74,23 @@ class ForumsRepository:
             raise e
 
     def get_global_feed(self, limit: int = 50, offset: int = 0) -> List[PostEntity]:
-        db_posts = self.db.query(PostModel).filter(PostModel.group_id == None).order_by(PostModel.created_at.desc()).offset(offset).limit(limit).all()
+        db_posts = self.db.query(PostModel).filter(PostModel.group_id == None, PostModel.is_ad == False).order_by(PostModel.created_at.desc()).offset(offset).limit(limit).all()
+        return [PostEntity.model_validate(p) for p in db_posts]
+
+    def get_ads(self, limit: int = 20) -> List[PostEntity]:
+        db_posts = (
+            self.db.query(PostModel)
+            .filter(PostModel.is_ad == True, PostModel.group_id == None)
+            .order_by(PostModel.created_at.desc())
+            .limit(limit).all()
+        )
         return [PostEntity.model_validate(p) for p in db_posts]
 
     def get_feed_by_cluster(self, cluster: str, limit: int = 50, offset: int = 0) -> List[PostEntity]:
         db_posts = (
             self.db.query(PostModel)
             .join(SocialProfileModel, SocialProfileModel.user_id == PostModel.author_id)
-            .filter(SocialProfileModel.cluster_profile == cluster, PostModel.group_id == None)
+            .filter(SocialProfileModel.cluster_profile == cluster, PostModel.group_id == None, PostModel.is_ad == False)
             .order_by(PostModel.created_at.desc())
             .offset(offset).limit(limit).all()
         )

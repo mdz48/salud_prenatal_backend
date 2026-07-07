@@ -17,6 +17,7 @@ def _make_usecase(medical_record, latest_eval=None):
     patient_mock.name = "Test"
     patient_mock.last_name = "User"
     patient_mock.age = 30
+    patient_mock.doctor_id = 2
     patient_repo.get_patient_info.return_value = patient_mock
 
     risk_repo = MagicMock()
@@ -85,4 +86,20 @@ def test_get_patient_medical_record_patient_not_found():
     usecase.patient_repository.get_patient_info.return_value = None
 
     with pytest.raises(ValueError, match="Patient not found"):
+        usecase.execute(patient_id=1, doctor_id=2)
+
+
+def test_patient_sin_relacion_con_el_doctor():
+    usecase, _, _ = _make_usecase(_record())
+    usecase.patient_repository.get_patient_info.return_value.doctor_id = 99
+
+    with pytest.raises(ValueError, match="no tiene una relaci"):
+        usecase.execute(patient_id=1, doctor_id=2)
+
+
+def test_relacion_existe_pero_expediente_no_ha_sido_creado():
+    usecase, mr_repo, _ = _make_usecase(_record())
+    mr_repo.get_by_patient_and_doctor.return_value = None
+
+    with pytest.raises(ValueError, match="expediente"):
         usecase.execute(patient_id=1, doctor_id=2)

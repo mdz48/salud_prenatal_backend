@@ -16,6 +16,12 @@ class MedicalRecordRepository(IMedicalRecordRepository):
             return MedicalRecordEntity.model_validate(db_obj)
         return None
 
+    def get_by_patient_id(self, patient_id: int) -> MedicalRecordEntity | None:
+        db_obj = self.db.query(MedicalRecord).filter(MedicalRecord.patient_id == patient_id).first()
+        if db_obj:
+            return MedicalRecordEntity.model_validate(db_obj)
+        return None
+
     def get_by_id(self, medical_record_id: int) -> MedicalRecordEntity | None:
         db_obj = self.db.query(MedicalRecord).filter(MedicalRecord.medical_record_id == medical_record_id).first()
         if db_obj:

@@ -32,6 +32,17 @@ class ForumsRepository:
             return SocialProfileEntity.model_validate(db_profile)
         return None
 
+    def update_cluster_profile(self, user_id: int, cluster: str) -> None:
+        db_profile = self.db.query(SocialProfileModel).filter(SocialProfileModel.user_id == user_id).first()
+        if not db_profile:
+            return
+        try:
+            db_profile.cluster_profile = cluster
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise e
+
     def create_group(self, group: CommunityGroupEntity) -> CommunityGroupEntity:
         db_group = CommunityGroupModel(**group.model_dump(exclude={"group_id"}, exclude_unset=True))
         try:
@@ -47,6 +58,10 @@ class ForumsRepository:
         db_groups = self.db.query(CommunityGroupModel).all()
         return [CommunityGroupEntity.model_validate(g) for g in db_groups]
 
+    def get_groups_by_cluster(self, cluster: str) -> List[CommunityGroupEntity]:
+        db_groups = self.db.query(CommunityGroupModel).filter(CommunityGroupModel.cluster_tag == cluster).all()
+        return [CommunityGroupEntity.model_validate(g) for g in db_groups]
+
     def create_post(self, post: PostEntity) -> PostEntity:
         db_post = PostModel(**post.model_dump(exclude={"post_id"}, exclude_unset=True))
         try:
@@ -60,6 +75,16 @@ class ForumsRepository:
 
     def get_global_feed(self, limit: int = 50, offset: int = 0) -> List[PostEntity]:
         db_posts = self.db.query(PostModel).filter(PostModel.group_id == None).order_by(PostModel.created_at.desc()).offset(offset).limit(limit).all()
+        return [PostEntity.model_validate(p) for p in db_posts]
+
+    def get_feed_by_cluster(self, cluster: str, limit: int = 50, offset: int = 0) -> List[PostEntity]:
+        db_posts = (
+            self.db.query(PostModel)
+            .join(SocialProfileModel, SocialProfileModel.user_id == PostModel.author_id)
+            .filter(SocialProfileModel.cluster_profile == cluster, PostModel.group_id == None)
+            .order_by(PostModel.created_at.desc())
+            .offset(offset).limit(limit).all()
+        )
         return [PostEntity.model_validate(p) for p in db_posts]
 
     def get_group_feed(self, group_id: int, limit: int = 50, offset: int = 0) -> List[PostEntity]:

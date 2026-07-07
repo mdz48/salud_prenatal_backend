@@ -9,4 +9,5 @@ class CommunityGroupModel(Base):
     name = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
     created_by = Column(Integer, ForeignKey("users.user_id"), nullable=False, index=True)
+    cluster_tag = Column(String(50), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

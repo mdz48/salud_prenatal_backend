@@ -7,6 +7,7 @@ class CommunityGroupEntity(BaseModel):
     name: str
     description: Optional[str] = None
     created_by: int
+    cluster_tag: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

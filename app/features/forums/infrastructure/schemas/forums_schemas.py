@@ -3,12 +3,12 @@ from typing import Optional
 from datetime import datetime
 
 class ProfileCreate(BaseModel):
+    # cluster_profile no se acepta del cliente: solo se deriva del ML
     user_id: int
     alias: Optional[str] = None
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     office_address: Optional[str] = None
-    cluster_profile: Optional[str] = None
 
 class ProfileResponse(BaseModel):
     user_id: int
@@ -24,12 +24,14 @@ class GroupCreate(BaseModel):
     name: str
     description: Optional[str] = None
     created_by: int
+    cluster_tag: Optional[str] = None
 
 class GroupResponse(BaseModel):
     group_id: Optional[int] = None
     name: str
     description: Optional[str] = None
     created_by: int
+    cluster_tag: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -15,7 +15,9 @@ def mock_forums_repo():
     return MagicMock(spec=IForumsRepository)
 
 def test_create_profile_usecase(mock_forums_repo):
-    usecase = CreateProfileUseCase(mock_forums_repo)
+    cluster_lookup = MagicMock()
+    cluster_lookup.get_cluster_by_user_id.return_value = None
+    usecase = CreateProfileUseCase(mock_forums_repo, cluster_lookup)
     profile_in = SocialProfileEntity(user_id=1, alias="testalias")
     mock_forums_repo.create_profile.return_value = profile_in
     

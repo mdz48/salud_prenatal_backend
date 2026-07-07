@@ -1,7 +1,7 @@
 from dependency_injector.wiring import inject, Provide
 from app.core.containers import Container
 from fastapi import APIRouter, Depends, status
-from app.core.dependencies import RoleChecker
+from app.core.dependencies import RoleChecker, require_active_subscription
 from app.core.enums import RoleEnum
 from typing import List, Optional
 from app.features.medical_record.infrastructure.schemas.medical_record_schema import (
@@ -45,6 +45,7 @@ def get_patient_medical_record(
 def evaluate_risk(
     medical_record_id: int,
     current_user = Depends(require_doctor),
+    _subscription = Depends(require_active_subscription),
     controller: MedicalRecordController = Depends(Provide[Container.medical_record_controller])
 ):
     return controller.evaluate_risk(medical_record_id)
@@ -55,6 +56,7 @@ def update_medical_record(
     medical_record_id: int,
     data: MedicalRecordUpdate,
     current_user = Depends(require_doctor),
+    _subscription = Depends(require_active_subscription),
     controller: MedicalRecordController = Depends(Provide[Container.medical_record_controller])
 ):
     return controller.update_medical_record(medical_record_id, data)

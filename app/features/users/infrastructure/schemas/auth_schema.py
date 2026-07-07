@@ -19,3 +19,4 @@ class Token(BaseModel):
     doctor_id: Optional[int] = None
     medical_record_id: Optional[int] = None
     receptionist: Optional[ReceptionistInfo] = None
+    subscription_status: Optional[str] = None

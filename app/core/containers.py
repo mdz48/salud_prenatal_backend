@@ -86,6 +86,14 @@ from app.features.users.infrastructure.controllers.auth_controller import AuthCo
 from app.features.users.infrastructure.controllers.patient_controller import PatientController
 from app.features.users.infrastructure.controllers.doctor_controller import DoctorController
 
+from app.features.subscriptions.infrastructure.repositories.subscription_repository import SubscriptionRepository
+from app.features.subscriptions.infrastructure.adapters.stripe_gateway_adapter import StripeGatewayAdapter
+from app.features.users.infrastructure.adapters.subscription_initializer_adapter import SubscriptionInitializerAdapter
+from app.features.subscriptions.application.create_checkout_session_usecase import CreateCheckoutSessionUseCase
+from app.features.subscriptions.application.get_my_subscription_usecase import GetMySubscriptionUseCase
+from app.features.subscriptions.application.handle_payment_event_usecase import HandlePaymentEventUseCase
+from app.features.subscriptions.infrastructure.controllers.subscription_controller import SubscriptionController
+
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         modules=[
@@ -103,6 +111,7 @@ class Container(containers.DeclarativeContainer):
             "app.features.forums.infrastructure.routes.groups_router",
             "app.features.forums.infrastructure.routes.posts_router",
             "app.features.forums.infrastructure.routes.reports_router",
+            "app.features.subscriptions.infrastructure.routes.subscription_router",
         ]
     )
 
@@ -128,6 +137,9 @@ class Container(containers.DeclarativeContainer):
     social_cluster_adapter = providers.Factory(SocialClusterAdapter, forums_repository=forums_repository)
     patient_cluster_adapter = providers.Factory(PatientClusterAdapter, patient_repository=patient_repository, medical_record_repository=medical_record_repository, risk_prediction_repository=risk_prediction_repository)
     author_role_adapter = providers.Factory(AuthorRoleAdapter, user_repository=user_repository)
+    subscription_repository = providers.Factory(SubscriptionRepository, db=db)
+    stripe_payment_gateway = providers.Factory(StripeGatewayAdapter)
+    subscription_initializer_adapter = providers.Factory(SubscriptionInitializerAdapter, subscription_repository=subscription_repository)
 
     # Use Cases
     create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=patient_repository, doctor_repo=doctor_repository)
@@ -157,8 +169,8 @@ class Container(containers.DeclarativeContainer):
     appointment_lookup_adapter = providers.Factory(AppointmentLookupAdapter, appointment_repository=appointment_repository)
     medical_record_lookup_adapter = providers.Factory(MedicalRecordLookupAdapter, medical_record_repository=medical_record_repository)
     
-    authenticate_user_use_case = providers.Factory(AuthenticateUserUseCase, user_repository=user_repository, patient_repository=patient_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository, medical_record_lookup=medical_record_lookup_adapter)
-    register_doctor_use_case = providers.Factory(RegisterDoctorUseCase, user_repository=user_repository, doctor_repository=doctor_repository)
+    authenticate_user_use_case = providers.Factory(AuthenticateUserUseCase, user_repository=user_repository, patient_repository=patient_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository, medical_record_lookup=medical_record_lookup_adapter, subscription_status_lookup=subscription_initializer_adapter)
+    register_doctor_use_case = providers.Factory(RegisterDoctorUseCase, user_repository=user_repository, doctor_repository=doctor_repository, subscription_initializer=subscription_initializer_adapter)
     create_receptionist_use_case = providers.Factory(CreateReceptionistUseCase, user_repository=user_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository)
     get_receptionists_by_doctor_use_case = providers.Factory(GetReceptionistsByDoctorUseCase, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository)
     generate_invitation_code_use_case = providers.Factory(GenerateInvitationCodeUseCase, doctor_repository=doctor_repository, invitation_code_repository=invitation_code_repository)
@@ -184,6 +196,9 @@ class Container(containers.DeclarativeContainer):
     add_comment_use_case = providers.Factory(AddCommentUseCase, forums_repo=forums_repository)
     get_comments_use_case = providers.Factory(GetCommentsUseCase, forums_repo=forums_repository)
     create_report_use_case = providers.Factory(CreateReportUseCase, forums_repo=forums_repository)
+    create_checkout_session_use_case = providers.Factory(CreateCheckoutSessionUseCase, subscription_repository=subscription_repository, payment_gateway=stripe_payment_gateway)
+    get_my_subscription_use_case = providers.Factory(GetMySubscriptionUseCase, subscription_repository=subscription_repository)
+    handle_payment_event_use_case = providers.Factory(HandlePaymentEventUseCase, subscription_repository=subscription_repository, payment_gateway=stripe_payment_gateway)
 
     # Controllers
     appointment_controller = providers.Factory(AppointmentController, create_appointment_use_case, get_appointment_use_case, get_appointments_by_patient_use_case, get_appointments_by_doctor_use_case, update_appointment_use_case, delete_appointment_use_case)
@@ -199,3 +214,4 @@ class Container(containers.DeclarativeContainer):
     groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case, get_recommended_groups_use_case)
     posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case)
     reports_controller = providers.Factory(ReportsController, create_report_use_case)
+    subscription_controller = providers.Factory(SubscriptionController, create_checkout_session_use_case, get_my_subscription_use_case, handle_payment_event_use_case)

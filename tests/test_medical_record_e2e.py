@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.mark.integration
-def test_medical_record_flow_exercises_patient_info_adapter(client, monkeypatch):
+def test_medical_record_flow_exercises_patient_info_adapter(client, monkeypatch, activate_subscription):
     # Sin ML_SERVICE_URL la evaluacion es determinista: persiste ml_unavailable.
     # setenv("") y no delenv: load_dotenv() corre en request-time (get_secret_key)
     # y repondria la variable del .env local; una var existente no la sobreescribe.
@@ -90,6 +90,14 @@ def test_medical_record_flow_exercises_patient_info_adapter(client, monkeypatch)
 
     # Sin token -> 401 (endpoint protegido)
     assert client.post(f"/api/v1/medical-records/{medical_record_id}/risk-evaluation").status_code == 401
+
+    # Doctor sin suscripcion activa -> 402 (endpoint gateado)
+    assert client.post(
+        f"/api/v1/medical-records/{medical_record_id}/risk-evaluation", headers=headers
+    ).status_code == 402
+
+    # Activada la suscripcion, el endpoint responde normal
+    activate_subscription("dr.e2e@test.com")
 
     eval_resp = client.post(
         f"/api/v1/medical-records/{medical_record_id}/risk-evaluation", headers=headers

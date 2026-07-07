@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 
 @pytest.mark.integration
-def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app):
+def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app, activate_subscription):
     def _register_patient(name, email, doctor_id):
         resp = client.post(
             "/api/v1/patients/register",
@@ -72,6 +72,9 @@ def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app):
 
     # Bea (otro cluster) via ML mockeado tambien tendra perfil
     client.post("/api/v1/forums/profiles", json={"alias": "bea"}, headers=bea_headers)
+
+    # El doctor debe tener suscripcion activa para ejercer el gating del endpoint
+    activate_subscription("dra.cluster@test.com")
 
     # Evaluacion con ML mockeado -> cluster 3 (riesgo metabolico)
     ml_mock = MagicMock()

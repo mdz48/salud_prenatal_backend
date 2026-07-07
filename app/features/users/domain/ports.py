@@ -45,3 +45,9 @@ class IMedicalRecordLookup(Protocol):
 
 class IAppointmentLookup(Protocol):
     def get_appointments_by_patient_id(self, patient_id: int) -> List[object]: ...
+
+class ISubscriptionInitializer(Protocol):
+    def create_pending(self, user_id: int) -> None: ...
+
+class ISubscriptionStatusLookup(Protocol):
+    def get_status(self, user_id: int) -> Optional[str]: ...

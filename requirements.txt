@@ -12,4 +12,5 @@ httpx
 dotenv
 requests
 dependency-injector
+stripe
 pytest

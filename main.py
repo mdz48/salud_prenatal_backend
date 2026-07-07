@@ -14,6 +14,7 @@ from app.features.forums.infrastructure.routes.profiles_router import router as 
 from app.features.forums.infrastructure.routes.groups_router import router as groups_router
 from app.features.forums.infrastructure.routes.posts_router import router as posts_router
 from app.features.forums.infrastructure.routes.reports_router import router as reports_router
+from app.features.subscriptions.infrastructure.routes.subscription_router import router as subscription_router
 from app.core.containers import Container
 
 container = Container()
@@ -39,6 +40,7 @@ app.include_router(profiles_router, prefix="/api/v1")
 app.include_router(groups_router, prefix="/api/v1")
 app.include_router(posts_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
+app.include_router(subscription_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,

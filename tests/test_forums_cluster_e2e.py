@@ -43,6 +43,10 @@ def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app):
     ana = _register_patient("Ana", "ana.cluster@test.com", doctor_id)
     bea = _register_patient("Bea", "bea.cluster@test.com", doctor_id)
 
+    ana_headers = _token("ana.cluster@test.com")
+    bea_headers = _token("bea.cluster@test.com")
+    doctor_headers = _token("dra.cluster@test.com")
+
     record_resp = client.post(
         "/api/v1/medical-records/",
         json={
@@ -54,13 +58,20 @@ def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app):
     assert record_resp.status_code == 201, record_resp.text
     medical_record_id = record_resp.json()["medical_record_id"]
 
-    # Perfil creado ANTES de evaluar: sin prediccion todavia -> cluster null
-    profile_resp = client.post("/api/v1/forums/profiles", json={"user_id": ana["user_id"], "alias": "ana"})
+    # Crear recurso sin token -> 401 (autoria via JWT)
+    assert client.post("/api/v1/forums/profiles", json={"alias": "x"}).status_code == 401
+    assert client.post("/api/v1/forums/posts", json={"title": "x", "content": "x"}).status_code == 401
+
+    # Perfil creado ANTES de evaluar: sin prediccion todavia -> cluster null.
+    # La identidad sale del token; el body ya no lleva user_id.
+    profile_resp = client.post("/api/v1/forums/profiles", json={"alias": "ana"}, headers=ana_headers)
     assert profile_resp.status_code == 201, profile_resp.text
-    assert profile_resp.json()["cluster_profile"] is None
+    assert profile_resp.json()["user_id"] == ana["user_id"]
+    # cluster_profile ya no se expone en la respuesta publica
+    assert "cluster_profile" not in profile_resp.json()
 
     # Bea (otro cluster) via ML mockeado tambien tendra perfil
-    client.post("/api/v1/forums/profiles", json={"user_id": bea["user_id"], "alias": "bea"})
+    client.post("/api/v1/forums/profiles", json={"alias": "bea"}, headers=bea_headers)
 
     # Evaluacion con ML mockeado -> cluster 3 (riesgo metabolico)
     ml_mock = MagicMock()
@@ -68,28 +79,22 @@ def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app):
     with app.container.ml_prediction_service.override(ml_mock):
         eval_resp = client.post(
             f"/api/v1/medical-records/{medical_record_id}/risk-evaluation",
-            headers=_token("dra.cluster@test.com"),
+            headers=doctor_headers,
         )
     assert eval_resp.status_code == 201, eval_resp.text
     assert eval_resp.json()["status"] == "ok"
 
-    # El cluster quedo propagado al perfil social de Ana
-    perfil = client.get(f"/api/v1/forums/profiles/{ana['user_id']}")
-    assert perfil.json()["cluster_profile"] == "3"
-
-    # Posts: Ana (cluster 3) y Bea (sin cluster)
-    client.post("/api/v1/forums/posts", json={"author_id": ana["user_id"], "title": "Mi dia a dia bajando de peso", "content": "..."})
-    client.post("/api/v1/forums/posts", json={"author_id": bea["user_id"], "title": "Post de otro perfil", "content": "..."})
+    # Posts: Ana (cluster 3) y Bea (sin cluster) — autoria por token, sin author_id en body
+    client.post("/api/v1/forums/posts", json={"title": "Mi dia a dia bajando de peso", "content": "..."}, headers=ana_headers)
+    client.post("/api/v1/forums/posts", json={"title": "Post de otro perfil", "content": "..."}, headers=bea_headers)
 
     # Grupos: uno etiquetado con el cluster 3 y uno general
-    client.post("/api/v1/forums/groups", json={"name": "Control de peso en el embarazo", "created_by": ana["user_id"], "cluster_tag": "3"})
-    client.post("/api/v1/forums/groups", json={"name": "General", "created_by": bea["user_id"]})
+    client.post("/api/v1/forums/groups", json={"name": "Control de peso en el embarazo", "cluster_tag": "3"}, headers=ana_headers)
+    client.post("/api/v1/forums/groups", json={"name": "General"}, headers=bea_headers)
 
     # Sin token -> 401
     assert client.get("/api/v1/forums/posts/recommended").status_code == 401
     assert client.get("/api/v1/forums/groups/recommended").status_code == 401
-
-    ana_headers = _token("ana.cluster@test.com")
 
     feed = client.get("/api/v1/forums/posts/recommended", headers=ana_headers)
     assert feed.status_code == 200, feed.text
@@ -107,21 +112,22 @@ def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app):
     assert len(grupos_bea.json()) == 2
 
     # --- Publicidad de doctores intercalada ---
-    # Un doctor necesita perfil social para autorar posts; el gating es por rol.
-    doctor_user_id = doctor_resp.json()["user_id"]
-    client.post("/api/v1/forums/profiles", json={"user_id": doctor_user_id, "alias": "dra"})
+    # Un doctor necesita perfil social para autorar posts; el gating es por rol real del token.
+    client.post("/api/v1/forums/profiles", json={"alias": "dra"}, headers=doctor_headers)
 
-    # Paciente NO puede marcar is_ad -> 400
+    # Paciente NO puede marcar is_ad -> 400 (rol del token = paciente)
     ana_ad = client.post(
         "/api/v1/forums/posts",
-        json={"author_id": ana["user_id"], "title": "spam", "content": "x", "is_ad": True},
+        json={"title": "spam", "content": "x", "is_ad": True},
+        headers=ana_headers,
     )
     assert ana_ad.status_code == 400, ana_ad.text
 
     # Doctor SÍ puede publicar publicidad
     doc_ad = client.post(
         "/api/v1/forums/posts",
-        json={"author_id": doctor_user_id, "title": "Consultorio Dra Cluster", "content": "Agenda tu cita", "is_ad": True},
+        json={"title": "Consultorio Dra Cluster", "content": "Agenda tu cita", "is_ad": True},
+        headers=doctor_headers,
     )
     assert doc_ad.status_code == 201, doc_ad.text
     assert doc_ad.json()["is_ad"] is True

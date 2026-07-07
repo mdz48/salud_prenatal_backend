@@ -13,9 +13,10 @@ router = APIRouter(prefix="/forums", tags=["Forums - Groups"])
 @inject
 def create_group(
     data: GroupCreate,
+    current_user: UserEntity = Depends(get_current_user),
     controller: GroupsController = Depends(Provide[Container.groups_controller])
 ):
-    return controller.create_group(data)
+    return controller.create_group(data, current_user.user_id)
 
 @router.get("/groups/recommended", response_model=List[GroupResponse])
 @inject

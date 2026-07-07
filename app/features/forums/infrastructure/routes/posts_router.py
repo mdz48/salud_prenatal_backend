@@ -15,9 +15,10 @@ router = APIRouter(prefix="/forums", tags=["Forums - Posts & Comments"])
 @inject
 def create_post(
     data: PostCreate,
+    current_user: UserEntity = Depends(get_current_user),
     controller: PostsController = Depends(Provide[Container.posts_controller])
 ):
-    return controller.create_post(data)
+    return controller.create_post(data, current_user.user_id)
 
 @router.get("/posts/global", response_model=List[PostResponse])
 @inject
@@ -52,9 +53,10 @@ def get_group_feed(
 @inject
 def add_comment(
     data: CommentCreate,
+    current_user: UserEntity = Depends(get_current_user),
     controller: PostsController = Depends(Provide[Container.posts_controller])
 ):
-    return controller.add_comment(data)
+    return controller.add_comment(data, current_user.user_id)
 
 @router.get("/posts/{post_id}/comments", response_model=List[CommentResponse])
 @inject

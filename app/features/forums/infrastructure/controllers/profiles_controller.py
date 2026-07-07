@@ -13,9 +13,9 @@ class ProfilesController:
         self.create_profile_uc = create_profile_uc
         self.get_profile_uc = get_profile_uc
 
-    def create_profile(self, data: ProfileCreate) -> ProfileResponse:
+    def create_profile(self, data: ProfileCreate, user_id: int) -> ProfileResponse:
         try:
-            entity = SocialProfileEntity(**data.model_dump())
+            entity = SocialProfileEntity(**data.model_dump(), user_id=user_id)
             result = self.create_profile_uc.execute(entity)
             return ProfileResponse.model_validate(result)
         except Exception as e:

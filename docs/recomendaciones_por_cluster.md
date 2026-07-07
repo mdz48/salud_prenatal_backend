@@ -106,8 +106,9 @@ perfil creado con cluster_profile = "3"
 ## Privacidad
 
 El cluster deriva de datos médicos, así que:
-- Las respuestas de los endpoints **no exponen** el `cluster_profile` de otras autoras (`PostResponse` no incluye el campo).
+- Las respuestas de los endpoints **no exponen** el `cluster_profile` de ninguna usuaria. `PostResponse` no incluye el campo, y `ProfileResponse` tampoco (`GET /forums/profiles/{user_id}` es público y ya no revela el cluster de riesgo). El cluster actúa solo server-side dentro de `/posts/recommended` y `/groups/recommended`.
 - La recomendación es implícita ("Para ti"). **El front no debe rotular** la sección con el nombre del cluster de riesgo (p. ej. no mostrar "Grupos de riesgo metabólico").
+- La autoría de toda escritura social se deriva del JWT: ver [autoria_forums_jwt](autoria_forums_jwt.md).
 
 ## Migración de base de datos
 

@@ -3,8 +3,8 @@ from typing import Optional
 from datetime import datetime
 
 class ProfileCreate(BaseModel):
-    # cluster_profile no se acepta del cliente: solo se deriva del ML
-    user_id: int
+    # user_id se deriva del token JWT, no del cliente.
+    # cluster_profile tampoco se acepta del cliente: solo se deriva del ML.
     alias: Optional[str] = None
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -16,14 +16,15 @@ class ProfileResponse(BaseModel):
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     office_address: Optional[str] = None
-    cluster_profile: Optional[str] = None
+    # cluster_profile NO se expone: es un dato derivado de informacion medica.
+    # El cluster actua server-side en /posts/recommended y /groups/recommended.
 
     model_config = ConfigDict(from_attributes=True)
 
 class GroupCreate(BaseModel):
+    # created_by se deriva del token JWT, no del cliente.
     name: str
     description: Optional[str] = None
-    created_by: int
     cluster_tag: Optional[str] = None
 
 class GroupResponse(BaseModel):
@@ -37,7 +38,7 @@ class GroupResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class PostCreate(BaseModel):
-    author_id: int
+    # author_id se deriva del token JWT, no del cliente.
     group_id: Optional[int] = None
     title: str
     content: str
@@ -55,8 +56,8 @@ class PostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class CommentCreate(BaseModel):
+    # author_id se deriva del token JWT, no del cliente.
     post_id: int
-    author_id: int
     content: str
 
 class CommentResponse(BaseModel):
@@ -69,7 +70,7 @@ class CommentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ReportCreate(BaseModel):
-    reporter_id: int
+    # reporter_id se deriva del token JWT, no del cliente.
     post_id: Optional[int] = None
     comment_id: Optional[int] = None
     reason: str

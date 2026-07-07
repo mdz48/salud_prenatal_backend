@@ -17,9 +17,9 @@ class GroupsController:
         self.get_groups_uc = get_groups_uc
         self.get_recommended_groups_uc = get_recommended_groups_uc
 
-    def create_group(self, data: GroupCreate) -> GroupResponse:
+    def create_group(self, data: GroupCreate, created_by: int) -> GroupResponse:
         try:
-            entity = CommunityGroupEntity(**data.model_dump())
+            entity = CommunityGroupEntity(**data.model_dump(), created_by=created_by)
             result = self.create_group_uc.execute(entity)
             return GroupResponse.model_validate(result)
         except Exception as e:

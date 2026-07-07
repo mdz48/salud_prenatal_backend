@@ -29,7 +29,7 @@ ValueError("Solo los doctores pueden publicar publicidad")   → el controller l
 
 Los posts normales (`is_ad=false`) no consultan el rol.
 
-> **Nota de seguridad (gap preexistente):** `POST /forums/posts` toma `author_id` del body sin autenticación. El gating de publicidad se hace sobre ese `author_id`; no se cambió el contrato del endpoint para no romper el front ni los tests existentes. Endurecer el endpoint (derivar `author_id` del JWT) es un trabajo aparte.
+> **Autoría vía JWT:** `POST /forums/posts` deriva el `author_id` del **token** (no del body). El gating de publicidad consulta el rol **real** del usuario autenticado, así que una paciente no puede publicar publicidad usando el id de un doctor. Ver [autoria_forums_jwt](autoria_forums_jwt.md).
 
 ## Cómo se intercala
 

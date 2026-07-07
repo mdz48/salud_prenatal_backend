@@ -29,9 +29,9 @@ class PostsController:
         self.get_comments_uc = get_comments_uc
         self.get_recommended_feed_uc = get_recommended_feed_uc
 
-    def create_post(self, data: PostCreate) -> PostResponse:
+    def create_post(self, data: PostCreate, author_id: int) -> PostResponse:
         try:
-            entity = PostEntity(**data.model_dump())
+            entity = PostEntity(**data.model_dump(), author_id=author_id)
             result = self.create_post_uc.execute(entity)
             return PostResponse.model_validate(result)
         except Exception as e:
@@ -58,9 +58,9 @@ class PostsController:
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-    def add_comment(self, data: CommentCreate) -> CommentResponse:
+    def add_comment(self, data: CommentCreate, author_id: int) -> CommentResponse:
         try:
-            entity = CommentEntity(**data.model_dump())
+            entity = CommentEntity(**data.model_dump(), author_id=author_id)
             result = self.add_comment_uc.execute(entity)
             return CommentResponse.model_validate(result)
         except Exception as e:

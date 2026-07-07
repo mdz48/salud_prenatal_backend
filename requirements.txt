@@ -12,3 +12,4 @@ httpx
 dotenv
 requests
 dependency-injector
+pytest

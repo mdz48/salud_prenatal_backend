@@ -4,16 +4,9 @@ from typing import Optional
 from app.features.users.infrastructure.schemas.user_schema import UserCreate
 
 class PatientBase(BaseModel):
+    # Patient es relacional + identidad. Lo clinico vive en el expediente.
     doctor_id: Optional[int] = None
     birthdate: date
-    blood_type: Optional[str] | None = "O+"
-    weeks_at_registration: Optional[int] = None
-    last_menstrual_period: Optional[date] = None
-    residence: str
-    education_level: Optional[str] = None
-    marital_status: Optional[str] = None
-    height_cm: Optional[int] = None
-    initial_weight: Optional[float] = None
 
 class PatientCreate(PatientBase):
     user_id: int
@@ -24,13 +17,23 @@ class PatientUpdate(PatientBase):
 class PatientResponse(PatientBase):
     patient_id: int
     user_id: int
-    current_gestational_weeks: int
-    age: int
+    full_name: Optional[str] = None
+    current_gestational_weeks: Optional[int] = None
+    age: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 class PatientRegistration(UserCreate, PatientBase):
     pass
+
+class PatientSearchResult(BaseModel):
+    patient_id: int
+    user_id: int
+    name: str
+    last_name: str
+    age: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class AppointmentDashboardResponse(BaseModel):
     appointment_id: int

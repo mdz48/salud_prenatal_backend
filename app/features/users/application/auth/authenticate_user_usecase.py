@@ -1,5 +1,4 @@
-from app.features.users.domain.ports import IUserRepository, IPatientRepository, IDoctorRepository, IReceptionistRepository
-from app.features.medical_record.domain.ports import IMedicalRecordRepository
+from app.features.users.domain.ports import IUserRepository, IPatientRepository, IDoctorRepository, IReceptionistRepository, IMedicalRecordLookup
 from app.core.security import verify_password, create_access_token
 
 class AuthenticateUserUseCase:
@@ -8,12 +7,12 @@ class AuthenticateUserUseCase:
                  patient_repository: IPatientRepository,
                  doctor_repository: IDoctorRepository,
                  receptionist_repository: IReceptionistRepository,
-                 medical_record_repository: IMedicalRecordRepository):
+                 medical_record_lookup: IMedicalRecordLookup):
         self.user_repository = user_repository
         self.patient_repository = patient_repository
         self.doctor_repository = doctor_repository
         self.receptionist_repository = receptionist_repository
-        self.medical_record_repository = medical_record_repository
+        self.medical_record_lookup = medical_record_lookup
 
     def execute(self, email: str, password: str):
         user = self.user_repository.get_by_email(email)
@@ -39,9 +38,7 @@ class AuthenticateUserUseCase:
             if patient:
                 patient_id = patient.patient_id
                 doctor_id = patient.doctor_id
-                medical_record = self.medical_record_repository.get_by_patient_and_doctor(patient.patient_id, patient.doctor_id)
-                if medical_record:
-                    medical_record_id = medical_record.medical_record_id
+                medical_record_id = self.medical_record_lookup.get_medical_record_id(patient.patient_id, patient.doctor_id)
         elif user.role.value == "doctor":
             doctor = self.doctor_repository.get_by_user_id(user.user_id)
             if doctor:

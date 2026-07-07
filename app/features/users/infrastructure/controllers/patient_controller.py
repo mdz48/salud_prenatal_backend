@@ -21,8 +21,10 @@ class PatientController:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while fetching the dashboard.")
 
     def register_patient(self, data: PatientRegistration):
+        from app.features.users.application.dtos import PatientRegistrationDTO
         try:
-            return self.register_patient_use_case.execute(data=data)
+            dto = PatientRegistrationDTO(**data.model_dump(exclude_unset=True))
+            return self.register_patient_use_case.execute(data=dto)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception:

@@ -1,7 +1,7 @@
 from app.features.users.domain.ports import IUserRepository, IDoctorRepository, IReceptionistRepository
 from app.features.users.domain.user_entity import UserEntity
 from app.features.users.domain.receptionist_entity import ReceptionistEntity
-from app.features.users.infrastructure.schemas.receptionist_schema import ReceptionistCreate
+from app.features.users.application.dtos import ReceptionistCreateDTO
 from app.core.security import get_password_hash
 from app.core.enums import RoleEnum
 
@@ -11,7 +11,7 @@ class CreateReceptionistUseCase:
         self.doctor_repository = doctor_repository
         self.receptionist_repository = receptionist_repository
 
-    def execute(self, doctor_id: int, data: ReceptionistCreate) -> UserEntity:
+    def execute(self, doctor_id: int, data: ReceptionistCreateDTO) -> UserEntity:
         doctor = self.doctor_repository.get_by_id(doctor_id)
         if not doctor:
             raise ValueError("Doctor not found")

@@ -17,6 +17,10 @@ class UserRepository(IUserRepository):
         user_db = self.db.query(Usuario).filter(Usuario.email == email).first()
         return UserEntity.model_validate(user_db) if user_db else None
 
+    def get_by_ids(self, user_ids: List[int]) -> List[UserEntity]:
+        users_db = self.db.query(Usuario).filter(Usuario.user_id.in_(user_ids)).all()
+        return [UserEntity.model_validate(u) for u in users_db]
+
     def get_all(self, skip: int = 0, limit: int = 100) -> List[UserEntity]:
         users_db = self.db.query(Usuario).offset(skip).limit(limit).all()
         return [UserEntity.model_validate(u) for u in users_db]

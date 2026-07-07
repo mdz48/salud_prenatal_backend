@@ -1,7 +1,7 @@
 from app.features.users.domain.ports import IUserRepository, IDoctorRepository
 from app.features.users.domain.user_entity import UserEntity
 from app.features.users.domain.doctor_entity import DoctorEntity
-from app.features.users.infrastructure.schemas.doctor_schema import DoctorRegistration
+from app.features.users.application.dtos import DoctorRegistrationDTO
 from app.core.security import get_password_hash
 from app.core.enums import RoleEnum
 
@@ -10,7 +10,7 @@ class RegisterDoctorUseCase:
         self.user_repository = user_repository
         self.doctor_repository = doctor_repository
 
-    def execute(self, data: DoctorRegistration) -> DoctorEntity:
+    def execute(self, data: DoctorRegistrationDTO) -> DoctorEntity:
         existing_user = self.user_repository.get_by_email(data.email)
         if existing_user:
             raise ValueError("Email already registered")

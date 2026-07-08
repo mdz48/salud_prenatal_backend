@@ -59,9 +59,19 @@ class StripeGatewayAdapter(IPaymentGateway):
 
     def parse_webhook_event(self, payload: bytes, signature: str) -> Optional[PaymentEventDTO]:
         webhook_secret = _require_env("STRIPE_WEBHOOK_SECRET")
+        # DEBUG TEMPORAL: quitar una vez resuelto el 400 de firma invalida en el VPS.
+        print(
+            "WEBHOOK DEBUG:",
+            "payload_len=", len(payload),
+            "payload_repr_tail=", repr(payload[-20:]),
+            "sig_header=", repr(signature),
+            "secret_len=", len(webhook_secret),
+            "secret_repr=", repr(webhook_secret),
+        )
         try:
             event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
         except stripe.error.SignatureVerificationError as e:
+            print("WEBHOOK DEBUG signature error:", repr(str(e)))
             raise InvalidWebhookError("Invalid Stripe signature") from e
         except ValueError as e:
             raise InvalidWebhookError("Invalid webhook payload") from e

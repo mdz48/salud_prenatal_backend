@@ -27,3 +27,14 @@ class PatientDiaryResponse(PatientDiaryBase):
     weight_gain: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ExtractedSymptomResponse(BaseModel):
+    code: str
+    label: Optional[str] = None
+    raw_text: Optional[str] = None
+    negated: bool = False
+    score: Optional[float] = None
+    alarm: bool = False
+
+    model_config = ConfigDict(from_attributes=True)

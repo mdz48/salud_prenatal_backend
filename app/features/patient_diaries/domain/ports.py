@@ -11,7 +11,10 @@ class IPatientDiaryRepository(Protocol):
         
     def get_by_medical_record_id(self, medical_record_id: int) -> List[PatientDiaryEntity]:
         ...
-        
+
+    def get_latest_by_medical_record_id(self, medical_record_id: int) -> Optional[PatientDiaryEntity]:
+        ...
+
     def create(self, diary_data: PatientDiaryEntity) -> PatientDiaryEntity:
         ...
         

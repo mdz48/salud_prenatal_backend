@@ -12,6 +12,7 @@ from app.features.users.infrastructure.repositories.invitation_code_repository i
 from app.features.users.infrastructure.repositories.patient_repository import PatientRepository
 from app.features.medical_record.infrastructure.adapters.patient_info_adapter import PatientInfoAdapter
 from app.features.medical_record.infrastructure.adapters.social_cluster_adapter import SocialClusterAdapter
+from app.features.medical_record.infrastructure.adapters.latest_diary_adapter import LatestDiaryAdapter
 from app.features.forums.infrastructure.adapters.patient_cluster_adapter import PatientClusterAdapter
 from app.features.forums.infrastructure.adapters.author_role_adapter import AuthorRoleAdapter
 from app.features.users.infrastructure.adapters.medical_record_lookup_adapter import MedicalRecordLookupAdapter
@@ -131,6 +132,7 @@ class Container(containers.DeclarativeContainer):
     invitation_code_repository = providers.Factory(InvitationCodeRepository, db=db)
     patient_repository = providers.Factory(PatientRepository, db=db)
     patient_info_adapter = providers.Factory(PatientInfoAdapter, patient_repository=patient_repository)
+    latest_diary_adapter = providers.Factory(LatestDiaryAdapter, patient_diary_repository=patient_diary_repository)
     receptionist_repository = providers.Factory(ReceptionistRepository, db=db)
     user_repository = providers.Factory(UserRepository, db=db)
     forums_repository = providers.Factory(ForumsRepository, db=db)
@@ -155,8 +157,8 @@ class Container(containers.DeclarativeContainer):
     create_consultation_use_case = providers.Factory(CreateConsultationUseCase, consultation_repo=consultation_repository)
     get_consultations_by_medical_record_use_case = providers.Factory(GetConsultationsByMedicalRecordUseCase, consultation_repo=consultation_repository)
     create_medical_record_use_case = providers.Factory(CreateMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter)
-    get_patient_medical_record_use_case = providers.Factory(GetPatientMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, risk_prediction_repository=risk_prediction_repository)
-    evaluate_patient_risk_use_case = providers.Factory(EvaluatePatientRiskUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, ml_prediction_service=ml_prediction_service, risk_prediction_repository=risk_prediction_repository, social_cluster_port=social_cluster_adapter)
+    get_patient_medical_record_use_case = providers.Factory(GetPatientMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, risk_prediction_repository=risk_prediction_repository, latest_diary_repository=latest_diary_adapter)
+    evaluate_patient_risk_use_case = providers.Factory(EvaluatePatientRiskUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, ml_prediction_service=ml_prediction_service, risk_prediction_repository=risk_prediction_repository, social_cluster_port=social_cluster_adapter, latest_diary_repository=latest_diary_adapter)
     update_medical_record_use_case = providers.Factory(UpdateMedicalRecordUseCase, medical_record_repository=medical_record_repository)
     search_medical_records_by_patient_name_use_case = providers.Factory(SearchMedicalRecordsByPatientNameUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter)
     create_patient_diary_use_case = providers.Factory(CreatePatientDiaryUseCase, repository=patient_diary_repository)

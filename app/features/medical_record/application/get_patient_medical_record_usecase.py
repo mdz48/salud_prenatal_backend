@@ -1,15 +1,17 @@
-from app.features.medical_record.domain.ports import IMedicalRecordRepository, IPatientInfoPort, IRiskPredictionRepository
+from app.features.medical_record.domain.ports import IMedicalRecordRepository, IPatientInfoPort, IRiskPredictionRepository, ILatestDiaryPort
 
 class GetPatientMedicalRecordUseCase:
     def __init__(
         self,
         medical_record_repository: IMedicalRecordRepository,
         patient_repository: IPatientInfoPort,
-        risk_prediction_repository: IRiskPredictionRepository
+        risk_prediction_repository: IRiskPredictionRepository,
+        latest_diary_repository: ILatestDiaryPort
     ):
         self.medical_record_repository = medical_record_repository
         self.patient_repository = patient_repository
         self.risk_prediction_repository = risk_prediction_repository
+        self.latest_diary_repository = latest_diary_repository
 
     def execute(self, patient_id: int, doctor_id: int) -> dict:
         patient = self.patient_repository.get_patient_info(patient_id)
@@ -34,9 +36,7 @@ class GetPatientMedicalRecordUseCase:
         # Lectura pura: la evaluacion de riesgo se persiste con el boton del doctor
         # (EvaluatePatientRiskUseCase); aqui solo se lee la ultima, sin llamar al ML.
         risk_prediction = None
-        latest_diary = None
-        if medical_record.patient_diaries:
-            latest_diary = sorted(medical_record.patient_diaries, key=lambda d: d.created_at, reverse=True)[0]
+        latest_diary = self.latest_diary_repository.get_latest_diary_for_medical_record(medical_record.medical_record_id)
 
         latest_eval = self.risk_prediction_repository.get_latest_for_medical_record(medical_record.medical_record_id)
         if latest_eval:

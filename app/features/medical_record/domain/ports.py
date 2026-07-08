@@ -1,7 +1,7 @@
 from typing import Protocol, Optional, List
 from .medical_record_entity import MedicalRecordEntity
 from .risk_prediction_entity import RiskPredictionEntity
-from .dtos import PatientInfo
+from .dtos import PatientInfo, LatestDiary
 
 class IMedicalRecordRepository(Protocol):
     def get_by_patient_and_doctor(self, patient_id: int, doctor_id: int) -> Optional[MedicalRecordEntity]:...
@@ -24,3 +24,6 @@ class IRiskPredictionRepository(Protocol):
 
 class ISocialClusterPort(Protocol):
     def update_cluster(self, user_id: int, cluster: str) -> None:...
+
+class ILatestDiaryPort(Protocol):
+    def get_latest_diary_for_medical_record(self, medical_record_id: int) -> Optional[LatestDiary]:...

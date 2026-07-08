@@ -20,13 +20,12 @@ def _record(medical_record_id=1, patient_id=5, **overrides):
         initial_weight=60.0,
         initial_systolic=118,
         initial_diastolic=76,
-        patient_diaries=[],
     )
     data.update(overrides)
     return SimpleNamespace(**data)
 
 
-def _usecase(record, patient, ml_result=None):
+def _usecase(record, patient, ml_result=None, latest_diary=None):
     mr_repo = MagicMock()
     mr_repo.get_by_id.return_value = record
     patient_repo = MagicMock()
@@ -36,7 +35,9 @@ def _usecase(record, patient, ml_result=None):
     risk_repo = MagicMock()
     risk_repo.create.side_effect = lambda entity: entity  # devuelve lo que persiste
     social = MagicMock()
-    usecase = EvaluatePatientRiskUseCase(mr_repo, patient_repo, ml, risk_repo, social)
+    latest_diary_repo = MagicMock()
+    latest_diary_repo.get_latest_diary_for_medical_record.return_value = latest_diary
+    usecase = EvaluatePatientRiskUseCase(mr_repo, patient_repo, ml, risk_repo, social, latest_diary_repo)
     return usecase, ml, risk_repo, social
 
 

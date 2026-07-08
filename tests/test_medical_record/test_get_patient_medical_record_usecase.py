@@ -7,7 +7,7 @@ import pytest
 from app.features.medical_record.application.get_patient_medical_record_usecase import GetPatientMedicalRecordUseCase
 
 
-def _make_usecase(medical_record, latest_eval=None):
+def _make_usecase(medical_record, latest_eval=None, latest_diary=None):
     mr_repo = MagicMock()
     mr_repo.get_by_patient_and_doctor.return_value = medical_record
 
@@ -23,15 +23,17 @@ def _make_usecase(medical_record, latest_eval=None):
     risk_repo = MagicMock()
     risk_repo.get_latest_for_medical_record.return_value = latest_eval
 
-    return GetPatientMedicalRecordUseCase(mr_repo, patient_repo, risk_repo), mr_repo, risk_repo
+    latest_diary_repo = MagicMock()
+    latest_diary_repo.get_latest_diary_for_medical_record.return_value = latest_diary
+
+    return GetPatientMedicalRecordUseCase(mr_repo, patient_repo, risk_repo, latest_diary_repo), mr_repo, risk_repo, latest_diary_repo
 
 
-def _record(patient_diaries=None):
+def _record():
     mr = MagicMock()
     mr.medical_record_id = 7
     mr.current_gestational_weeks = 20  # vive en el expediente
     mr.consultations = [MagicMock(consultation_id=1, created_at="2023-01-01")]
-    mr.patient_diaries = patient_diaries or []
     return mr
 
 
@@ -46,7 +48,7 @@ def _eval(status="ok", predicted_at=None):
 
 
 def test_get_devuelve_ultima_evaluacion_sin_llamar_al_ml():
-    usecase, mr_repo, risk_repo = _make_usecase(_record(), latest_eval=_eval())
+    usecase, mr_repo, risk_repo, latest_diary_repo = _make_usecase(_record(), latest_eval=_eval())
 
     result = usecase.execute(patient_id=1, doctor_id=2)
 
@@ -61,12 +63,17 @@ def test_get_devuelve_ultima_evaluacion_sin_llamar_al_ml():
     assert rp["stale"] is False  # sin bitacoras posteriores
     mr_repo.get_by_patient_and_doctor.assert_called_once_with(1, 2)
     risk_repo.get_latest_for_medical_record.assert_called_once_with(7)
+    # La bitacora mas reciente se obtiene con una consulta dedicada, no cargando toda la coleccion
+    latest_diary_repo.get_latest_diary_for_medical_record.assert_called_once_with(7)
 
 
 def test_stale_true_si_hay_bitacora_posterior_a_la_evaluacion():
     diary = SimpleNamespace(created_at=datetime(2026, 7, 2, 9, 0))
-    record = _record(patient_diaries=[diary])
-    usecase, _, _ = _make_usecase(record, latest_eval=_eval(predicted_at=datetime(2026, 7, 1, 10, 0)))
+    usecase, _, _, _ = _make_usecase(
+        _record(),
+        latest_eval=_eval(predicted_at=datetime(2026, 7, 1, 10, 0)),
+        latest_diary=diary,
+    )
 
     result = usecase.execute(patient_id=1, doctor_id=2)
 
@@ -74,7 +81,7 @@ def test_stale_true_si_hay_bitacora_posterior_a_la_evaluacion():
 
 
 def test_sin_evaluacion_previa_risk_prediction_es_none():
-    usecase, _, _ = _make_usecase(_record(), latest_eval=None)
+    usecase, _, _, _ = _make_usecase(_record(), latest_eval=None)
 
     result = usecase.execute(patient_id=1, doctor_id=2)
 
@@ -82,7 +89,7 @@ def test_sin_evaluacion_previa_risk_prediction_es_none():
 
 
 def test_get_patient_medical_record_patient_not_found():
-    usecase, _, _ = _make_usecase(_record())
+    usecase, _, _, _ = _make_usecase(_record())
     usecase.patient_repository.get_patient_info.return_value = None
 
     with pytest.raises(ValueError, match="Patient not found"):
@@ -90,7 +97,7 @@ def test_get_patient_medical_record_patient_not_found():
 
 
 def test_patient_sin_relacion_con_el_doctor():
-    usecase, _, _ = _make_usecase(_record())
+    usecase, _, _, _ = _make_usecase(_record())
     usecase.patient_repository.get_patient_info.return_value.doctor_id = 99
 
     with pytest.raises(ValueError, match="no tiene una relaci"):
@@ -98,7 +105,7 @@ def test_patient_sin_relacion_con_el_doctor():
 
 
 def test_relacion_existe_pero_expediente_no_ha_sido_creado():
-    usecase, mr_repo, _ = _make_usecase(_record())
+    usecase, mr_repo, _, _ = _make_usecase(_record())
     mr_repo.get_by_patient_and_doctor.return_value = None
 
     with pytest.raises(ValueError, match="expediente"):

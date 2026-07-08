@@ -12,9 +12,21 @@ from app.core.security import get_secret_key, ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
 
+
+def authenticate_token(token: str, user_repo: IUserRepository) -> UserEntity | None:
+    try:
+        payload = jwt.decode(token, get_secret_key(), algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            return None
+    except JWTError:
+        return None
+    return user_repo.get_by_email(email)
+
+
 @inject
 def get_current_user(
-    token: str = Depends(oauth2_scheme), 
+    token: str = Depends(oauth2_scheme),
     user_repo: IUserRepository = Depends(Provide[Container.user_repository])
 ) -> UserEntity:
     credentials_exception = HTTPException(
@@ -22,16 +34,7 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload = jwt.decode(token, get_secret_key(), algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-        
-    user = user_repo.get_by_email(email)
-    
+    user = authenticate_token(token, user_repo)
     if user is None:
         raise credentials_exception
     return user

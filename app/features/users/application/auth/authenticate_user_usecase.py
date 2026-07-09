@@ -34,6 +34,7 @@ class AuthenticateUserUseCase:
         doctor_id = None
         medical_record_id = None
         receptionist_info = None
+        receptionist_id = None
         subscription_status = None
 
         if user.role.value == "paciente":
@@ -51,6 +52,7 @@ class AuthenticateUserUseCase:
             receptionist = self.receptionist_repository.get_by_user_id(user.user_id)
             if receptionist:
                 doctor_id = receptionist.doctor_id
+                receptionist_id = receptionist.receptionist_id
 
         if doctor_id:
             receptionists = self.receptionist_repository.get_by_doctor_id(doctor_id)
@@ -70,6 +72,7 @@ class AuthenticateUserUseCase:
             "patient_id": patient_id,
             "doctor_id": doctor_id,
             "medical_record_id": medical_record_id,
+            "receptionist_id": receptionist_id,
             "receptionist": receptionist_info,
             "subscription_status": subscription_status
         }

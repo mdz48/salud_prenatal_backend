@@ -19,9 +19,14 @@ class GetChatContactsUseCase:
 
         if role == "recepcionista":
             doctor_id = self.contacts_lookup.get_doctor_id_for_receptionist(current_user_id)
-            contacts = self.contacts_lookup.get_patients_of_doctor(doctor_id) if doctor_id else []
-            contacts += self.contacts_lookup.get_all_doctors()
-            return self._dedupe_and_exclude_current_user(contacts, current_user_id)
+            if not doctor_id:
+                return []
+
+            contacts = self.contacts_lookup.get_patients_of_doctor(doctor_id)
+            doctor_contact = self.contacts_lookup.get_doctor_contact(doctor_id)
+            if doctor_contact:
+                contacts.append(doctor_contact)
+            return self._exclude_current_user(contacts, current_user_id)
 
         if role == "paciente":
             doctor_id = self.contacts_lookup.get_doctor_id_for_patient(current_user_id)
@@ -41,15 +46,3 @@ class GetChatContactsUseCase:
         self, contacts: List[ChatUser], current_user_id: int
     ) -> List[ChatUser]:
         return [contact for contact in contacts if contact.user_id != current_user_id]
-
-    def _dedupe_and_exclude_current_user(
-        self, contacts: List[ChatUser], current_user_id: int
-    ) -> List[ChatUser]:
-        seen = set()
-        deduped = []
-        for contact in contacts:
-            if contact.user_id == current_user_id or contact.user_id in seen:
-                continue
-            seen.add(contact.user_id)
-            deduped.append(contact)
-        return deduped

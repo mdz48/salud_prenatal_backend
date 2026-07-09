@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-from app.core.enums import RoleEnum
 from app.features.chat.domain.dtos import ChatUser
 from app.features.chat.domain.ports import IChatContactsLookup
 from app.features.users.domain.user_entity import UserEntity
@@ -60,12 +59,6 @@ class ChatContactsLookupAdapter(IChatContactsLookup):
             return None
 
         return self._to_chat_user(user, role="doctor")
-
-    def get_all_doctors(self) -> List[ChatUser]:
-        return [
-            self._to_chat_user(user, role="doctor")
-            for user in self.user_repository.get_by_role(RoleEnum.doctor)
-        ]
 
     def _to_chat_user(self, user: UserEntity, role: str) -> ChatUser:
         return ChatUser(

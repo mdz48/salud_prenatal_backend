@@ -80,16 +80,6 @@ def test_chat_contacts_lookup_mapea_pacientes_recepcionistas_y_doctor():
     assert doctor.role == "doctor"
 
 
-def test_chat_contacts_lookup_get_all_doctors_usa_solo_rol_doctor():
-    adapter = _adapter()
-    adapter.user_repository.get_by_role.return_value = [_user(5, RoleEnum.doctor)]
-
-    doctors = adapter.get_all_doctors()
-
-    adapter.user_repository.get_by_role.assert_called_once_with(RoleEnum.doctor)
-    assert [doctor.role for doctor in doctors] == ["doctor"]
-
-
 def test_chat_contacts_lookup_omite_doctor_inactivo():
     adapter = _adapter()
     adapter.doctor_repository.get_by_id.return_value = DoctorEntity(doctor_id=10, user_id=5)

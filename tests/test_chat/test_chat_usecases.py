@@ -129,24 +129,34 @@ def test_get_chat_contacts_doctor_sin_perfil_devuelve_lista_vacia():
     lookup.get_receptionists_of_doctor.assert_not_called()
 
 
-def test_get_chat_contacts_recepcionista_dedupea_y_excluye_usuario_actual():
+def test_get_chat_contacts_recepcionista_devuelve_pacientes_y_su_doctor():
     lookup = MagicMock()
     lookup.get_doctor_id_for_receptionist.return_value = 10
     lookup.get_patients_of_doctor.return_value = [
         ChatUser(user_id=2, name="Ana", last_name="Ruiz", role="paciente"),
         ChatUser(user_id=3, name="Luis", last_name="Paz", role="paciente"),
     ]
-    lookup.get_all_doctors.return_value = [
-        ChatUser(user_id=1, name="Recep", last_name="Actual", role="recepcionista"),
-        ChatUser(user_id=3, name="Luis", last_name="Paz", role="doctor"),
-        ChatUser(user_id=4, name="Dra", last_name="Lopez", role="doctor"),
-    ]
+    lookup.get_doctor_contact.return_value = ChatUser(
+        user_id=4, name="Dra", last_name="Lopez", role="doctor"
+    )
 
     result = GetChatContactsUseCase(lookup).execute(
         current_user_id=1, role="recepcionista"
     )
 
+    lookup.get_doctor_id_for_receptionist.assert_called_once_with(1)
+    lookup.get_patients_of_doctor.assert_called_once_with(10)
+    lookup.get_doctor_contact.assert_called_once_with(10)
     assert [contact.user_id for contact in result] == [2, 3, 4]
+
+
+def test_get_chat_contacts_recepcionista_sin_perfil_devuelve_lista_vacia():
+    lookup = MagicMock()
+    lookup.get_doctor_id_for_receptionist.return_value = None
+
+    assert GetChatContactsUseCase(lookup).execute(current_user_id=1, role="recepcionista") == []
+    lookup.get_patients_of_doctor.assert_not_called()
+    lookup.get_doctor_contact.assert_not_called()
 
 
 def test_get_chat_contacts_paciente_devuelve_doctor_y_recepcionistas():

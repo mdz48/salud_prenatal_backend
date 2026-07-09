@@ -7,6 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketException, Depends, Query, st
 from app.features.chat.infrastructure.controllers.chat_controller import ChatController
 from app.features.chat.infrastructure.schemas.chat_schema import MessageResponse
 from app.features.chat.domain.inbox_item_response import InboxItemResponse
+from app.features.chat.domain.dtos import ChatUser
 from typing import List
 
 router= APIRouter(prefix="/chat", tags=["Chat"])
@@ -18,6 +19,15 @@ def get_inbox(
     controller: ChatController = Depends(Provide[Container.chat_controller])
 ):
     return controller.get_inbox(current_user.user_id)
+
+@router.get("/contacts", response_model=List[ChatUser])
+@inject
+def get_contacts(
+    current_user: UserEntity = Depends(get_current_user),
+    controller: ChatController = Depends(Provide[Container.chat_controller])
+):
+    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    return controller.get_contacts(current_user.user_id, role)
 
 @router.get("/history/{other_user_id}", response_model=List[MessageResponse])
 @inject

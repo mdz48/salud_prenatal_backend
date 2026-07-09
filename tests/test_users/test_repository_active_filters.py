@@ -12,6 +12,7 @@ from app.features.users.infrastructure.models.receptionist_model import Receptio
 from app.features.users.infrastructure.models.user_model import Usuario
 from app.features.users.infrastructure.repositories.patient_repository import PatientRepository
 from app.features.users.infrastructure.repositories.receptionist_repository import ReceptionistRepository
+from app.features.users.infrastructure.repositories.user_repository import UserRepository
 
 
 @pytest.fixture()
@@ -55,6 +56,16 @@ def test_get_receptionists_by_doctor_excludes_inactive_users(db_session):
     db_session.commit()
 
     users = ReceptionistRepository(db_session).get_by_doctor_id(77)
+
+    assert [u.user_id for u in users] == [active.user_id]
+
+
+def test_get_by_role_excludes_inactive_users(db_session):
+    active = _make_user(db_session, "doctor-a@example.com", role=RoleEnum.doctor)
+    _make_user(db_session, "doctor-b@example.com", role=RoleEnum.doctor, is_active=False)
+    _make_user(db_session, "patient@example.com", role=RoleEnum.patient)
+
+    users = UserRepository(db_session).get_by_role(RoleEnum.doctor)
 
     assert [u.user_id for u in users] == [active.user_id]
 

@@ -17,6 +17,7 @@ EXPECTED_ROUTES = [
     "/api/v1/appointments/doctor/{doctor_id}",
     "/api/v1/appointments/patient/{patient_id}",
     "/api/v1/appointments/{appointment_id}",
+    "/api/v1/chat/contacts",
     "/api/v1/chat/history/{other_user_id}",
     "/api/v1/chat/inbox",
     "/api/v1/consultations/",

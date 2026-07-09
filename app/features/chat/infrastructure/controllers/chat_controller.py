@@ -3,6 +3,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from app.features.chat.application.get_history_usecase import GetHistoryUseCase
 from app.features.chat.application.save_message_usecase import SaveMessageUseCase
 from app.features.chat.application.get_chat_inbox_usecase import GetChatInboxUseCase
+from app.features.chat.application.get_chat_contacts_usecase import GetChatContactsUseCase
 from app.features.chat.infrastructure.websocket_manager import manager
 
 class ChatController:
@@ -10,14 +11,19 @@ class ChatController:
         self,
         get_history_usecase: GetHistoryUseCase,
         save_message_usecase: SaveMessageUseCase,
-        get_chat_inbox_usecase: GetChatInboxUseCase
+        get_chat_inbox_usecase: GetChatInboxUseCase,
+        get_chat_contacts_usecase: GetChatContactsUseCase
     ):
         self.get_history_usecase = get_history_usecase
         self.save_message_usecase = save_message_usecase
         self.get_chat_inbox_usecase = get_chat_inbox_usecase
+        self.get_chat_contacts_usecase = get_chat_contacts_usecase
 
     def get_inbox(self, current_user_id: int):
         return self.get_chat_inbox_usecase.execute(current_user_id)
+
+    def get_contacts(self, current_user_id: int, role: str):
+        return self.get_chat_contacts_usecase.execute(current_user_id, role)
 
     def get_chat_history(self, current_user_id: int, other_user_id: int):
         return self.get_history_usecase.execute(current_user_id, other_user_id)

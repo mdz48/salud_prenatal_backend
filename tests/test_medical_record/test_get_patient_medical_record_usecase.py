@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.features.medical_record.application.get_patient_medical_record_usecase import GetPatientMedicalRecordUseCase
+from app.features.medical_record.application.protected_medical_record_repository import ProtectedMedicalRecordRepository
 
 
 def _make_usecase(medical_record, latest_eval=None, latest_diary=None):
@@ -20,13 +21,16 @@ def _make_usecase(medical_record, latest_eval=None, latest_diary=None):
     patient_mock.doctor_id = 2
     patient_repo.get_patient_info.return_value = patient_mock
 
+    # La autorización la aplica el Protection Proxy (ADR-03) que envuelve al repo real.
+    protected_repo = ProtectedMedicalRecordRepository(mr_repo, patient_repo)
+
     risk_repo = MagicMock()
     risk_repo.get_latest_for_medical_record.return_value = latest_eval
 
     latest_diary_repo = MagicMock()
     latest_diary_repo.get_latest_diary_for_medical_record.return_value = latest_diary
 
-    return GetPatientMedicalRecordUseCase(mr_repo, patient_repo, risk_repo, latest_diary_repo), mr_repo, risk_repo, latest_diary_repo
+    return GetPatientMedicalRecordUseCase(protected_repo, patient_repo, risk_repo, latest_diary_repo), mr_repo, risk_repo, latest_diary_repo
 
 
 def _record():

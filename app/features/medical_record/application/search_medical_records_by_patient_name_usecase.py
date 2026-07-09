@@ -1,7 +1,6 @@
 from typing import List, Optional
-from app.core.text import normalize_text
+from app.core.query.name_search_query import NameSearchCriteria
 from app.features.medical_record.domain.ports import IMedicalRecordRepository, IPatientInfoPort
-from app.features.medical_record.domain.dtos import PatientInfo
 
 
 class SearchMedicalRecordsByPatientNameUseCase:
@@ -10,13 +9,14 @@ class SearchMedicalRecordsByPatientNameUseCase:
         self.patient_repository = patient_repository
 
     def execute(self, doctor_id: int, name: Optional[str] = None, last_name: Optional[str] = None) -> List[dict]:
-        if not name and not last_name:
+        criteria = NameSearchCriteria(name=name, last_name=last_name)
+        if criteria.is_empty():
             raise ValueError("Debe proporcionar nombre o apellido para buscar")
 
         patients = self.patient_repository.get_patients_by_doctor(doctor_id)
         results = []
         for patient in patients:
-            if not self._matches(patient, name, last_name):
+            if not criteria.matches(patient.name, patient.last_name):
                 continue
             record = self.medical_record_repository.get_by_patient_and_doctor(patient.patient_id, doctor_id)
             if not record:
@@ -31,11 +31,3 @@ class SearchMedicalRecordsByPatientNameUseCase:
                 "medical_record": record,
             })
         return results
-
-    @staticmethod
-    def _matches(patient: PatientInfo, name: Optional[str], last_name: Optional[str]) -> bool:
-        if name and normalize_text(name) not in normalize_text(patient.name or ""):
-            return False
-        if last_name and normalize_text(last_name) not in normalize_text(patient.last_name or ""):
-            return False
-        return True

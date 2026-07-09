@@ -15,12 +15,9 @@ class GetPatientMedicalRecordUseCase:
 
     def execute(self, patient_id: int, doctor_id: int) -> dict:
         patient = self.patient_repository.get_patient_info(patient_id)
-        if not patient:
-            raise ValueError("Patient not found")
 
-        if patient.doctor_id != doctor_id:
-            raise ValueError("El paciente no tiene una relación con este doctor")
-
+        # La autorización (paciente existe + pertenece al doctor) la aplica el
+        # Protection Proxy (ProtectedMedicalRecordRepository) al pedir el expediente.
         medical_record = self.medical_record_repository.get_by_patient_and_doctor(patient_id, doctor_id)
         if not medical_record:
             raise ValueError("El doctor aún no ha creado el expediente clínico para este paciente")

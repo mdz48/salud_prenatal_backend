@@ -1,6 +1,11 @@
 from dependency_injector import containers, providers
 from app.core.database import get_db
+from app.core.events.subscribers import build_event_bus
 from app.features.medical_record.infrastructure.adapters.ml_prediction_adapter import MlPredictionServiceAdapter
+from app.features.medical_record.application.protected_medical_record_repository import ProtectedMedicalRecordRepository
+from app.features.patient_diaries.domain.symptom_analysis import KeywordSymptomStrategy, SymptomAnalyzer
+from app.features.patient_diaries.application.analyze_symptoms_usecase import AnalyzeSymptomsUseCase
+from app.features.forums.application.posts.build_post_thread_usecase import BuildPostThreadUseCase
 
 from app.features.appointments.infrastructure.repositories.appointment_repository import AppointmentRepository
 from app.features.chat.infrastructure.repositories.chat_repository import ChatRepository
@@ -122,6 +127,9 @@ class Container(containers.DeclarativeContainer):
 
     db = providers.Resource(get_db)
 
+    # Event bus (Observer) — Singleton con observadores por defecto ya suscritos
+    event_bus = providers.Singleton(build_event_bus)
+
     # ML Adapter
     ml_prediction_service = providers.Factory(MlPredictionServiceAdapter)
 
@@ -136,6 +144,12 @@ class Container(containers.DeclarativeContainer):
     invitation_code_repository = providers.Factory(InvitationCodeRepository, db=db)
     patient_repository = providers.Factory(PatientRepository, db=db)
     patient_info_adapter = providers.Factory(PatientInfoAdapter, patient_repository=patient_repository)
+    # Protection Proxy sobre el repositorio de expedientes (autorización paciente-doctor)
+    protected_medical_record_repository = providers.Factory(
+        ProtectedMedicalRecordRepository,
+        real_repository=medical_record_repository,
+        patient_info_port=patient_info_adapter,
+    )
     latest_diary_adapter = providers.Factory(LatestDiaryAdapter, patient_diary_repository=patient_diary_repository)
     receptionist_repository = providers.Factory(ReceptionistRepository, db=db)
     user_repository = providers.Factory(UserRepository, db=db)
@@ -148,7 +162,7 @@ class Container(containers.DeclarativeContainer):
     subscription_initializer_adapter = providers.Factory(SubscriptionInitializerAdapter, subscription_repository=subscription_repository)
 
     # Use Cases
-    create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=patient_repository, doctor_repo=doctor_repository)
+    create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=patient_repository, doctor_repo=doctor_repository, event_bus=event_bus)
     delete_appointment_use_case = providers.Factory(DeleteAppointmentUseCase, appointment_repo=appointment_repository)
     get_appointments_by_doctor_use_case = providers.Factory(GetAppointmentsByDoctorUseCase, appointment_repo=appointment_repository)
     get_appointments_by_patient_use_case = providers.Factory(GetAppointmentsByPatientUseCase, appointment_repo=appointment_repository)
@@ -161,7 +175,7 @@ class Container(containers.DeclarativeContainer):
     create_consultation_use_case = providers.Factory(CreateConsultationUseCase, consultation_repo=consultation_repository)
     get_consultations_by_medical_record_use_case = providers.Factory(GetConsultationsByMedicalRecordUseCase, consultation_repo=consultation_repository)
     create_medical_record_use_case = providers.Factory(CreateMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter)
-    get_patient_medical_record_use_case = providers.Factory(GetPatientMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, risk_prediction_repository=risk_prediction_repository, latest_diary_repository=latest_diary_adapter)
+    get_patient_medical_record_use_case = providers.Factory(GetPatientMedicalRecordUseCase, medical_record_repository=protected_medical_record_repository, patient_repository=patient_info_adapter, risk_prediction_repository=risk_prediction_repository, latest_diary_repository=latest_diary_adapter)
     evaluate_patient_risk_use_case = providers.Factory(EvaluatePatientRiskUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, ml_prediction_service=ml_prediction_service, risk_prediction_repository=risk_prediction_repository, social_cluster_port=social_cluster_adapter, latest_diary_repository=latest_diary_adapter)
     update_medical_record_use_case = providers.Factory(UpdateMedicalRecordUseCase, medical_record_repository=medical_record_repository)
     search_medical_records_by_patient_name_use_case = providers.Factory(SearchMedicalRecordsByPatientNameUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter)
@@ -184,7 +198,7 @@ class Container(containers.DeclarativeContainer):
     get_doctor_dashboard_use_case = providers.Factory(GetDoctorDashboardUseCase, doctor_repository=doctor_repository, user_repository=user_repository, patient_repository=patient_repository, receptionist_repository=receptionist_repository, appointment_lookup=appointment_lookup_adapter)
     get_receptionist_by_id_use_case = providers.Factory(GetReceptionistByIdUseCase, receptionist_repository=receptionist_repository, user_repository=user_repository)
     get_receptionist_dashboard_use_case = providers.Factory(GetReceptionistDashboardUseCase, receptionist_repository=receptionist_repository, user_repository=user_repository, patient_repository=patient_repository, appointment_lookup=appointment_lookup_adapter)
-    redeem_invitation_code_use_case = providers.Factory(RedeemInvitationCodeUseCase, patient_repository=patient_repository, invitation_code_repository=invitation_code_repository)
+    redeem_invitation_code_use_case = providers.Factory(RedeemInvitationCodeUseCase, patient_repository=patient_repository, invitation_code_repository=invitation_code_repository, event_bus=event_bus)
     register_patient_use_case = providers.Factory(RegisterPatientUseCase, user_repository=user_repository, patient_repository=patient_repository)
     get_patients_by_doctor_use_case = providers.Factory(GetPatientsByDoctorUseCase, patient_repository=patient_repository, medical_record_lookup=medical_record_lookup_adapter)
     search_patients_by_name_use_case = providers.Factory(SearchPatientsByNameUseCase, patient_repository=patient_repository)
@@ -206,6 +220,11 @@ class Container(containers.DeclarativeContainer):
     add_comment_use_case = providers.Factory(AddCommentUseCase, forums_repo=forums_repository)
     get_comments_use_case = providers.Factory(GetCommentsUseCase, forums_repo=forums_repository)
     create_report_use_case = providers.Factory(CreateReportUseCase, forums_repo=forums_repository)
+    # Composite: arma el hilo (post + comentarios) como árbol uniforme
+    build_post_thread_use_case = providers.Factory(BuildPostThreadUseCase, forums_repo=forums_repository)
+    # Strategy: análisis de síntomas con estrategia intercambiable (hoy por palabras clave)
+    symptom_analyzer = providers.Factory(SymptomAnalyzer, strategy=providers.Factory(KeywordSymptomStrategy))
+    analyze_symptoms_use_case = providers.Factory(AnalyzeSymptomsUseCase, analyzer=symptom_analyzer)
     create_checkout_session_use_case = providers.Factory(CreateCheckoutSessionUseCase, subscription_repository=subscription_repository, payment_gateway=stripe_payment_gateway)
     get_my_subscription_use_case = providers.Factory(GetMySubscriptionUseCase, subscription_repository=subscription_repository)
     handle_payment_event_use_case = providers.Factory(HandlePaymentEventUseCase, subscription_repository=subscription_repository, payment_gateway=stripe_payment_gateway)

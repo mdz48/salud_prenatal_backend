@@ -8,3 +8,6 @@ class AppointmentLookupAdapter(IAppointmentLookup):
         
     def get_appointments_by_patient_id(self, patient_id: int) -> List[object]:
         return self.appointment_repository.get_by_patient_id(patient_id)
+
+    def get_appointments_by_doctor_id(self, doctor_id: int) -> List[object]:
+        return self.appointment_repository.get_by_doctor_id(doctor_id)

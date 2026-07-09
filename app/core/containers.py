@@ -48,6 +48,10 @@ from app.features.users.application.doctor.register_doctor_usecase import Regist
 from app.features.users.application.doctor.create_receptionist_usecase import CreateReceptionistUseCase
 from app.features.users.application.doctor.get_receptionists_by_doctor_usecase import GetReceptionistsByDoctorUseCase
 from app.features.users.application.doctor.generate_invitation_code_usecase import GenerateInvitationCodeUseCase
+from app.features.users.application.doctor.get_doctor_by_id_usecase import GetDoctorByIdUseCase
+from app.features.users.application.doctor.get_doctor_dashboard_usecase import GetDoctorDashboardUseCase
+from app.features.users.application.doctor.get_receptionist_by_id_usecase import GetReceptionistByIdUseCase
+from app.features.users.application.doctor.get_receptionist_dashboard_usecase import GetReceptionistDashboardUseCase
 from app.features.users.application.invitation.redeem_invitation_code_usecase import RedeemInvitationCodeUseCase
 from app.features.users.application.patient.register_patient_usecase import RegisterPatientUseCase
 from app.features.users.application.patient.get_patients_by_doctor_usecase import GetPatientsByDoctorUseCase
@@ -176,6 +180,10 @@ class Container(containers.DeclarativeContainer):
     create_receptionist_use_case = providers.Factory(CreateReceptionistUseCase, user_repository=user_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository)
     get_receptionists_by_doctor_use_case = providers.Factory(GetReceptionistsByDoctorUseCase, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository)
     generate_invitation_code_use_case = providers.Factory(GenerateInvitationCodeUseCase, doctor_repository=doctor_repository, invitation_code_repository=invitation_code_repository)
+    get_doctor_by_id_use_case = providers.Factory(GetDoctorByIdUseCase, doctor_repository=doctor_repository, user_repository=user_repository)
+    get_doctor_dashboard_use_case = providers.Factory(GetDoctorDashboardUseCase, doctor_repository=doctor_repository, user_repository=user_repository, patient_repository=patient_repository, receptionist_repository=receptionist_repository, appointment_lookup=appointment_lookup_adapter)
+    get_receptionist_by_id_use_case = providers.Factory(GetReceptionistByIdUseCase, receptionist_repository=receptionist_repository, user_repository=user_repository)
+    get_receptionist_dashboard_use_case = providers.Factory(GetReceptionistDashboardUseCase, receptionist_repository=receptionist_repository, user_repository=user_repository, patient_repository=patient_repository, appointment_lookup=appointment_lookup_adapter)
     redeem_invitation_code_use_case = providers.Factory(RedeemInvitationCodeUseCase, patient_repository=patient_repository, invitation_code_repository=invitation_code_repository)
     register_patient_use_case = providers.Factory(RegisterPatientUseCase, user_repository=user_repository, patient_repository=patient_repository)
     get_patients_by_doctor_use_case = providers.Factory(GetPatientsByDoctorUseCase, patient_repository=patient_repository, medical_record_lookup=medical_record_lookup_adapter)
@@ -211,7 +219,7 @@ class Container(containers.DeclarativeContainer):
     user_controller = providers.Factory(UserController, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case, create_user_use_case)
     auth_controller = providers.Factory(AuthController, authenticate_user_use_case)
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)
-    doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case)
+    doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case, get_doctor_by_id_use_case, get_doctor_dashboard_use_case, get_receptionist_by_id_use_case, get_receptionist_dashboard_use_case)
     profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case)
     groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case, get_recommended_groups_use_case)
     posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case)

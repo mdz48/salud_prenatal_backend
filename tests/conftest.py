@@ -31,3 +31,28 @@ def client(app):
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture()
+def activate_subscription(app):
+    """Activa la suscripcion de un doctor escribiendo directo en la BD de test,
+    sin pasar por Stripe. Los doctores quedan 'pending' al registrarse, asi que
+    los flujos e2e que ejercitan endpoints gateados deben activarla primero."""
+    from app.core.database import get_session_factory
+    from app.features.users.infrastructure.models.user_model import Usuario
+    from app.features.subscriptions.infrastructure.models.subscription_model import Subscription
+    from app.core.enums import SubscriptionStatusEnum
+
+    def _activate(email: str):
+        db = get_session_factory()()
+        try:
+            user = db.query(Usuario).filter(Usuario.email == email).first()
+            assert user is not None, f"No user for email {email}"
+            sub = db.query(Subscription).filter(Subscription.user_id == user.user_id).first()
+            assert sub is not None, f"No subscription row for user {user.user_id}"
+            sub.status = SubscriptionStatusEnum.active
+            db.commit()
+        finally:
+            db.close()
+
+    return _activate

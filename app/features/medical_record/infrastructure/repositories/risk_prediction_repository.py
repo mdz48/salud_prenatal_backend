@@ -26,3 +26,15 @@ class RiskPredictionRepository(IRiskPredictionRepository):
             .first()
         )
         return RiskPredictionEntity.model_validate(db_obj) if db_obj else None
+
+    def get_latest_ok_for_medical_record(self, medical_record_id: int) -> Optional[RiskPredictionEntity]:
+        db_obj = (
+            self.db.query(RiskPrediction)
+            .filter(
+                RiskPrediction.medical_record_id == medical_record_id,
+                RiskPrediction.status == "ok",
+            )
+            .order_by(RiskPrediction.predicted_at.desc(), RiskPrediction.risk_prediction_id.desc())
+            .first()
+        )
+        return RiskPredictionEntity.model_validate(db_obj) if db_obj else None

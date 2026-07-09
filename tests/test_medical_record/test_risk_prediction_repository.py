@@ -39,3 +39,21 @@ def test_create_y_get_latest(db_session):
 
 def test_get_latest_sin_filas_devuelve_none(db_session):
     assert RiskPredictionRepository(db_session).get_latest_for_medical_record(999) is None
+
+
+def test_get_latest_ok_ignora_fallos_posteriores(db_session):
+    repo = RiskPredictionRepository(db_session)
+    ok = repo.create(RiskPredictionEntity(medical_record_id=1, status="ok", prediction={"risk_cluster": 3}))
+    repo.create(RiskPredictionEntity(medical_record_id=1, status="ml_unavailable"))
+
+    latest_ok = repo.get_latest_ok_for_medical_record(1)
+
+    assert latest_ok.risk_prediction_id == ok.risk_prediction_id
+    assert latest_ok.prediction == {"risk_cluster": 3}
+
+
+def test_get_latest_ok_sin_exitosas_devuelve_none(db_session):
+    repo = RiskPredictionRepository(db_session)
+    repo.create(RiskPredictionEntity(medical_record_id=1, status="insufficient_data", missing_fields=["systolic"]))
+
+    assert repo.get_latest_ok_for_medical_record(1) is None

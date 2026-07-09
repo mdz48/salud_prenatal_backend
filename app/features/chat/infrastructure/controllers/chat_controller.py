@@ -20,7 +20,6 @@ class ChatController:
         return self.get_chat_inbox_usecase.execute(current_user_id)
 
     def get_chat_history(self, current_user_id: int, other_user_id: int):
-        # Note: current_user_id is passed as query param for testing (RBAC skipped for now)
         return self.get_history_usecase.execute(current_user_id, other_user_id)
 
     async def websocket_endpoint(self, websocket: WebSocket, user_id: int):

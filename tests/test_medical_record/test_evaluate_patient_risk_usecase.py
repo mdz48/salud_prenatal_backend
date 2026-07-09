@@ -8,8 +8,8 @@ from app.features.medical_record.application.evaluate_patient_risk_usecase impor
 )
 
 
-def _patient(age=30):
-    return SimpleNamespace(age=age)
+def _patient(age=30, user_id=7):
+    return SimpleNamespace(age=age, user_id=user_id)
 
 
 def _record(medical_record_id=1, patient_id=5, **overrides):
@@ -20,13 +20,12 @@ def _record(medical_record_id=1, patient_id=5, **overrides):
         initial_weight=60.0,
         initial_systolic=118,
         initial_diastolic=76,
-        patient_diaries=[],
     )
     data.update(overrides)
     return SimpleNamespace(**data)
 
 
-def _usecase(record, patient, ml_result=None):
+def _usecase(record, patient, ml_result=None, latest_diary=None):
     mr_repo = MagicMock()
     mr_repo.get_by_id.return_value = record
     patient_repo = MagicMock()
@@ -35,12 +34,16 @@ def _usecase(record, patient, ml_result=None):
     ml.predict.return_value = ml_result
     risk_repo = MagicMock()
     risk_repo.create.side_effect = lambda entity: entity  # devuelve lo que persiste
-    return EvaluatePatientRiskUseCase(mr_repo, patient_repo, ml, risk_repo), ml, risk_repo
+    social = MagicMock()
+    latest_diary_repo = MagicMock()
+    latest_diary_repo.get_latest_diary_for_medical_record.return_value = latest_diary
+    usecase = EvaluatePatientRiskUseCase(mr_repo, patient_repo, ml, risk_repo, social, latest_diary_repo)
+    return usecase, ml, risk_repo, social
 
 
 def test_evaluacion_ok_persiste_prediccion(monkeypatch):
     monkeypatch.setenv("ML_MODEL_VERSION", "v2.0.0")
-    usecase, ml, risk_repo = _usecase(_record(), _patient(), ml_result={"cluster": 1})
+    usecase, ml, risk_repo, social = _usecase(_record(), _patient(), ml_result={"cluster": 1})
 
     result = usecase.execute(1)
 
@@ -53,7 +56,7 @@ def test_evaluacion_ok_persiste_prediccion(monkeypatch):
 
 def test_datos_insuficientes_no_llama_al_ml():
     record = _record(initial_systolic=None, initial_diastolic=None)
-    usecase, ml, risk_repo = _usecase(record, _patient())
+    usecase, ml, risk_repo, social = _usecase(record, _patient())
 
     result = usecase.execute(1)
 
@@ -64,7 +67,7 @@ def test_datos_insuficientes_no_llama_al_ml():
 
 
 def test_ml_caido_persiste_ml_unavailable():
-    usecase, ml, risk_repo = _usecase(_record(), _patient(), ml_result=None)
+    usecase, ml, risk_repo, social = _usecase(_record(), _patient(), ml_result=None)
 
     result = usecase.execute(1)
 
@@ -74,14 +77,52 @@ def test_ml_caido_persiste_ml_unavailable():
 
 
 def test_expediente_inexistente():
-    usecase, _, _ = _usecase(None, _patient())
+    usecase, _, _, _ = _usecase(None, _patient())
 
     with pytest.raises(ValueError, match="Medical record not found"):
         usecase.execute(999)
 
 
 def test_paciente_inexistente():
-    usecase, _, _ = _usecase(_record(), None)
+    usecase, _, _, _ = _usecase(_record(), None)
 
     with pytest.raises(ValueError, match="Patient not found"):
         usecase.execute(1)
+
+
+def test_evaluacion_ok_actualiza_cluster_del_perfil_social():
+    usecase, _, _, social = _usecase(_record(), _patient(user_id=7), ml_result={"risk_cluster": 3})
+
+    usecase.execute(1)
+
+    social.update_cluster.assert_called_once_with(7, "3")
+
+
+def test_sin_prediccion_no_toca_perfil_social():
+    # insufficient_data
+    usecase, _, _, social = _usecase(_record(initial_systolic=None, initial_diastolic=None), _patient())
+    usecase.execute(1)
+    social.update_cluster.assert_not_called()
+
+    # ml_unavailable
+    usecase, _, _, social = _usecase(_record(), _patient(), ml_result=None)
+    usecase.execute(1)
+    social.update_cluster.assert_not_called()
+
+
+def test_prediccion_sin_risk_cluster_no_toca_perfil_social():
+    usecase, _, _, social = _usecase(_record(), _patient(), ml_result={"otro": 1})
+
+    result = usecase.execute(1)
+
+    assert result.status == "ok"
+    social.update_cluster.assert_not_called()
+
+
+def test_fallo_al_actualizar_cluster_no_rompe_evaluacion():
+    usecase, _, _, social = _usecase(_record(), _patient(), ml_result={"risk_cluster": 1})
+    social.update_cluster.side_effect = RuntimeError("boom")
+
+    result = usecase.execute(1)
+
+    assert result.status == "ok"

@@ -11,6 +11,10 @@ from app.features.users.infrastructure.repositories.doctor_repository import Doc
 from app.features.users.infrastructure.repositories.invitation_code_repository import InvitationCodeRepository
 from app.features.users.infrastructure.repositories.patient_repository import PatientRepository
 from app.features.medical_record.infrastructure.adapters.patient_info_adapter import PatientInfoAdapter
+from app.features.medical_record.infrastructure.adapters.social_cluster_adapter import SocialClusterAdapter
+from app.features.medical_record.infrastructure.adapters.latest_diary_adapter import LatestDiaryAdapter
+from app.features.forums.infrastructure.adapters.patient_cluster_adapter import PatientClusterAdapter
+from app.features.forums.infrastructure.adapters.author_role_adapter import AuthorRoleAdapter
 from app.features.users.infrastructure.adapters.medical_record_lookup_adapter import MedicalRecordLookupAdapter
 from app.features.users.infrastructure.adapters.appointment_lookup_adapter import AppointmentLookupAdapter
 from app.features.chat.infrastructure.adapters.chat_user_lookup_adapter import ChatUserLookupAdapter
@@ -64,9 +68,11 @@ from app.features.forums.application.profiles.create_profile_usecase import Crea
 from app.features.forums.application.profiles.get_profile_usecase import GetProfileUseCase
 from app.features.forums.application.groups.create_group_usecase import CreateGroupUseCase
 from app.features.forums.application.groups.get_groups_usecase import GetGroupsUseCase
+from app.features.forums.application.groups.get_recommended_groups_usecase import GetRecommendedGroupsUseCase
 from app.features.forums.application.posts.create_post_usecase import CreatePostUseCase
 from app.features.forums.application.posts.get_global_feed_usecase import GetGlobalFeedUseCase
 from app.features.forums.application.posts.get_group_feed_usecase import GetGroupFeedUseCase
+from app.features.forums.application.posts.get_recommended_feed_usecase import GetRecommendedFeedUseCase
 from app.features.forums.application.posts.add_comment_usecase import AddCommentUseCase
 from app.features.forums.application.posts.get_comments_usecase import GetCommentsUseCase
 from app.features.forums.application.reports.create_report_usecase import CreateReportUseCase
@@ -80,6 +86,14 @@ from app.features.users.infrastructure.controllers.user_controller import UserCo
 from app.features.users.infrastructure.controllers.auth_controller import AuthController
 from app.features.users.infrastructure.controllers.patient_controller import PatientController
 from app.features.users.infrastructure.controllers.doctor_controller import DoctorController
+
+from app.features.subscriptions.infrastructure.repositories.subscription_repository import SubscriptionRepository
+from app.features.subscriptions.infrastructure.adapters.stripe_gateway_adapter import StripeGatewayAdapter
+from app.features.users.infrastructure.adapters.subscription_initializer_adapter import SubscriptionInitializerAdapter
+from app.features.subscriptions.application.create_checkout_session_usecase import CreateCheckoutSessionUseCase
+from app.features.subscriptions.application.get_my_subscription_usecase import GetMySubscriptionUseCase
+from app.features.subscriptions.application.handle_payment_event_usecase import HandlePaymentEventUseCase
+from app.features.subscriptions.infrastructure.controllers.subscription_controller import SubscriptionController
 
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
@@ -98,6 +112,7 @@ class Container(containers.DeclarativeContainer):
             "app.features.forums.infrastructure.routes.groups_router",
             "app.features.forums.infrastructure.routes.posts_router",
             "app.features.forums.infrastructure.routes.reports_router",
+            "app.features.subscriptions.infrastructure.routes.subscription_router",
         ]
     )
 
@@ -117,9 +132,16 @@ class Container(containers.DeclarativeContainer):
     invitation_code_repository = providers.Factory(InvitationCodeRepository, db=db)
     patient_repository = providers.Factory(PatientRepository, db=db)
     patient_info_adapter = providers.Factory(PatientInfoAdapter, patient_repository=patient_repository)
+    latest_diary_adapter = providers.Factory(LatestDiaryAdapter, patient_diary_repository=patient_diary_repository)
     receptionist_repository = providers.Factory(ReceptionistRepository, db=db)
     user_repository = providers.Factory(UserRepository, db=db)
     forums_repository = providers.Factory(ForumsRepository, db=db)
+    social_cluster_adapter = providers.Factory(SocialClusterAdapter, forums_repository=forums_repository)
+    patient_cluster_adapter = providers.Factory(PatientClusterAdapter, patient_repository=patient_repository, medical_record_repository=medical_record_repository, risk_prediction_repository=risk_prediction_repository)
+    author_role_adapter = providers.Factory(AuthorRoleAdapter, user_repository=user_repository)
+    subscription_repository = providers.Factory(SubscriptionRepository, db=db)
+    stripe_payment_gateway = providers.Factory(StripeGatewayAdapter)
+    subscription_initializer_adapter = providers.Factory(SubscriptionInitializerAdapter, subscription_repository=subscription_repository)
 
     # Use Cases
     create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=patient_repository, doctor_repo=doctor_repository)
@@ -135,8 +157,8 @@ class Container(containers.DeclarativeContainer):
     create_consultation_use_case = providers.Factory(CreateConsultationUseCase, consultation_repo=consultation_repository)
     get_consultations_by_medical_record_use_case = providers.Factory(GetConsultationsByMedicalRecordUseCase, consultation_repo=consultation_repository)
     create_medical_record_use_case = providers.Factory(CreateMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter)
-    get_patient_medical_record_use_case = providers.Factory(GetPatientMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, risk_prediction_repository=risk_prediction_repository)
-    evaluate_patient_risk_use_case = providers.Factory(EvaluatePatientRiskUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, ml_prediction_service=ml_prediction_service, risk_prediction_repository=risk_prediction_repository)
+    get_patient_medical_record_use_case = providers.Factory(GetPatientMedicalRecordUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, risk_prediction_repository=risk_prediction_repository, latest_diary_repository=latest_diary_adapter)
+    evaluate_patient_risk_use_case = providers.Factory(EvaluatePatientRiskUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter, ml_prediction_service=ml_prediction_service, risk_prediction_repository=risk_prediction_repository, social_cluster_port=social_cluster_adapter, latest_diary_repository=latest_diary_adapter)
     update_medical_record_use_case = providers.Factory(UpdateMedicalRecordUseCase, medical_record_repository=medical_record_repository)
     search_medical_records_by_patient_name_use_case = providers.Factory(SearchMedicalRecordsByPatientNameUseCase, medical_record_repository=medical_record_repository, patient_repository=patient_info_adapter)
     create_patient_diary_use_case = providers.Factory(CreatePatientDiaryUseCase, repository=patient_diary_repository)
@@ -149,8 +171,8 @@ class Container(containers.DeclarativeContainer):
     appointment_lookup_adapter = providers.Factory(AppointmentLookupAdapter, appointment_repository=appointment_repository)
     medical_record_lookup_adapter = providers.Factory(MedicalRecordLookupAdapter, medical_record_repository=medical_record_repository)
     
-    authenticate_user_use_case = providers.Factory(AuthenticateUserUseCase, user_repository=user_repository, patient_repository=patient_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository, medical_record_lookup=medical_record_lookup_adapter)
-    register_doctor_use_case = providers.Factory(RegisterDoctorUseCase, user_repository=user_repository, doctor_repository=doctor_repository)
+    authenticate_user_use_case = providers.Factory(AuthenticateUserUseCase, user_repository=user_repository, patient_repository=patient_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository, medical_record_lookup=medical_record_lookup_adapter, subscription_status_lookup=subscription_initializer_adapter)
+    register_doctor_use_case = providers.Factory(RegisterDoctorUseCase, user_repository=user_repository, doctor_repository=doctor_repository, subscription_initializer=subscription_initializer_adapter)
     create_receptionist_use_case = providers.Factory(CreateReceptionistUseCase, user_repository=user_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository)
     get_receptionists_by_doctor_use_case = providers.Factory(GetReceptionistsByDoctorUseCase, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository)
     generate_invitation_code_use_case = providers.Factory(GenerateInvitationCodeUseCase, doctor_repository=doctor_repository, invitation_code_repository=invitation_code_repository)
@@ -164,16 +186,21 @@ class Container(containers.DeclarativeContainer):
     get_user_use_case = providers.Factory(GetUserUseCase, user_repository=user_repository)
     update_user_use_case = providers.Factory(UpdateUserUseCase, user_repository=user_repository)
     delete_user_use_case = providers.Factory(DeleteUserUseCase, user_repository=user_repository)
-    create_profile_use_case = providers.Factory(CreateProfileUseCase, forums_repo=forums_repository)
+    create_profile_use_case = providers.Factory(CreateProfileUseCase, forums_repo=forums_repository, cluster_lookup=patient_cluster_adapter)
     get_profile_use_case = providers.Factory(GetProfileUseCase, forums_repo=forums_repository)
     create_group_use_case = providers.Factory(CreateGroupUseCase, forums_repo=forums_repository)
     get_groups_use_case = providers.Factory(GetGroupsUseCase, forums_repo=forums_repository)
-    create_post_use_case = providers.Factory(CreatePostUseCase, forums_repo=forums_repository)
+    get_recommended_groups_use_case = providers.Factory(GetRecommendedGroupsUseCase, forums_repo=forums_repository)
+    create_post_use_case = providers.Factory(CreatePostUseCase, forums_repo=forums_repository, author_role_lookup=author_role_adapter)
     get_global_feed_use_case = providers.Factory(GetGlobalFeedUseCase, forums_repo=forums_repository)
+    get_recommended_feed_use_case = providers.Factory(GetRecommendedFeedUseCase, forums_repo=forums_repository)
     get_group_feed_use_case = providers.Factory(GetGroupFeedUseCase, forums_repo=forums_repository)
     add_comment_use_case = providers.Factory(AddCommentUseCase, forums_repo=forums_repository)
     get_comments_use_case = providers.Factory(GetCommentsUseCase, forums_repo=forums_repository)
     create_report_use_case = providers.Factory(CreateReportUseCase, forums_repo=forums_repository)
+    create_checkout_session_use_case = providers.Factory(CreateCheckoutSessionUseCase, subscription_repository=subscription_repository, payment_gateway=stripe_payment_gateway)
+    get_my_subscription_use_case = providers.Factory(GetMySubscriptionUseCase, subscription_repository=subscription_repository)
+    handle_payment_event_use_case = providers.Factory(HandlePaymentEventUseCase, subscription_repository=subscription_repository, payment_gateway=stripe_payment_gateway)
 
     # Controllers
     appointment_controller = providers.Factory(AppointmentController, create_appointment_use_case, get_appointment_use_case, get_appointments_by_patient_use_case, get_appointments_by_doctor_use_case, update_appointment_use_case, delete_appointment_use_case)
@@ -186,6 +213,7 @@ class Container(containers.DeclarativeContainer):
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)
     doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case)
     profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case)
-    groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case)
-    posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case)
+    groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case, get_recommended_groups_use_case)
+    posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case)
     reports_controller = providers.Factory(ReportsController, create_report_use_case)
+    subscription_controller = providers.Factory(SubscriptionController, create_checkout_session_use_case, get_my_subscription_use_case, handle_payment_event_use_case)

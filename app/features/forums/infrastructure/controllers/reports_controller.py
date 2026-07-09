@@ -7,9 +7,9 @@ class ReportsController:
     def __init__(self, create_report_uc: CreateReportUseCase):
         self.create_report_uc = create_report_uc
 
-    def create_report(self, data: ReportCreate) -> ReportResponse:
+    def create_report(self, data: ReportCreate, reporter_id: int) -> ReportResponse:
         try:
-            entity = ReportEntity(**data.model_dump())
+            entity = ReportEntity(**data.model_dump(), reporter_id=reporter_id)
             result = self.create_report_uc.execute(entity)
             return ReportResponse.model_validate(result)
         except Exception as e:

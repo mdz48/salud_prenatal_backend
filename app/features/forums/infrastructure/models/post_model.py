@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -10,4 +10,5 @@ class PostModel(Base):
     group_id = Column(Integer, ForeignKey("community_groups.group_id"), nullable=True, index=True)
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
+    is_ad = Column(Boolean, nullable=False, default=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

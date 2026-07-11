@@ -9,6 +9,7 @@ from app.features.appointments.application.get_appointments_by_patient_usecase i
 from app.features.appointments.application.get_appointments_by_doctor_usecase import GetAppointmentsByDoctorUseCase
 from app.features.appointments.application.update_appointment_usecase import UpdateAppointmentUseCase
 from app.features.appointments.application.delete_appointment_usecase import DeleteAppointmentUseCase
+from app.core.error_handlers import internal_error
 
 class AppointmentController:
     def __init__(
@@ -39,7 +40,7 @@ class AppointmentController:
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)
 
     def get_appointment(self, appointment_id: int):
         try:

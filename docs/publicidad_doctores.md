@@ -9,7 +9,8 @@ Depende de la feature de [recomendaciones por cluster](recomendaciones_por_clust
 ## Decisiones de diseño
 
 - **Flag explícito** `is_ad` al publicar. Un doctor puede publicar normal (`is_ad=false`) o como publicidad (`is_ad=true`). No todo post de doctor es anuncio.
-- **Gating por rol**: solo usuarios con rol `doctor` pueden marcar `is_ad=true`. Una paciente que lo intente recibe `HTTP 400`.
+- **Gating por suscripción premium activa** (no por rol): solo doctores con `plan_type=premium` **y** `status=active` en el feature de [suscripciones Stripe](suscripciones_doctores_stripe.md) pueden marcar `is_ad=true`. Un doctor con plan básico, con la suscripción pendiente/vencida/cancelada, o sin fila de suscripción (legacy), recibe `HTTP 402 Payment Required`.
+- **Tope semanal de 10 anuncios** por autor (ventana rolling de los últimos 7 días). El 11º intento en la ventana recibe `HTTP 429 Too Many Requests`.
 - **Intercalado en el feed**: una sola lista mezclada; cada item lleva `is_ad`. Un anuncio tras cada `AD_EVERY = 4` posts normales. En feeds cortos (menos de 4 posts) el anuncio igual aparece al final, para que la publicidad no quede invisible.
 - **Alcance global**: los anuncios **no** se filtran por cluster; salen a toda usuaria del feed (el doctor busca el máximo alcance).
 
@@ -21,15 +22,22 @@ Depende de la feature de [recomendaciones por cluster](recomendaciones_por_clust
 CreatePostUseCase.execute(post)
     │  post.is_ad == True
     ▼
-IAuthorRoleLookup.get_role(post.author_id)   → AuthorRoleAdapter → UserRepository
-    │  rol != "doctor"
+IAdEligibilityLookup.is_premium_active(post.author_id)   → AdEligibilityAdapter → ISubscriptionRepository
+    │  False (sin fila, o plan_type != premium, o status != active)
     ▼
-ValueError("Solo los doctores pueden publicar publicidad")   → el controller lo mapea a HTTP 400
+AdPermissionError("La publicidad requiere suscripción premium activa")   → el controller lo mapea a HTTP 402
+    │  True
+    ▼
+count_ads_by_author_since(author_id, ahora - 7 días) >= 10
+    ▼
+AdRateLimitError("Límite semanal de anuncios alcanzado (10)")   → el controller lo mapea a HTTP 429
 ```
 
-Los posts normales (`is_ad=false`) no consultan el rol.
+Los posts normales (`is_ad=false`) no consultan elegibilidad ni cuentan anuncios previos.
 
-> **Autoría vía JWT:** `POST /forums/posts` deriva el `author_id` del **token** (no del body). El gating de publicidad consulta el rol **real** del usuario autenticado, así que una paciente no puede publicar publicidad usando el id de un doctor. Ver [autoria_forums_jwt](autoria_forums_jwt.md).
+> **Autoría vía JWT:** `POST /forums/posts` deriva el `author_id` del **token** (no del body). El gating de publicidad consulta la suscripción **real** del usuario autenticado, así que una paciente no puede publicar publicidad usando el id de un doctor. Ver [autoria_forums_jwt](autoria_forums_jwt.md).
+>
+> **Cómo un doctor se vuelve elegible:** no hay un endpoint propio de "activar publicidad" — el doctor paga el plan premium por el flujo normal de suscripciones: `POST /subscriptions/checkout-session {"plan_type": "premium"}` → paga en Stripe → el webhook activa `status=active`. Ver [suscripciones_doctores_stripe.md](suscripciones_doctores_stripe.md).
 
 ## Cómo se intercala
 
@@ -69,14 +77,16 @@ Cada objeto del feed trae `is_ad` en `PostResponse`. El front:
 |---------|--------|
 | `app/features/forums/domain/feed_interleave.py` | **Nuevo.** Helper puro `interleave(posts, ads, every)` |
 | `app/features/forums/domain/post_entity.py` | Nuevo campo `is_ad: bool = False` |
-| `app/features/forums/domain/ports.py` | Nuevo `IAuthorRoleLookup`; nuevo `IForumsRepository.get_ads` |
-| `app/features/forums/application/posts/create_post_usecase.py` | Depende de `author_role_lookup`; gatea `is_ad` a rol doctor |
+| `app/features/forums/domain/ports.py` | `IAdEligibilityLookup.is_premium_active`; `IForumsRepository.get_ads`, `count_ads_by_author_since` |
+| `app/features/forums/domain/exceptions.py` | **Nuevo.** `AdPermissionError`, `AdRateLimitError` |
+| `app/features/forums/application/posts/create_post_usecase.py` | Depende de `ad_eligibility`; gatea `is_ad` a premium activo + tope semanal (`WEEKLY_AD_LIMIT = 10`) |
 | `app/features/forums/application/posts/get_recommended_feed_usecase.py` | Intercala anuncios con `get_ads` + `interleave` (`AD_EVERY = 4`) |
-| `app/features/forums/infrastructure/adapters/author_role_adapter.py` | **Nuevo.** Resuelve el rol del autor (forums → users) |
-| `app/features/forums/infrastructure/repositories/forums_repository.py` | `get_ads`; filtro `is_ad == False` en `get_global_feed` y `get_feed_by_cluster` |
+| `app/features/forums/infrastructure/adapters/ad_eligibility_adapter.py` | **Nuevo.** Resuelve elegibilidad de anuncios (forums → subscriptions), reemplaza al antiguo `author_role_adapter.py` |
+| `app/features/forums/infrastructure/repositories/forums_repository.py` | `get_ads`, `count_ads_by_author_since`; filtro `is_ad == False` en `get_global_feed` y `get_feed_by_cluster` |
 | `app/features/forums/infrastructure/models/post_model.py` | Nueva columna `is_ad` (Boolean, default False, indexada) |
 | `app/features/forums/infrastructure/schemas/forums_schemas.py` | `is_ad` en `PostCreate` y `PostResponse` |
-| `app/core/containers.py` | Registra `author_role_adapter`; lo inyecta en `create_post_use_case` |
+| `app/features/forums/infrastructure/controllers/posts_controller.py` | Mapea `AdRateLimitError`→429, `AdPermissionError`→402 |
+| `app/core/containers.py` | Registra `ad_eligibility_adapter` (reutiliza `subscription_repository`); lo inyecta en `create_post_use_case` |
 
 No hay endpoints nuevos: la publicidad usa `POST /forums/posts` (con `is_ad`) y sale por `GET /forums/posts/recommended`.
 
@@ -93,7 +103,7 @@ En los tests, SQLite se crea desde cero, no requiere migración.
 ## Tests
 
 - `tests/test_forums/test_feed_interleave.py` — helper puro (sin anuncios, intervalo, feed corto, más anuncios que huecos).
-- `tests/test_forums/test_ads.py` — gating de `is_ad` en `CreatePostUseCase` e intercalado en `GetRecommendedFeedUseCase`.
-- `tests/test_forums/test_ads_repository.py` — `get_ads` y exclusión de anuncios en los feeds normales.
-- `tests/test_forums/test_author_role_adapter.py` — resolución del rol del autor.
-- `tests/test_forums_cluster_e2e.py` — end to end: doctor publica anuncio → aparece intercalado y marcado `is_ad` en el feed de la paciente; paciente que intenta `is_ad=true` → `400`.
+- `tests/test_forums/test_ads.py` — gating de `is_ad` en `CreatePostUseCase` (sin premium activo, tope semanal) e intercalado en `GetRecommendedFeedUseCase`.
+- `tests/test_forums/test_ads_repository.py` — `get_ads`, `count_ads_by_author_since` (ventana de 7 días, por autor) y exclusión de anuncios en los feeds normales.
+- `tests/test_forums/test_ad_eligibility_adapter.py` — `is_premium_active` para cada combinación de plan/estado (premium+active, basic+active, premium+pending, premium+past_due, sin fila).
+- `tests/test_forums_cluster_e2e.py` — end to end: doctor con plan básico activo intenta `is_ad=true` → `402`; con premium activo → `201` y aparece intercalado; el 11º anuncio de la semana → `429`; paciente que intenta `is_ad=true` → `402`.

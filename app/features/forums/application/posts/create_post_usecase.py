@@ -1,13 +1,24 @@
-from app.features.forums.domain.ports import IForumsRepository, IAuthorRoleLookup
+from datetime import timedelta
+
+from app.core.time import now_cdmx
+from app.features.forums.domain.ports import IForumsRepository, IAdEligibilityLookup
 from app.features.forums.domain.post_entity import PostEntity
+from app.features.forums.domain.exceptions import AdPermissionError, AdRateLimitError
+
+WEEKLY_AD_LIMIT = 10
 
 class CreatePostUseCase:
-    def __init__(self, forums_repo: IForumsRepository, author_role_lookup: IAuthorRoleLookup):
+    def __init__(self, forums_repo: IForumsRepository, ad_eligibility: IAdEligibilityLookup):
         self.forums_repo = forums_repo
-        self.author_role_lookup = author_role_lookup
+        self.ad_eligibility = ad_eligibility
 
     def execute(self, post: PostEntity) -> PostEntity:
-        # Solo los doctores pueden publicar publicidad (is_ad).
-        if post.is_ad and self.author_role_lookup.get_role(post.author_id) != "doctor":
-            raise ValueError("Solo los doctores pueden publicar publicidad")
+        if post.is_ad:
+            if not self.ad_eligibility.is_premium_active(post.author_id):
+                raise AdPermissionError("La publicidad requiere suscripción premium activa")
+
+            since = now_cdmx() - timedelta(days=7)
+            if self.forums_repo.count_ads_by_author_since(post.author_id, since) >= WEEKLY_AD_LIMIT:
+                raise AdRateLimitError("Límite semanal de anuncios alcanzado (10)")
+
         return self.forums_repo.create_post(post)

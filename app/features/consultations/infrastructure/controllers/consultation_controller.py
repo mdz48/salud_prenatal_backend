@@ -5,6 +5,7 @@ from app.features.consultations.infrastructure.schemas.consultation_schema impor
 
 from app.features.consultations.application.create_consultation_usecase import CreateConsultationUseCase
 from app.features.consultations.application.get_consultations_by_medical_record_usecase import GetConsultationsByMedicalRecordUseCase
+from app.core.error_handlers import internal_error
 
 class ConsultationController:
     def __init__(
@@ -26,7 +27,7 @@ class ConsultationController:
             )
             return self.create_consultation_usecase.execute(entity)
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)
 
     def get_consultations_by_medical_record(self, medical_record_id: int):
         return self.get_consultations_by_medical_record_usecase.execute(medical_record_id)

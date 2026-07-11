@@ -5,6 +5,7 @@ from app.features.forums.application.groups.get_groups_usecase import GetGroupsU
 from app.features.forums.application.groups.get_recommended_groups_usecase import GetRecommendedGroupsUseCase
 from app.features.forums.domain.community_group_entity import CommunityGroupEntity
 from app.features.forums.infrastructure.schemas.forums_schemas import GroupCreate, GroupResponse
+from app.core.error_handlers import internal_error
 
 class GroupsController:
     def __init__(
@@ -22,19 +23,21 @@ class GroupsController:
             entity = CommunityGroupEntity(**data.model_dump(), created_by=created_by)
             result = self.create_group_uc.execute(entity)
             return GroupResponse.model_validate(result)
-        except Exception as e:
+        except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            raise internal_error(e)
 
     def get_groups(self) -> List[GroupResponse]:
         try:
             results = self.get_groups_uc.execute()
             return [GroupResponse.model_validate(r) for r in results]
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)
 
     def get_recommended_groups(self, user_id: int) -> List[GroupResponse]:
         try:
             results = self.get_recommended_groups_uc.execute(user_id)
             return [GroupResponse.model_validate(r) for r in results]
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)

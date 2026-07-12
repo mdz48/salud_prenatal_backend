@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -24,3 +24,15 @@ class PatientInfo(BaseModel):
     age: Optional[int] = None
     doctor_id: Optional[int] = None
     birthdate: Optional[str] = None
+
+
+class SymptomSummary(BaseModel):
+    """Sintoma agregado que el expediente muestra como aviso. Forma espejo de
+    AggregatedSymptom de patient_diaries; el patron cross-feature exige DTO propio."""
+    code: str
+    label: Optional[str] = None
+    occurrences: int
+    first_seen: Optional[datetime] = None
+    last_seen: Optional[datetime] = None
+    alarm: bool = False
+    zones: List[str] = []

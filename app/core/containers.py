@@ -13,6 +13,7 @@ from app.features.users.infrastructure.repositories.patient_repository import Pa
 from app.features.medical_record.infrastructure.adapters.patient_info_adapter import PatientInfoAdapter
 from app.features.medical_record.infrastructure.adapters.social_cluster_adapter import SocialClusterAdapter
 from app.features.medical_record.infrastructure.adapters.latest_diary_adapter import LatestDiaryAdapter
+from app.features.medical_record.infrastructure.adapters.diary_symptom_summary_adapter import DiarySymptomSummaryAdapter
 from app.features.forums.infrastructure.adapters.patient_cluster_adapter import PatientClusterAdapter
 from app.features.forums.infrastructure.adapters.ad_eligibility_adapter import AdEligibilityAdapter
 from app.features.users.infrastructure.adapters.medical_record_lookup_adapter import MedicalRecordLookupAdapter
@@ -146,6 +147,7 @@ class Container(containers.DeclarativeContainer):
     patient_repository = providers.Factory(PatientRepository, db=db)
     patient_info_adapter = providers.Factory(PatientInfoAdapter, patient_repository=patient_repository)
     latest_diary_adapter = providers.Factory(LatestDiaryAdapter, patient_diary_repository=patient_diary_repository)
+    diary_symptom_summary_adapter = providers.Factory(DiarySymptomSummaryAdapter, diary_symptom_repository=diary_symptom_repository)
     receptionist_repository = providers.Factory(ReceptionistRepository, db=db)
     user_repository = providers.Factory(UserRepository, db=db)
     forums_repository = providers.Factory(ForumsRepository, db=db)

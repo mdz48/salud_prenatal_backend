@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
@@ -62,10 +63,13 @@ class DiarySymptomExtractionRepository(IDiarySymptomRepository):
         ).all()
         return [ExtractedSymptomEntity.model_validate(i) for i in items]
 
-    def get_by_medical_record_id(self, medical_record_id: int) -> List[ExtractedSymptomEntity]:
-        items = self.db.query(DiarySymptomExtraction).filter(
+    def get_by_medical_record_id(self, medical_record_id: int, since: Optional[datetime] = None) -> List[ExtractedSymptomEntity]:
+        query = self.db.query(DiarySymptomExtraction).filter(
             DiarySymptomExtraction.medical_record_id == medical_record_id
-        ).order_by(DiarySymptomExtraction.created_at.desc()).all()
+        )
+        if since is not None:
+            query = query.filter(DiarySymptomExtraction.created_at > since)
+        items = query.order_by(DiarySymptomExtraction.created_at.desc()).all()
         return [ExtractedSymptomEntity.model_validate(i) for i in items]
 
     def get_body_zones_by_diary_id(self, patient_diary_id: int) -> List[BodyZoneEntity]:

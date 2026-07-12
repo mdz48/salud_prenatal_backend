@@ -104,3 +104,26 @@ def test_replace_for_diary_es_idempotente(db_session):
 
     assert [s.code for s in repo.get_by_diary_id(1)] == ["CEFALEA"]
     assert repo.get_body_zones_by_diary_id(1) == []
+
+
+def test_get_by_medical_record_id_filtra_por_since(db_session):
+    from datetime import datetime
+    from app.features.patient_diaries.infrastructure.models.diary_symptom_extraction_model import DiarySymptomExtraction
+
+    def _add(code, created_at):
+        db_session.add(DiarySymptomExtraction(
+            patient_diary_id=1, medical_record_id=10, code=code, created_at=created_at,
+        ))
+
+    _add("VIEJO", datetime(2026, 6, 1, 8, 0))
+    _add("NUEVO", datetime(2026, 6, 10, 8, 0))
+    db_session.commit()
+
+    repo = DiarySymptomExtractionRepository(db_session)
+
+    corte = datetime(2026, 6, 5, 8, 0)
+    solo_nuevos = repo.get_by_medical_record_id(10, since=corte)
+    assert [s.code for s in solo_nuevos] == ["NUEVO"]
+
+    todos = repo.get_by_medical_record_id(10)
+    assert {s.code for s in todos} == {"VIEJO", "NUEVO"}

@@ -42,10 +42,10 @@ class CreatePatientDiaryUseCase:
             return
 
         try:
-            symptoms = self.symptom_extraction_port.extract(text)
-            if symptoms:
+            result = self.symptom_extraction_port.extract(text)
+            if result.symptoms or result.body_zones:
                 self.symptom_repository.replace_for_diary(
-                    diary.patient_diary_id, diary.medical_record_id, symptoms
+                    diary.patient_diary_id, diary.medical_record_id, result
                 )
         except Exception as e:
             print("Symptom extraction skipped:", str(e))

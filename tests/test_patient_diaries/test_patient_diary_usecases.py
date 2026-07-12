@@ -123,11 +123,34 @@ def test_update_patient_diary_usecase():
 def test_delete_patient_diary_usecase():
     repo = MagicMock()
     usecase = DeletePatientDiaryUseCase(repo)
-    
+
     repo.delete.return_value = True
     result = usecase.execute(1)
     assert result is True
-    
+
     repo.delete.return_value = False
     with pytest.raises(ValueError, match="Patient diary not found"):
         usecase.execute(2)
+
+
+def test_get_medical_record_symptom_history_agrega_todo():
+    from datetime import datetime
+    from app.features.patient_diaries.application.get_medical_record_symptom_history_usecase import (
+        GetMedicalRecordSymptomHistoryUseCase,
+    )
+    from app.features.patient_diaries.domain.body_zone_entity import BodyZoneEntity
+
+    repo = MagicMock()
+    repo.get_by_medical_record_id.return_value = [
+        ExtractedSymptomEntity(code="SANGRADO", alarm=True, created_at=datetime(2026, 6, 20, 8, 0)),
+        ExtractedSymptomEntity(code="SANGRADO", created_at=datetime(2026, 6, 22, 8, 0)),
+    ]
+    usecase = GetMedicalRecordSymptomHistoryUseCase(repo)
+
+    result = usecase.execute(medical_record_id=10)
+
+    repo.get_by_medical_record_id.assert_called_once_with(10)
+    assert len(result) == 1
+    assert result[0].code == "SANGRADO"
+    assert result[0].occurrences == 2
+    assert result[0].alarm is True

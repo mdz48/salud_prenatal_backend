@@ -43,6 +43,21 @@ class ForumsRepository:
             self.db.rollback()
             raise e
 
+    def update_profile(self, user_id: int, changes: dict) -> Optional[SocialProfileEntity]:
+        db_profile = self.db.query(SocialProfileModel).filter(SocialProfileModel.user_id == user_id).first()
+        if not db_profile:
+            return None
+        for key, value in changes.items():
+            if key not in {"user_id", "cluster_profile"}:
+                setattr(db_profile, key, value)
+        try:
+            self.db.commit()
+            self.db.refresh(db_profile)
+            return SocialProfileEntity.model_validate(db_profile)
+        except Exception as e:
+            self.db.rollback()
+            raise e
+
     def create_group(self, group: CommunityGroupEntity) -> CommunityGroupEntity:
         db_group = CommunityGroupModel(**group.model_dump(exclude={"group_id"}, exclude_unset=True))
         try:
@@ -105,6 +120,15 @@ class ForumsRepository:
 
     def get_group_feed(self, group_id: int, limit: int = 50, offset: int = 0) -> List[PostEntity]:
         db_posts = self.db.query(PostModel).filter(PostModel.group_id == group_id).order_by(PostModel.created_at.desc()).offset(offset).limit(limit).all()
+        return [PostEntity.model_validate(p) for p in db_posts]
+
+    def get_posts_by_author(self, author_id: int, limit: int = 50, offset: int = 0) -> List[PostEntity]:
+        db_posts = (
+            self.db.query(PostModel)
+            .filter(PostModel.author_id == author_id)
+            .order_by(PostModel.created_at.desc())
+            .offset(offset).limit(limit).all()
+        )
         return [PostEntity.model_validate(p) for p in db_posts]
 
     def add_comment(self, comment: CommentEntity) -> CommentEntity:

@@ -77,6 +77,8 @@ from app.features.forums.infrastructure.controllers.posts_controller import Post
 from app.features.forums.infrastructure.controllers.reports_controller import ReportsController
 from app.features.forums.application.profiles.create_profile_usecase import CreateProfileUseCase
 from app.features.forums.application.profiles.get_profile_usecase import GetProfileUseCase
+from app.features.forums.application.profiles.update_profile_usecase import UpdateProfileUseCase
+from app.features.forums.application.profiles.get_profile_timeline_usecase import GetProfileTimelineUseCase
 from app.features.forums.application.groups.create_group_usecase import CreateGroupUseCase
 from app.features.forums.application.groups.get_groups_usecase import GetGroupsUseCase
 from app.features.forums.application.groups.get_recommended_groups_usecase import GetRecommendedGroupsUseCase
@@ -211,6 +213,8 @@ class Container(containers.DeclarativeContainer):
     delete_user_use_case = providers.Factory(DeleteUserUseCase, user_repository=user_repository)
     create_profile_use_case = providers.Factory(CreateProfileUseCase, forums_repo=forums_repository, cluster_lookup=patient_cluster_adapter)
     get_profile_use_case = providers.Factory(GetProfileUseCase, forums_repo=forums_repository)
+    update_profile_use_case = providers.Factory(UpdateProfileUseCase, forums_repo=forums_repository)
+    get_profile_timeline_use_case = providers.Factory(GetProfileTimelineUseCase, forums_repo=forums_repository)
     create_group_use_case = providers.Factory(CreateGroupUseCase, forums_repo=forums_repository)
     get_groups_use_case = providers.Factory(GetGroupsUseCase, forums_repo=forums_repository)
     get_recommended_groups_use_case = providers.Factory(GetRecommendedGroupsUseCase, forums_repo=forums_repository)
@@ -235,7 +239,7 @@ class Container(containers.DeclarativeContainer):
     auth_controller = providers.Factory(AuthController, authenticate_user_use_case)
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)
     doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case, get_doctor_by_id_use_case, get_doctor_dashboard_use_case, get_receptionist_by_id_use_case, get_receptionist_dashboard_use_case)
-    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case)
+    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case, update_profile_use_case, get_profile_timeline_use_case)
     groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case, get_recommended_groups_use_case)
     posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case)
     reports_controller = providers.Factory(ReportsController, create_report_use_case)

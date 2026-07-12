@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime, date
 from app.core.enums import BloodTypeEnum
+from app.features.patient_diaries.infrastructure.schemas.patient_diary_schema import AggregatedSymptomResponse
 
 class MedicalRecordBase(BaseModel):
     # Perfil clinico (capturado por el doctor al crear/editar el expediente)
@@ -83,5 +84,6 @@ class PatientMedicalRecordResponse(BaseModel):
     medical_record: Optional[MedicalRecordResponse] = None
     consultations: List[ConsultationSummary]
     risk_prediction: Optional[dict] = None
+    symptom_alert: List[AggregatedSymptomResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

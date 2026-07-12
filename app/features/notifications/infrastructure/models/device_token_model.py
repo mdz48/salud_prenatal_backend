@@ -1,0 +1,17 @@
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from app.core.database import Base
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+class DeviceToken(Base):
+    __tablename__ = "device_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    token = Column(String(255), unique=True, nullable=False)
+    device_type = Column(String(50), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationship
+    user = relationship("Usuario")

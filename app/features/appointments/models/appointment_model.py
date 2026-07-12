@@ -1,8 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Boolean
 from app.core.database import Base
 from sqlalchemy.orm import relationship
 from app.core.enums import AppointmentStatusEnum
-from sqlalchemy.sql import func
 from sqlalchemy.sql import func
 
 class Appointment(Base):
@@ -14,6 +13,9 @@ class Appointment(Base):
     appointment_date = Column(DateTime, nullable=False)
     status = Column(Enum(AppointmentStatusEnum), nullable=False, default=AppointmentStatusEnum.pending)
     reason = Column(String(255), nullable=True)
+    notified_24h = Column(Boolean, default=False, nullable=False)
+    notified_12h = Column(Boolean, default=False, nullable=False)
+    notified_1h = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

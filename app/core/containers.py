@@ -70,6 +70,10 @@ from app.features.users.infrastructure.controllers.user_controller import UserCo
 from app.features.users.infrastructure.controllers.auth_controller import AuthController
 from app.features.users.infrastructure.controllers.patient_controller import PatientController
 from app.features.users.infrastructure.controllers.doctor_controller import DoctorController
+from app.features.notifications.infrastructure.repositories.device_token_repository import DeviceTokenRepository
+from app.features.notifications.application.use_cases.register_device_token_use_case import RegisterDeviceTokenUseCase
+from app.features.notifications.application.use_cases.unregister_device_token_use_case import UnregisterDeviceTokenUseCase
+from app.features.notifications.infrastructure.controllers.notification_controller import NotificationController
 
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
@@ -87,6 +91,7 @@ class Container(containers.DeclarativeContainer):
             "app.features.forums.infrastructure.routes.groups_router",
             "app.features.forums.infrastructure.routes.posts_router",
             "app.features.forums.infrastructure.routes.reports_router",
+            "app.features.notifications.infrastructure.routes.notification_router",
         ]
     )
 
@@ -107,6 +112,7 @@ class Container(containers.DeclarativeContainer):
     receptionist_repository = providers.Factory(ReceptionistRepository, db=db)
     user_repository = providers.Factory(UserRepository, db=db)
     forums_repository = providers.Factory(ForumsRepository, db=db)
+    device_token_repository = providers.Factory(DeviceTokenRepository, db=db)
 
     # Use Cases
     create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=patient_repository, doctor_repo=doctor_repository)
@@ -151,6 +157,8 @@ class Container(containers.DeclarativeContainer):
     add_comment_use_case = providers.Factory(AddCommentUseCase, forums_repo=forums_repository)
     get_comments_use_case = providers.Factory(GetCommentsUseCase, forums_repo=forums_repository)
     create_report_use_case = providers.Factory(CreateReportUseCase, forums_repo=forums_repository)
+    register_device_token_use_case = providers.Factory(RegisterDeviceTokenUseCase, device_token_repository=device_token_repository)
+    unregister_device_token_use_case = providers.Factory(UnregisterDeviceTokenUseCase, device_token_repository=device_token_repository)
 
     # Controllers
     appointment_controller = providers.Factory(AppointmentController, create_appointment_use_case, get_appointment_use_case, get_appointments_by_patient_use_case, get_appointments_by_doctor_use_case, update_appointment_use_case, delete_appointment_use_case)
@@ -166,3 +174,4 @@ class Container(containers.DeclarativeContainer):
     groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case)
     posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case)
     reports_controller = providers.Factory(ReportsController, create_report_use_case)
+    notification_controller = providers.Factory(NotificationController, register_device_token_use_case, unregister_device_token_use_case)

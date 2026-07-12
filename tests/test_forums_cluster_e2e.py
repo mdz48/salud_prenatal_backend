@@ -114,19 +114,28 @@ def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app, activate_subs
     grupos_bea = client.get("/api/v1/forums/groups/recommended", headers=bea_headers)
     assert len(grupos_bea.json()) == 2
 
-    # --- Publicidad de doctores intercalada ---
-    # Un doctor necesita perfil social para autorar posts; el gating es por rol real del token.
+    # --- Publicidad de doctores: requiere suscripcion premium activa ---
+    # Un doctor necesita perfil social para autorar posts.
     client.post("/api/v1/forums/profiles", json={"alias": "dra"}, headers=doctor_headers)
 
-    # Paciente NO puede marcar is_ad -> 400 (rol del token = paciente)
+    # Paciente NO puede marcar is_ad -> 402 (no es doctor, no tiene ninguna suscripcion)
     ana_ad = client.post(
         "/api/v1/forums/posts",
         json={"title": "spam", "content": "x", "is_ad": True},
         headers=ana_headers,
     )
-    assert ana_ad.status_code == 400, ana_ad.text
+    assert ana_ad.status_code == 402, ana_ad.text
 
-    # Doctor SÍ puede publicar publicidad
+    # Doctor con suscripcion activa pero plan BASICO -> 402 (solo premium publica ads)
+    doc_ad_basico = client.post(
+        "/api/v1/forums/posts",
+        json={"title": "Spam basico", "content": "x", "is_ad": True},
+        headers=doctor_headers,
+    )
+    assert doc_ad_basico.status_code == 402, doc_ad_basico.text
+
+    # Doctor con plan PREMIUM activo SÍ puede publicar publicidad
+    activate_subscription("dra.cluster@test.com", plan_type="premium")
     doc_ad = client.post(
         "/api/v1/forums/posts",
         json={"title": "Consultorio Dra Cluster", "content": "Agenda tu cita", "is_ad": True},
@@ -141,3 +150,20 @@ def test_cluster_flow_de_evaluacion_a_recomendaciones(client, app, activate_subs
     assert [a["title"] for a in anuncios] == ["Consultorio Dra Cluster"]
     # el post normal del cluster sigue presente y NO marcado como anuncio
     assert any(p["title"] == "Mi dia a dia bajando de peso" and not p["is_ad"] for p in feed_con_ad)
+
+    # --- Tope semanal: 10 anuncios ya cuentan el limite (el de arriba fue el primero) ---
+    for i in range(9):
+        r = client.post(
+            "/api/v1/forums/posts",
+            json={"title": f"Ad {i}", "content": "x", "is_ad": True},
+            headers=doctor_headers,
+        )
+        assert r.status_code == 201, r.text
+
+    # El 11o anuncio de la semana -> 429
+    r11 = client.post(
+        "/api/v1/forums/posts",
+        json={"title": "Ad 11", "content": "x", "is_ad": True},
+        headers=doctor_headers,
+    )
+    assert r11.status_code == 429, r11.text

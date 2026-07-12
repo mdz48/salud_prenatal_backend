@@ -25,23 +25,36 @@ def test_menos_anuncios_que_huecos_no_falla():
     assert result == ["p1", "p2", "a1", "p3", "p4"]
 
 
-def test_posts_vacio_no_inyecta_anuncios():
-    assert interleave([], ["a1", "a2"], every=2) == []
+def test_posts_vacio_muestra_solo_los_anuncios():
+    # Los ads NO dependen de los posts: sin posts normales, igual se muestran.
+    assert interleave([], ["a1", "a2"], every=2) == ["a1", "a2"]
 
 
-def test_more_ads_than_slots_solo_usa_los_que_caben():
+def test_ads_sobrantes_van_al_final():
+    # Mas ads que huecos: el que cae en el hueco se intercala, el resto se
+    # agrega al final. Ningun anuncio se descarta.
     posts = ["p1", "p2"]
     ads = ["a1", "a2", "a3"]
 
     result = interleave(posts, ads, every=2)
 
-    # solo hay un hueco (tras p2)
-    assert result == ["p1", "p2", "a1"]
+    assert result == ["p1", "p2", "a1", "a2", "a3"]
 
 
-def test_feed_mas_corto_que_intervalo_igual_muestra_un_ad():
-    # feed corto (1 post) con every=4: el anuncio debe aparecer al final,
+def test_todos_los_ads_aparecen_con_intervalo_4():
+    # 4 posts, 4 ads, every=4: 1 ad en el hueco (tras el 4o post) y los 3
+    # restantes al final. Reproduce el caso real reportado en produccion.
+    posts = ["p1", "p2", "p3", "p4"]
+    ads = ["a1", "a2", "a3", "a4"]
+
+    result = interleave(posts, ads, every=4)
+
+    assert result == ["p1", "p2", "p3", "p4", "a1", "a2", "a3", "a4"]
+
+
+def test_feed_mas_corto_que_intervalo_igual_muestra_los_ads():
+    # feed corto (1 post) con every=4: los anuncios aparecen al final,
     # si no, en feeds cortos la publicidad nunca se veria.
-    result = interleave(["p1"], ["a1"], every=4)
+    result = interleave(["p1"], ["a1", "a2"], every=4)
 
-    assert result == ["p1", "a1"]
+    assert result == ["p1", "a1", "a2"]

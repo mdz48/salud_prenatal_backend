@@ -40,7 +40,19 @@ def _resolve_database_url() -> str:
 
 @lru_cache
 def get_engine():
-    return create_engine(_resolve_database_url(), pool_pre_ping=True, pool_recycle=1800)
+    url = _resolve_database_url()
+    engine_kwargs = {"pool_pre_ping": True, "pool_recycle": 1800}
+    # keepalives TCP: evita que RDS/firewall corte conexiones idle sin avisar
+    # (la caida "server closed the connection unexpectedly" a mitad de query).
+    # Solo aplica a postgres; con SQLite (tests) estos connect_args no son validos.
+    if url and url.startswith(("postgresql", "postgres")):
+        engine_kwargs["connect_args"] = {
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+        }
+    return create_engine(url, **engine_kwargs)
 
 
 @lru_cache

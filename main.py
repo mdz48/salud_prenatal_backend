@@ -16,6 +16,7 @@ from app.features.forums.infrastructure.routes.posts_router import router as pos
 from app.features.forums.infrastructure.routes.reports_router import router as reports_router
 from app.features.subscriptions.infrastructure.routes.subscription_router import router as subscription_router
 from app.core.containers import Container
+from app.core.error_handlers import register_exception_handlers
 
 container = Container()
 from contextlib import asynccontextmanager
@@ -41,6 +42,8 @@ app.include_router(groups_router, prefix="/api/v1")
 app.include_router(posts_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(subscription_router, prefix="/api/v1")
+
+register_exception_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,

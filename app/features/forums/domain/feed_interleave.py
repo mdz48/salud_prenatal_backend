@@ -2,9 +2,11 @@ from typing import List
 
 def interleave(posts: list, ads: list, every: int = 4) -> list:
     """Intercala anuncios en el stream de posts normales: un anuncio despues de
-    cada `every` posts, hasta agotar los anuncios disponibles. No inyecta nada si
-    no hay posts. Funcion pura, sin dependencias de dominio."""
-    if not posts or not ads:
+    cada `every` posts. Los anuncios que no alcanzaron un hueco (mas ads que
+    posts, o feed corto) se agregan al final, para que NINGUN anuncio se
+    descarte. Los ads no dependen de los posts: sin posts normales, se muestran
+    todos los anuncios. Funcion pura, sin dependencias de dominio."""
+    if not ads:
         return list(posts)
 
     result: List = []
@@ -17,9 +19,9 @@ def interleave(posts: list, ads: list, every: int = 4) -> list:
             result.append(next_ad)
             next_ad = next(ad_iter, None)
 
-    # Bloque final parcial (feed no multiplo de `every`): un anuncio al cierre,
-    # para que la publicidad tambien aparezca en feeds cortos.
-    if next_ad is not None and len(posts) % every != 0:
+    # Sobrantes: todos los anuncios que no cayeron en un hueco van al final.
+    while next_ad is not None:
         result.append(next_ad)
+        next_ad = next(ad_iter, None)
 
     return result

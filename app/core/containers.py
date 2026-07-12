@@ -14,7 +14,7 @@ from app.features.medical_record.infrastructure.adapters.patient_info_adapter im
 from app.features.medical_record.infrastructure.adapters.social_cluster_adapter import SocialClusterAdapter
 from app.features.medical_record.infrastructure.adapters.latest_diary_adapter import LatestDiaryAdapter
 from app.features.forums.infrastructure.adapters.patient_cluster_adapter import PatientClusterAdapter
-from app.features.forums.infrastructure.adapters.author_role_adapter import AuthorRoleAdapter
+from app.features.forums.infrastructure.adapters.ad_eligibility_adapter import AdEligibilityAdapter
 from app.features.users.infrastructure.adapters.medical_record_lookup_adapter import MedicalRecordLookupAdapter
 from app.features.users.infrastructure.adapters.appointment_lookup_adapter import AppointmentLookupAdapter
 from app.features.chat.infrastructure.adapters.chat_contacts_lookup_adapter import ChatContactsLookupAdapter
@@ -144,8 +144,8 @@ class Container(containers.DeclarativeContainer):
     forums_repository = providers.Factory(ForumsRepository, db=db)
     social_cluster_adapter = providers.Factory(SocialClusterAdapter, forums_repository=forums_repository)
     patient_cluster_adapter = providers.Factory(PatientClusterAdapter, patient_repository=patient_repository, medical_record_repository=medical_record_repository, risk_prediction_repository=risk_prediction_repository)
-    author_role_adapter = providers.Factory(AuthorRoleAdapter, user_repository=user_repository)
     subscription_repository = providers.Factory(SubscriptionRepository, db=db)
+    ad_eligibility_adapter = providers.Factory(AdEligibilityAdapter, subscription_repository=subscription_repository)
     stripe_payment_gateway = providers.Factory(StripeGatewayAdapter)
     subscription_initializer_adapter = providers.Factory(SubscriptionInitializerAdapter, subscription_repository=subscription_repository)
 
@@ -203,7 +203,7 @@ class Container(containers.DeclarativeContainer):
     create_group_use_case = providers.Factory(CreateGroupUseCase, forums_repo=forums_repository)
     get_groups_use_case = providers.Factory(GetGroupsUseCase, forums_repo=forums_repository)
     get_recommended_groups_use_case = providers.Factory(GetRecommendedGroupsUseCase, forums_repo=forums_repository)
-    create_post_use_case = providers.Factory(CreatePostUseCase, forums_repo=forums_repository, author_role_lookup=author_role_adapter)
+    create_post_use_case = providers.Factory(CreatePostUseCase, forums_repo=forums_repository, ad_eligibility=ad_eligibility_adapter)
     get_global_feed_use_case = providers.Factory(GetGlobalFeedUseCase, forums_repo=forums_repository)
     get_recommended_feed_use_case = providers.Factory(GetRecommendedFeedUseCase, forums_repo=forums_repository)
     get_group_feed_use_case = providers.Factory(GetGroupFeedUseCase, forums_repo=forums_repository)

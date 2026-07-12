@@ -7,6 +7,7 @@ from app.features.patient_diaries.application.get_diaries_by_medical_record_usec
 from app.features.patient_diaries.application.update_patient_diary_usecase import UpdatePatientDiaryUseCase
 from app.features.patient_diaries.application.delete_patient_diary_usecase import DeletePatientDiaryUseCase
 from app.features.patient_diaries.domain.patient_diary_entity import PatientDiaryEntity
+from app.core.error_handlers import internal_error
 
 class PatientDiaryController:
     def __init__(
@@ -30,7 +31,7 @@ class PatientDiaryController:
             entity = PatientDiaryEntity(**data.model_dump())
             return self.create_patient_diary_use_case.execute(data=entity)
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)
 
     def get_all_patient_diaries(self, skip: int = 0, limit: int = 100):
         return self.get_all_patient_diaries_use_case.execute(skip=skip, limit=limit)
@@ -51,7 +52,7 @@ class PatientDiaryController:
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)
 
     def delete_patient_diary(self, patient_diary_id: int):
         try:
@@ -59,4 +60,4 @@ class PatientDiaryController:
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)

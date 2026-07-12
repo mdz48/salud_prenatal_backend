@@ -32,6 +32,10 @@ def get_diaries_by_medical_record(
 ):
     return controller.get_diaries_by_medical_record(medical_record_id)
 
+# TODO(auth): este endpoint expone sintomas clinicos agregados sin autenticacion
+# ni verificacion de que el doctor sea dueno del expediente. Hoy TODO el router
+# patient-diaries esta sin auth; el gateo (RoleChecker([RoleEnum.doctor]) + ownership,
+# como en medical_record_router) queda como follow-up pendiente antes de produccion.
 @router.get("/medical-record/{medical_record_id}/symptoms", response_model=List[AggregatedSymptomResponse])
 @inject
 def get_medical_record_symptom_history(

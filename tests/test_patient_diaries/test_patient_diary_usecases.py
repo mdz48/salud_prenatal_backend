@@ -138,7 +138,6 @@ def test_get_medical_record_symptom_history_agrega_todo():
     from app.features.patient_diaries.application.get_medical_record_symptom_history_usecase import (
         GetMedicalRecordSymptomHistoryUseCase,
     )
-    from app.features.patient_diaries.domain.body_zone_entity import BodyZoneEntity
 
     repo = MagicMock()
     repo.get_by_medical_record_id.return_value = [

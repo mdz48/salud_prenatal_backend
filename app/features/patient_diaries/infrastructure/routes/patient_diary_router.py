@@ -2,7 +2,7 @@ from dependency_injector.wiring import inject, Provide
 from app.core.containers import Container
 from fastapi import APIRouter, Depends, status
 from typing import List
-from app.features.patient_diaries.infrastructure.schemas.patient_diary_schema import PatientDiaryCreate, PatientDiaryUpdate, PatientDiaryResponse
+from app.features.patient_diaries.infrastructure.schemas.patient_diary_schema import PatientDiaryCreate, PatientDiaryUpdate, PatientDiaryResponse, ExtractedSymptomResponse
 from app.features.patient_diaries.infrastructure.controllers.patient_diary_controller import PatientDiaryController
 
 router = APIRouter(prefix="/patient-diaries", tags=["Patient Diaries"])
@@ -35,10 +35,18 @@ def get_diaries_by_medical_record(
 @router.get("/{patient_diary_id}", response_model=PatientDiaryResponse)
 @inject
 def get_patient_diary(
-    patient_diary_id: int, 
+    patient_diary_id: int,
     controller: PatientDiaryController = Depends(Provide[Container.patient_diary_controller])
 ):
     return controller.get_patient_diary(patient_diary_id)
+
+@router.get("/{patient_diary_id}/symptoms", response_model=List[ExtractedSymptomResponse])
+@inject
+def get_diary_symptoms(
+    patient_diary_id: int,
+    controller: PatientDiaryController = Depends(Provide[Container.patient_diary_controller])
+):
+    return controller.get_diary_symptoms(patient_diary_id)
 
 @router.put("/{patient_diary_id}", response_model=PatientDiaryResponse)
 @inject

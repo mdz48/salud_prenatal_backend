@@ -50,6 +50,7 @@ EXPECTED_ROUTES = [
     "/api/v1/patient-diaries/",
     "/api/v1/patient-diaries/medical-record/{medical_record_id}",
     "/api/v1/patient-diaries/{patient_diary_id}",
+    "/api/v1/patient-diaries/{patient_diary_id}/symptoms",
     "/api/v1/patients/register",
     "/api/v1/patients/{patient_id}/dashboard",
     "/api/v1/patients/{patient_id}/redeem-code",

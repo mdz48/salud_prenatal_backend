@@ -49,3 +49,15 @@ class ExtractedSymptomResponse(BaseModel):
     zones: List[BodyZoneResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AggregatedSymptomResponse(BaseModel):
+    code: str
+    label: Optional[str] = None
+    occurrences: int
+    first_seen: Optional[datetime] = None
+    last_seen: Optional[datetime] = None
+    alarm: bool = False
+    zones: List[str] = []
+
+    model_config = ConfigDict(from_attributes=True)

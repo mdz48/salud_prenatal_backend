@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional, Dict
 from typing import Protocol, Optional, List
 from .patient_diary_entity import PatientDiaryEntity
@@ -24,7 +25,7 @@ class IDiarySymptomRepository(Protocol):
     def get_by_diary_id(self, patient_diary_id: int) -> List[ExtractedSymptomEntity]:
         ...
 
-    def get_by_medical_record_id(self, medical_record_id: int) -> List[ExtractedSymptomEntity]:
+    def get_by_medical_record_id(self, medical_record_id: int, since: Optional[datetime] = None) -> List[ExtractedSymptomEntity]:
         ...
 
     def get_body_zones_by_diary_id(self, patient_diary_id: int) -> List[BodyZoneEntity]:

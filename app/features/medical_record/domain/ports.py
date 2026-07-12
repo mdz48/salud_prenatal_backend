@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import Protocol, Optional, List
 from .medical_record_entity import MedicalRecordEntity
 from .risk_prediction_entity import RiskPredictionEntity
-from .dtos import PatientInfo, LatestDiary
+from .dtos import PatientInfo, LatestDiary, SymptomSummary
 
 class IMedicalRecordRepository(Protocol):
     def get_by_patient_and_doctor(self, patient_id: int, doctor_id: int) -> Optional[MedicalRecordEntity]:...
@@ -27,3 +28,6 @@ class ISocialClusterPort(Protocol):
 
 class ILatestDiaryPort(Protocol):
     def get_latest_diary_for_medical_record(self, medical_record_id: int) -> Optional[LatestDiary]:...
+
+class IDiarySymptomSummaryPort(Protocol):
+    def get_symptom_summary(self, medical_record_id: int, since: Optional[datetime]) -> List[SymptomSummary]:...

@@ -5,9 +5,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.features.medical_record.application.get_patient_medical_record_usecase import GetPatientMedicalRecordUseCase
+from app.features.medical_record.domain.dtos import PatientInfo, SymptomSummary
 
 
-def _make_usecase(medical_record, latest_eval=None, latest_diary=None):
+def _make_usecase(medical_record, latest_eval=None, latest_diary=None, symptom_summary_port=None):
     mr_repo = MagicMock()
     mr_repo.get_by_patient_and_doctor.return_value = medical_record
 
@@ -26,7 +27,13 @@ def _make_usecase(medical_record, latest_eval=None, latest_diary=None):
     latest_diary_repo = MagicMock()
     latest_diary_repo.get_latest_diary_for_medical_record.return_value = latest_diary
 
-    return GetPatientMedicalRecordUseCase(mr_repo, patient_repo, risk_repo, latest_diary_repo), mr_repo, risk_repo, latest_diary_repo
+    if symptom_summary_port is None:
+        symptom_summary_port = MagicMock()
+        symptom_summary_port.get_symptom_summary.return_value = []
+
+    return GetPatientMedicalRecordUseCase(
+        mr_repo, patient_repo, risk_repo, latest_diary_repo, symptom_summary_port
+    ), mr_repo, risk_repo, latest_diary_repo
 
 
 def _record():
@@ -110,3 +117,55 @@ def test_relacion_existe_pero_expediente_no_ha_sido_creado():
 
     with pytest.raises(ValueError, match="expediente"):
         usecase.execute(patient_id=1, doctor_id=2)
+
+
+def _build(consultations, summary_port):
+    patient_repo = MagicMock()
+    patient_repo.get_patient_info.return_value = PatientInfo(
+        patient_id=1, user_id=2, name="Ana", last_name="Perez", doctor_id=9,
+    )
+    mr = SimpleNamespace(
+        medical_record_id=10, patient_id=1, current_gestational_weeks=20,
+        consultations=consultations,
+    )
+    mr_repo = MagicMock()
+    mr_repo.get_by_patient_and_doctor.return_value = mr
+    risk_repo = MagicMock()
+    risk_repo.get_latest_for_medical_record.return_value = None
+    latest_diary_repo = MagicMock()
+    latest_diary_repo.get_latest_diary_for_medical_record.return_value = None
+    usecase = GetPatientMedicalRecordUseCase(
+        medical_record_repository=mr_repo,
+        patient_repository=patient_repo,
+        risk_prediction_repository=risk_repo,
+        latest_diary_repository=latest_diary_repo,
+        symptom_summary_port=summary_port,
+    )
+    return usecase
+
+
+def test_incluye_symptom_alert_usando_ultima_consulta_como_marca_de_agua():
+    summary_port = MagicMock()
+    summary_port.get_symptom_summary.return_value = [
+        SymptomSummary(code="SANGRADO", occurrences=1, alarm=True),
+    ]
+    consultations = [
+        SimpleNamespace(consultation_id=1, created_at=datetime(2026, 6, 1, 8, 0)),
+        SimpleNamespace(consultation_id=2, created_at=datetime(2026, 6, 15, 8, 0)),
+    ]
+    usecase = _build(consultations, summary_port)
+
+    result = usecase.execute(patient_id=1, doctor_id=9)
+
+    summary_port.get_symptom_summary.assert_called_once_with(10, since=datetime(2026, 6, 15, 8, 0))
+    assert [s.code for s in result["symptom_alert"]] == ["SANGRADO"]
+
+
+def test_sin_consultas_la_marca_de_agua_es_none():
+    summary_port = MagicMock()
+    summary_port.get_symptom_summary.return_value = []
+    usecase = _build([], summary_port)
+
+    usecase.execute(patient_id=1, doctor_id=9)
+
+    summary_port.get_symptom_summary.assert_called_once_with(10, since=None)

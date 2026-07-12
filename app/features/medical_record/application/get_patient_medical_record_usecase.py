@@ -1,4 +1,4 @@
-from app.features.medical_record.domain.ports import IMedicalRecordRepository, IPatientInfoPort, IRiskPredictionRepository, ILatestDiaryPort
+from app.features.medical_record.domain.ports import IMedicalRecordRepository, IPatientInfoPort, IRiskPredictionRepository, ILatestDiaryPort, IDiarySymptomSummaryPort
 
 class GetPatientMedicalRecordUseCase:
     def __init__(
@@ -6,12 +6,14 @@ class GetPatientMedicalRecordUseCase:
         medical_record_repository: IMedicalRecordRepository,
         patient_repository: IPatientInfoPort,
         risk_prediction_repository: IRiskPredictionRepository,
-        latest_diary_repository: ILatestDiaryPort
+        latest_diary_repository: ILatestDiaryPort,
+        symptom_summary_port: IDiarySymptomSummaryPort,
     ):
         self.medical_record_repository = medical_record_repository
         self.patient_repository = patient_repository
         self.risk_prediction_repository = risk_prediction_repository
         self.latest_diary_repository = latest_diary_repository
+        self.symptom_summary_port = symptom_summary_port
 
     def execute(self, patient_id: int, doctor_id: int) -> dict:
         patient = self.patient_repository.get_patient_info(patient_id)
@@ -54,6 +56,16 @@ class GetPatientMedicalRecordUseCase:
                 "stale": stale,
             }
 
+        # Aviso de sintomas: solo lo registrado despues de la ultima consulta
+        # (el doctor ya atendio lo anterior). Sin consultas, marca de agua nula.
+        watermark = None
+        if medical_record.consultations:
+            fechas = [c.created_at for c in medical_record.consultations if c.created_at]
+            watermark = max(fechas) if fechas else None
+        symptom_alert = self.symptom_summary_port.get_symptom_summary(
+            medical_record.medical_record_id, since=watermark
+        )
+
         return {
             "user_id": patient.user_id,
             "name": patient.name,
@@ -62,5 +74,6 @@ class GetPatientMedicalRecordUseCase:
             "age": patient.age,
             "medical_record": medical_record,
             "consultations": consultations_list,
-            "risk_prediction": risk_prediction
+            "risk_prediction": risk_prediction,
+            "symptom_alert": symptom_alert
         }

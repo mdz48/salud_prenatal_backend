@@ -35,13 +35,14 @@ def test_get_ads_solo_anuncios_globales(repo):
     assert ads[0].is_ad is True
 
 
-def test_global_feed_excluye_anuncios(repo):
+def test_global_feed_incluye_anuncios(repo):
     repo.create_post(PostEntity(author_id=1, title="normal", content="c"))
     repo.create_post(PostEntity(author_id=2, title="anuncio", content="c", is_ad=True))
 
     feed = repo.get_global_feed()
 
-    assert [p.title for p in feed] == ["normal"]
+    assert {p.title for p in feed} == {"normal", "anuncio"}
+    assert any(p.is_ad for p in feed)
 
 
 def test_feed_by_cluster_excluye_anuncios(repo):

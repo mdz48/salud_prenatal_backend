@@ -89,7 +89,7 @@ class ForumsRepository:
             raise e
 
     def get_global_feed(self, limit: int = 50, offset: int = 0) -> List[PostEntity]:
-        db_posts = self.db.query(PostModel).filter(PostModel.group_id == None, PostModel.is_ad == False).order_by(PostModel.created_at.desc()).offset(offset).limit(limit).all()
+        db_posts = self.db.query(PostModel).filter(PostModel.group_id == None).order_by(PostModel.created_at.desc()).offset(offset).limit(limit).all()
         return [PostEntity.model_validate(p) for p in db_posts]
 
     def get_ads(self, limit: int = 20) -> List[PostEntity]:

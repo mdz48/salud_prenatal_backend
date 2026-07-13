@@ -16,6 +16,8 @@ class InvalidWebhookError(Exception):
 
 
 class IPaymentGateway(Protocol):
+    def create_portal_session(self, stripe_customer_id: str) -> str: ...
+
     def create_checkout_session(
         self, user_id: int, email: str, plan_type: PlanTypeEnum
     ) -> CheckoutSessionResult: ...

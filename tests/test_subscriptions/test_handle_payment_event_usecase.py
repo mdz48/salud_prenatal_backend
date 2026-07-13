@@ -148,6 +148,23 @@ class TestHandlePaymentEventUseCase(unittest.TestCase):
 
         self.assertTrue(self._updated_entity().cancel_at_period_end)
 
+    def test_subscription_updated_syncs_cancel_at_period_end_false(self):
+        """Test that cancel_at_period_end=False is applied (not treated as unset).
+        This catches regressions where a truthy check would skip the assignment."""
+        self.gateway.parse_webhook_event.return_value = PaymentEventDTO(
+            kind="subscription_updated",
+            stripe_subscription_id="sub_1",
+            cancel_at_period_end=False,
+        )
+        self.repo.get_by_stripe_subscription_id.return_value = SubscriptionEntity(
+            subscription_id=5, user_id=1, status=SubscriptionStatusEnum.active,
+            stripe_subscription_id="sub_1", cancel_at_period_end=True,
+        )
+
+        self.usecase.execute(b"payload", "sig")
+
+        self.assertFalse(self._updated_entity().cancel_at_period_end)
+
     def test_subscription_canceled_resets_cancel_at_period_end(self):
         self.gateway.parse_webhook_event.return_value = PaymentEventDTO(
             kind="subscription_canceled", stripe_subscription_id="sub_1"

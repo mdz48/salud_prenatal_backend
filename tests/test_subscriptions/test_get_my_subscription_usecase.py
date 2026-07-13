@@ -19,6 +19,7 @@ class TestGetMySubscriptionUseCase(unittest.TestCase):
             plan_type=PlanTypeEnum.premium,
             status=SubscriptionStatusEnum.active,
             current_period_end=end,
+            cancel_at_period_end=True,
         )
 
         result = self.usecase.execute(user_id=1)
@@ -26,6 +27,7 @@ class TestGetMySubscriptionUseCase(unittest.TestCase):
         self.assertEqual(result.status, "active")
         self.assertEqual(result.plan_type, "premium")
         self.assertEqual(result.current_period_end, end)
+        self.assertTrue(result.cancel_at_period_end)
 
     def test_returns_pending_when_missing(self):
         self.repo.get_by_user_id.return_value = None

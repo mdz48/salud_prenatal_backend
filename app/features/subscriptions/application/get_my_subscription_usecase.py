@@ -17,4 +17,5 @@ class GetMySubscriptionUseCase:
             status=subscription.status.value,
             plan_type=subscription.plan_type.value if subscription.plan_type else None,
             current_period_end=subscription.current_period_end,
+            cancel_at_period_end=subscription.cancel_at_period_end,
         )

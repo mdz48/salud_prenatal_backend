@@ -33,3 +33,4 @@ class SubscriptionStatusDTO:
     status: str
     plan_type: Optional[str] = None
     current_period_end: Optional[datetime] = None
+    cancel_at_period_end: bool = False

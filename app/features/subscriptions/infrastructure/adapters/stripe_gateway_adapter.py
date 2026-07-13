@@ -33,6 +33,15 @@ class StripeGatewayAdapter(IPaymentGateway):
             return _require_env("STRIPE_PRICE_ID_PREMIUM")
         raise ValueError(f"Unsupported plan type: {plan_type}")
 
+    def create_portal_session(self, stripe_customer_id: str) -> str:
+        stripe.api_key = _require_env("STRIPE_PRIVATE_KEY")
+        frontend_url = _require_env("FRONTEND_URL")
+        session = stripe.billing_portal.Session.create(
+            customer=stripe_customer_id,
+            return_url=f"{frontend_url}/subscription/me",
+        )
+        return session.url
+
     def create_checkout_session(
         self, user_id: int, email: str, plan_type: PlanTypeEnum
     ) -> CheckoutSessionResult:

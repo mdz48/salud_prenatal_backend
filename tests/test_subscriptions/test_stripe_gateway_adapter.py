@@ -60,5 +60,28 @@ class TestStripeGatewayAdapterWebhookParsing(unittest.TestCase):
         self.assertIsNone(self.adapter.parse_webhook_event(b"{}", "sig"))
 
 
+class TestStripeGatewayAdapterPortalSession(unittest.TestCase):
+    def setUp(self):
+        self.adapter = StripeGatewayAdapter()
+
+    @patch.dict("os.environ", {
+        "STRIPE_PRIVATE_KEY": "sk_test_x",
+        "FRONTEND_URL": "saludprenatal://payment-callback",
+    })
+    @patch("stripe.billing_portal.Session.create")
+    def test_create_portal_session_returns_url(self, create_mock):
+        create_mock.return_value = stripe.billing_portal.Session.construct_from(
+            {"id": "bps_1", "url": "https://billing.stripe.com/p/session/abc"}, "sk_test"
+        )
+
+        url = self.adapter.create_portal_session("cus_1")
+
+        self.assertEqual(url, "https://billing.stripe.com/p/session/abc")
+        create_mock.assert_called_once_with(
+            customer="cus_1",
+            return_url="saludprenatal://payment-callback/subscription/me",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

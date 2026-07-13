@@ -7,6 +7,7 @@ from app.features.users.domain.user_entity import UserEntity
 from app.features.subscriptions.infrastructure.schemas.subscription_schema import (
     CheckoutSessionRequest,
     CheckoutSessionResponse,
+    PortalSessionResponse,
     SubscriptionResponse,
 )
 from app.features.subscriptions.infrastructure.controllers.subscription_controller import SubscriptionController
@@ -26,6 +27,15 @@ def create_checkout_session(
     return controller.create_checkout_session(
         user_id=current_user.user_id, email=current_user.email, plan_type=data.plan_type
     )
+
+
+@router.post("/portal-session", response_model=PortalSessionResponse, status_code=status.HTTP_201_CREATED)
+@inject
+def create_portal_session(
+    current_user: UserEntity = Depends(require_doctor),
+    controller: SubscriptionController = Depends(Provide[Container.subscription_controller]),
+):
+    return controller.create_portal_session(user_id=current_user.user_id)
 
 
 @router.get("/me", response_model=SubscriptionResponse, status_code=status.HTTP_200_OK)

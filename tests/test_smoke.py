@@ -59,6 +59,7 @@ EXPECTED_ROUTES = [
     "/api/v1/patients/{patient_id}/redeem-code",
     "/api/v1/subscriptions/checkout-session",
     "/api/v1/subscriptions/me",
+    "/api/v1/subscriptions/portal-session",
     "/api/v1/subscriptions/webhook",
     "/api/v1/users/",
     "/api/v1/users/login",

@@ -42,11 +42,12 @@ Valores posibles: `"pending"` | `"active"` | `"past_due"` | `"canceled"`.
 {
   "status": "active",
   "plan_type": "basic",
-  "current_period_end": "2026-08-07T00:00:00"
+  "current_period_end": "2026-08-07T00:00:00",
+  "cancel_at_period_end": false
 }
 ```
 
-Si el doctor nunca inició un checkout, `plan_type` y `current_period_end` vienen `null` y `status` es `"pending"`.
+Si el doctor nunca inició un checkout, `plan_type` y `current_period_end` vienen `null`, `status` es `"pending"` y `cancel_at_period_end` es `false`.
 
 Útil para refrescar el estado sin re-loguear (ej. al volver de la pantalla de pago, o en un pull-to-refresh de la pantalla de suscripción).
 
@@ -150,7 +151,7 @@ Si `cancel_at_period_end` es `true` mientras `status` sigue siendo `"active"`, e
 | Endpoint | Método | Auth | Body | Respuesta |
 |---|---|---|---|---|
 | `/api/v1/users/login` | POST | — | `{email, password}` | agrega `subscription_status` |
-| `/api/v1/subscriptions/me` | GET | doctor | — | `{status, plan_type, current_period_end}` |
+| `/api/v1/subscriptions/me` | GET | doctor | — | `{status, plan_type, current_period_end, cancel_at_period_end}` |
 | `/api/v1/subscriptions/checkout-session` | POST | doctor | `{plan_type: "basic"|"premium"}` | `{checkout_url}` |
 | `/api/v1/subscriptions/portal-session` | POST | doctor | — | `{portal_url}` |
 

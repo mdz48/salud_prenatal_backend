@@ -42,6 +42,7 @@ Tabla `subscriptions`, FK a `users.user_id` con `UNIQUE(user_id)` — no a `doct
 | `stripe_customer_id` | string nullable | |
 | `stripe_subscription_id` | string nullable, único | |
 | `current_period_end` | datetime nullable | |
+| `cancel_at_period_end` | boolean, default false | |
 
 Enums en [`app/core/enums.py`](../app/core/enums.py). **Los montos viven solo en Stripe** (objetos Price); el backend guarda únicamente los Price IDs por variable de entorno.
 
@@ -131,6 +132,14 @@ Todas se leen de forma lazy (dentro de los métodos del adapter, nunca a nivel d
 ## Migración de base de datos
 
 `create_all` no altera tablas existentes, así que la tabla `subscriptions` se crea sola en un despliegue nuevo. En una base ya desplegada sin Alembic no hay backfill automático de filas — por eso `CreateCheckoutSessionUseCase` hace *get-or-create*: si un doctor registrado antes de este feature pide checkout, se le crea la fila `pending` en ese momento.
+
+**Columna nueva `cancel_at_period_end`** (agregada para el feature de Customer Portal): en una base ya desplegada hay que correr manualmente:
+
+```sql
+ALTER TABLE subscriptions ADD COLUMN cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE;
+```
+
+**Orden importa**: corre este `ALTER TABLE` **antes o junto con** el deploy del código nuevo, no después. El código nuevo lee esta columna en cada `SELECT` sobre `Subscription` — si el deploy de código llega antes que la columna exista, toda la feature de suscripciones se rompe (`column subscriptions.cancel_at_period_end does not exist`) hasta que corras el `ALTER TABLE`. Como es una columna con `DEFAULT`, agregarla antes es seguro: el código viejo simplemente la ignora.
 
 ## Tests
 

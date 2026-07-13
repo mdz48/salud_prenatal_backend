@@ -41,12 +41,12 @@ Los posts normales (`is_ad=false`) no consultan elegibilidad ni cuentan anuncios
 
 ## Cómo se intercala
 
-La clave es mantener el stream de posts normales limpio y **separado** de los anuncios, para que la inyección sea determinista:
+**Actualizado:** `/posts/global` ahora incluye anuncios de forma natural (por fecha, sin intercalado forzado) — antes quedaba excluido y los anuncios solo se veían vía `/posts/recommended`. `get_feed_by_cluster` sigue excluyendo anuncios: ahí es donde el intercalado determinista (`AD_EVERY=4`) sigue teniendo sentido, porque el feed por cluster típicamente trae pocos posts.
 
-1. Los feeds normales **excluyen** anuncios: `get_global_feed` y `get_feed_by_cluster` filtran `is_ad == False`.
-2. `ForumsRepository.get_ads(limit)` trae los anuncios globales (`is_ad == True`, `group_id == None`), recientes primero.
+1. `get_global_feed` **incluye** anuncios (sin filtro `is_ad`) — recientes primero junto con los posts normales. `get_feed_by_cluster` sigue filtrando `is_ad == False`.
+2. `ForumsRepository.get_ads(limit)` trae los anuncios globales (`is_ad == True`, `group_id == None`), recientes primero — se usa solo cuando el feed base viene del cluster (paso 4).
 3. El helper puro `interleave(posts, ads, every=4)` mezcla ambos: un anuncio tras cada 4 posts, hasta agotar anuncios, más uno al cierre si el feed es corto.
-4. `GetRecommendedFeedUseCase` obtiene el feed base (por cluster o fallback global), pide los anuncios e intercala.
+4. `GetRecommendedFeedUseCase`: si hay posts por cluster, pide los anuncios e intercala (igual que antes). Si cae al fallback de feed global, lo devuelve tal cual — ya trae anuncios en su posición natural, intercalar de nuevo los duplicaría.
 
 ```
 GET /forums/posts/recommended  (token de paciente)
@@ -54,16 +54,14 @@ GET /forums/posts/recommended  (token de paciente)
         ▼
 GetRecommendedFeedUseCase.execute()
         │
-        ├─ posts = feed base (por cluster o global) — SIN anuncios
-        ├─ ads   = ForumsRepository.get_ads()
-        ▼
-interleave(posts, ads, every=4)
-        │
+        ├─ ¿hay posts por cluster?
+        │     sí → ads = get_ads() → interleave(posts, ads, every=4)
+        │     no → return get_global_feed()  (ya trae anuncios, no se intercala de nuevo)
         ▼
 [ p, p, p, p, AD, p, p, ... ]   cada item con su is_ad
 ```
 
-`/posts/global` queda como feed crudo sin anuncios; los anuncios solo se ven a través del feed de recomendaciones (que es el que navega la paciente).
+`GET /forums/posts/global` ahora muestra anuncios mezclados por fecha (no forzados cada 4 posts) — cualquier cliente que lo consuma directamente ya los ve, no hace falta pasar por `/posts/recommended`.
 
 ## Cómo lo consume el front
 
@@ -82,13 +80,13 @@ Cada objeto del feed trae `is_ad` en `PostResponse`. El front:
 | `app/features/forums/application/posts/create_post_usecase.py` | Depende de `ad_eligibility`; gatea `is_ad` a premium activo + tope semanal (`WEEKLY_AD_LIMIT = 10`) |
 | `app/features/forums/application/posts/get_recommended_feed_usecase.py` | Intercala anuncios con `get_ads` + `interleave` (`AD_EVERY = 4`) |
 | `app/features/forums/infrastructure/adapters/ad_eligibility_adapter.py` | **Nuevo.** Resuelve elegibilidad de anuncios (forums → subscriptions), reemplaza al antiguo `author_role_adapter.py` |
-| `app/features/forums/infrastructure/repositories/forums_repository.py` | `get_ads`, `count_ads_by_author_since`; filtro `is_ad == False` en `get_global_feed` y `get_feed_by_cluster` |
+| `app/features/forums/infrastructure/repositories/forums_repository.py` | `get_ads`, `count_ads_by_author_since`; filtro `is_ad == False` solo en `get_feed_by_cluster` (`get_global_feed` ya no filtra, incluye anuncios) |
 | `app/features/forums/infrastructure/models/post_model.py` | Nueva columna `is_ad` (Boolean, default False, indexada) |
 | `app/features/forums/infrastructure/schemas/forums_schemas.py` | `is_ad` en `PostCreate` y `PostResponse` |
 | `app/features/forums/infrastructure/controllers/posts_controller.py` | Mapea `AdRateLimitError`→429, `AdPermissionError`→402 |
 | `app/core/containers.py` | Registra `ad_eligibility_adapter` (reutiliza `subscription_repository`); lo inyecta en `create_post_use_case` |
 
-No hay endpoints nuevos: la publicidad usa `POST /forums/posts` (con `is_ad`) y sale por `GET /forums/posts/recommended`.
+No hay endpoints nuevos: la publicidad usa `POST /forums/posts` (con `is_ad`) y sale por `GET /forums/posts/recommended` (intercalada) y `GET /forums/posts/global` (natural, por fecha).
 
 ## Migración de base de datos
 
@@ -104,6 +102,6 @@ En los tests, SQLite se crea desde cero, no requiere migración.
 
 - `tests/test_forums/test_feed_interleave.py` — helper puro (sin anuncios, intervalo, feed corto, más anuncios que huecos).
 - `tests/test_forums/test_ads.py` — gating de `is_ad` en `CreatePostUseCase` (sin premium activo, tope semanal) e intercalado en `GetRecommendedFeedUseCase`.
-- `tests/test_forums/test_ads_repository.py` — `get_ads`, `count_ads_by_author_since` (ventana de 7 días, por autor) y exclusión de anuncios en los feeds normales.
+- `tests/test_forums/test_ads_repository.py` — `get_ads`, `count_ads_by_author_since` (ventana de 7 días, por autor); `get_global_feed` incluye anuncios, `get_feed_by_cluster` los excluye.
 - `tests/test_forums/test_ad_eligibility_adapter.py` — `is_premium_active` para cada combinación de plan/estado (premium+active, basic+active, premium+pending, premium+past_due, sin fila).
 - `tests/test_forums_cluster_e2e.py` — end to end: doctor con plan básico activo intenta `is_ad=true` → `402`; con premium activo → `201` y aparece intercalado; el 11º anuncio de la semana → `429`; paciente que intenta `is_ad=true` → `402`.

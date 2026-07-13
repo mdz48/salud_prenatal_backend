@@ -16,11 +16,12 @@ class GetRecommendedFeedUseCase:
 
     def execute(self, user_id: int, limit: int = 50, offset: int = 0) -> List[PostEntity]:
         profile = self.forums_repo.get_profile(user_id)
-        posts = []
         if profile and profile.cluster_profile:
             posts = self.forums_repo.get_feed_by_cluster(profile.cluster_profile, limit, offset)
-        if not posts:
-            posts = self.forums_repo.get_global_feed(limit, offset)
+            if posts:
+                ads = self.forums_repo.get_ads(limit)
+                return interleave(posts, ads, every=AD_EVERY)
 
-        ads = self.forums_repo.get_ads(limit)
-        return interleave(posts, ads, every=AD_EVERY)
+        # Fallback al feed global: ya trae anuncios de forma natural (por fecha),
+        # asi que no se intercalan aparte para evitar duplicarlos.
+        return self.forums_repo.get_global_feed(limit, offset)

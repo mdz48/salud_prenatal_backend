@@ -1,8 +1,16 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class ProfileCreate(BaseModel):
+    # user_id se deriva del token JWT, no del cliente.
+    # cluster_profile tampoco se acepta del cliente: solo se deriva del ML.
+    alias: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    office_address: Optional[str] = None
+
+class ProfileUpdate(BaseModel):
     # user_id se deriva del token JWT, no del cliente.
     # cluster_profile tampoco se acepta del cliente: solo se deriva del ML.
     alias: Optional[str] = None
@@ -82,5 +90,11 @@ class ReportResponse(BaseModel):
     comment_id: Optional[int] = None
     reason: str
     created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ProfileTimelineResponse(BaseModel):
+    profile: ProfileResponse
+    posts: List[PostResponse]
 
     model_config = ConfigDict(from_attributes=True)

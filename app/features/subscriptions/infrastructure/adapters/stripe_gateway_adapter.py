@@ -111,6 +111,8 @@ class StripeGatewayAdapter(IPaymentGateway):
                 stripe_subscription_id=self._f(obj, "id"),
                 stripe_status=self._f(obj, "status"),
                 current_period_end=self._ts_to_dt(self._f(obj, "current_period_end")),
+                plan_type_from_items=self._plan_type_from_price_id(self._current_price_id(obj)),
+                cancel_at_period_end=self._f(obj, "cancel_at_period_end"),
             )
 
         if event_type == "customer.subscription.deleted":
@@ -145,4 +147,22 @@ class StripeGatewayAdapter(IPaymentGateway):
         if data:
             period = self._f(data[0], "period")
             return self._ts_to_dt(self._f(period, "end"))
+        return None
+
+    def _current_price_id(self, subscription_obj) -> Optional[str]:
+        items = self._f(subscription_obj, "items")
+        data = self._f(items, "data") or []
+        if not data:
+            return None
+        price = self._f(data[0], "price")
+        return self._f(price, "id")
+
+    @staticmethod
+    def _plan_type_from_price_id(price_id: Optional[str]) -> Optional[str]:
+        if price_id is None:
+            return None
+        if price_id == os.getenv("STRIPE_PRICE_ID_BASIC"):
+            return PlanTypeEnum.basic.value
+        if price_id == os.getenv("STRIPE_PRICE_ID_PREMIUM"):
+            return PlanTypeEnum.premium.value
         return None

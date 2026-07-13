@@ -59,6 +59,53 @@ class TestStripeGatewayAdapterWebhookParsing(unittest.TestCase):
 
         self.assertIsNone(self.adapter.parse_webhook_event(b"{}", "sig"))
 
+    @patch.dict("os.environ", {
+        "STRIPE_WEBHOOK_SECRET": "whsec_x",
+        "STRIPE_PRICE_ID_BASIC": "price_basic123",
+        "STRIPE_PRICE_ID_PREMIUM": "price_premium456",
+    })
+    @patch("stripe.Webhook.construct_event")
+    def test_subscription_updated_maps_plan_type_from_items_and_cancel_flag(self, construct):
+        construct.return_value = _stripe_event(
+            "customer.subscription.updated",
+            {
+                "id": "sub_1",
+                "customer": "cus_1",
+                "status": "active",
+                "cancel_at_period_end": True,
+                "current_period_end": 1783529904,
+                "items": {"data": [{"price": {"id": "price_premium456"}}]},
+            },
+        )
+
+        dto = self.adapter.parse_webhook_event(b"{}", "sig")
+
+        self.assertEqual(dto.plan_type_from_items, "premium")
+        self.assertTrue(dto.cancel_at_period_end)
+
+    @patch.dict("os.environ", {
+        "STRIPE_WEBHOOK_SECRET": "whsec_x",
+        "STRIPE_PRICE_ID_BASIC": "price_basic123",
+        "STRIPE_PRICE_ID_PREMIUM": "price_premium456",
+    })
+    @patch("stripe.Webhook.construct_event")
+    def test_subscription_updated_unmatched_price_id_leaves_plan_type_none(self, construct):
+        construct.return_value = _stripe_event(
+            "customer.subscription.updated",
+            {
+                "id": "sub_1",
+                "customer": "cus_1",
+                "status": "active",
+                "cancel_at_period_end": False,
+                "items": {"data": [{"price": {"id": "price_unknown999"}}]},
+            },
+        )
+
+        dto = self.adapter.parse_webhook_event(b"{}", "sig")
+
+        self.assertIsNone(dto.plan_type_from_items)
+        self.assertFalse(dto.cancel_at_period_end)
+
 
 class TestStripeGatewayAdapterPortalSession(unittest.TestCase):
     def setUp(self):

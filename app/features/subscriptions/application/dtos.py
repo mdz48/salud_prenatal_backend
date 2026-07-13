@@ -23,6 +23,8 @@ class PaymentEventDTO:
     plan_type: Optional[str] = None
     current_period_end: Optional[datetime] = None
     stripe_status: Optional[str] = None
+    plan_type_from_items: Optional[str] = None
+    cancel_at_period_end: Optional[bool] = None
 
 
 @dataclass

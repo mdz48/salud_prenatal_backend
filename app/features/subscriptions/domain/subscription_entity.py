@@ -12,6 +12,7 @@ class SubscriptionEntity(BaseModel):
     stripe_customer_id: Optional[str] = None
     stripe_subscription_id: Optional[str] = None
     current_period_end: Optional[datetime] = None
+    cancel_at_period_end: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

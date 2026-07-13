@@ -118,6 +118,50 @@ class TestHandlePaymentEventUseCase(unittest.TestCase):
 
         self.repo.update.assert_not_called()
 
+    def test_subscription_updated_syncs_plan_type_from_items(self):
+        self.gateway.parse_webhook_event.return_value = PaymentEventDTO(
+            kind="subscription_updated",
+            stripe_subscription_id="sub_1",
+            plan_type_from_items="premium",
+        )
+        self.repo.get_by_stripe_subscription_id.return_value = SubscriptionEntity(
+            subscription_id=5, user_id=1, status=SubscriptionStatusEnum.active,
+            stripe_subscription_id="sub_1", plan_type=PlanTypeEnum.basic,
+        )
+
+        self.usecase.execute(b"payload", "sig")
+
+        self.assertEqual(self._updated_entity().plan_type, PlanTypeEnum.premium)
+
+    def test_subscription_updated_syncs_cancel_at_period_end(self):
+        self.gateway.parse_webhook_event.return_value = PaymentEventDTO(
+            kind="subscription_updated",
+            stripe_subscription_id="sub_1",
+            cancel_at_period_end=True,
+        )
+        self.repo.get_by_stripe_subscription_id.return_value = SubscriptionEntity(
+            subscription_id=5, user_id=1, status=SubscriptionStatusEnum.active,
+            stripe_subscription_id="sub_1",
+        )
+
+        self.usecase.execute(b"payload", "sig")
+
+        self.assertTrue(self._updated_entity().cancel_at_period_end)
+
+    def test_subscription_canceled_resets_cancel_at_period_end(self):
+        self.gateway.parse_webhook_event.return_value = PaymentEventDTO(
+            kind="subscription_canceled", stripe_subscription_id="sub_1"
+        )
+        self.repo.get_by_stripe_subscription_id.return_value = SubscriptionEntity(
+            subscription_id=5, user_id=1, status=SubscriptionStatusEnum.active,
+            stripe_subscription_id="sub_1", cancel_at_period_end=True,
+        )
+
+        self.usecase.execute(b"payload", "sig")
+
+        self.assertFalse(self._updated_entity().cancel_at_period_end)
+
 
 if __name__ == "__main__":
     unittest.main()
+

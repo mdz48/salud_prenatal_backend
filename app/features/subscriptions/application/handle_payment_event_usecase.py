@@ -57,6 +57,7 @@ class HandlePaymentEventUseCase:
 
         if event.kind == "subscription_canceled":
             sub.status = SubscriptionStatusEnum.canceled
+            sub.cancel_at_period_end = False
             return True
 
         if event.kind == "subscription_updated":
@@ -64,6 +65,10 @@ class HandlePaymentEventUseCase:
                 sub.status = self._map_stripe_status(event.stripe_status)
             if event.current_period_end:
                 sub.current_period_end = event.current_period_end
+            if event.plan_type_from_items:
+                sub.plan_type = PlanTypeEnum(event.plan_type_from_items)
+            if event.cancel_at_period_end is not None:
+                sub.cancel_at_period_end = event.cancel_at_period_end
             return True
 
         return False  # evento desconocido

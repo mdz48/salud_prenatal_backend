@@ -84,10 +84,38 @@ def notify_upcoming_appointments_job():
                     for t in invalid_tokens:
                         token_repo.delete_token(t)
             appt.notified_1h = True
-            
+
         db.commit()
     except Exception as e:
         db.rollback()
         logger.error(f"Error in notify_upcoming_appointments_job: {e}")
+    finally:
+        db.close()
+
+def send_daily_bitacora_reminder_job():
+    db = SessionLocal()
+    token_repo = DeviceTokenRepository(db)
+    try:
+        tokens = token_repo.get_all_tokens()
+        if not tokens:
+            return
+
+        title = "Recordatorio diario"
+        body = "Recuerda hacer tus registros en la bitácora"
+        data = {"type": "daily_reminder"}
+
+        # FCM permite máximo 500 tokens por multicast; se envía en lotes.
+        batch_size = 500
+        invalid_tokens = []
+        for i in range(0, len(tokens), batch_size):
+            batch = tokens[i:i + batch_size]
+            invalid_tokens.extend(
+                FirebaseNotificationService.send_multicast_notification(batch, title, body, data)
+            )
+
+        for t in invalid_tokens:
+            token_repo.delete_token(t)
+    except Exception as e:
+        logger.error(f"Error in send_daily_bitacora_reminder_job: {e}")
     finally:
         db.close()

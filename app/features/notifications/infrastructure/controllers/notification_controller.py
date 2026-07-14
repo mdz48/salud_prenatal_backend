@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import HTTPException, status
 from app.features.notifications.infrastructure.schemas.notification_schema import DeviceTokenCreate, DeviceTokenUnregister
 from app.features.notifications.application.use_cases.register_device_token_use_case import RegisterDeviceTokenUseCase
@@ -12,7 +14,7 @@ class NotificationController:
         self.register_device_token_use_case = register_device_token_use_case
         self.unregister_device_token_use_case = unregister_device_token_use_case
 
-    def register_token(self, user_id: int, data: DeviceTokenCreate):
+    def register_token(self, user_id: Optional[int], data: DeviceTokenCreate):
         try:
             return self.register_device_token_use_case.execute(
                 user_id=user_id,

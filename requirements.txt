@@ -14,3 +14,4 @@ requests
 dependency-injector
 firebase-admin
 apscheduler
+pytest

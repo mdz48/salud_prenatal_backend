@@ -17,7 +17,7 @@ from app.features.forums.infrastructure.routes.groups_router import router as gr
 from app.features.forums.infrastructure.routes.posts_router import router as posts_router
 from app.features.forums.infrastructure.routes.reports_router import router as reports_router
 from app.features.notifications.infrastructure.routes.notification_router import router as notification_router
-from app.features.notifications.application.tasks import notify_upcoming_appointments_job
+from app.features.notifications.application.tasks import notify_upcoming_appointments_job, send_daily_bitacora_reminder_job
 from app.core.containers import Container
 
 @asynccontextmanager
@@ -25,6 +25,7 @@ async def lifespan(app: FastAPI):
     # Startup: Start APScheduler to check upcoming appointments
     scheduler = AsyncIOScheduler()
     scheduler.add_job(notify_upcoming_appointments_job, 'interval', minutes=15)
+    scheduler.add_job(send_daily_bitacora_reminder_job, 'cron', hour=9, minute=0)
     scheduler.start()
     yield
     # Shutdown: Cleanly shut down scheduler

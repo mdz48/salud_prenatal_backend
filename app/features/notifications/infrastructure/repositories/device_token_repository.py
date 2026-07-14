@@ -6,7 +6,7 @@ class DeviceTokenRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def register_token(self, user_id: int, token: str, device_type: Optional[str] = "android") -> DeviceToken:
+    def register_token(self, user_id: Optional[int], token: str, device_type: Optional[str] = "android") -> DeviceToken:
         # Check if the token already exists
         existing_device = self.db.query(DeviceToken).filter(DeviceToken.token == token).first()
 
@@ -39,6 +39,10 @@ class DeviceTokenRepository:
 
     def get_tokens_by_user_id(self, user_id: int) -> List[str]:
         devices = self.db.query(DeviceToken).filter(DeviceToken.user_id == user_id).all()
+        return [d.token for d in devices]
+
+    def get_all_tokens(self) -> List[str]:
+        devices = self.db.query(DeviceToken).all()
         return [d.token for d in devices]
 
     def delete_token(self, token: str) -> None:

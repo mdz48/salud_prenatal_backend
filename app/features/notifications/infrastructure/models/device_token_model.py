@@ -7,7 +7,10 @@ class DeviceToken(Base):
     __tablename__ = "device_tokens"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    # Nullable: el token se registra a nivel de dispositivo apenas se abre la
+    # app (antes de login) y sobrevive al logout, para poder enviar
+    # recordatorios aunque no haya sesión iniciada.
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
     token = Column(String(255), unique=True, nullable=False)
     device_type = Column(String(50), nullable=True)
     created_at = Column(DateTime, server_default=func.now())

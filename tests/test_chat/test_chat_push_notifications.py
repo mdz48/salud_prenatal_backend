@@ -54,10 +54,11 @@ def _build_controller():
     get_history = MagicMock()
     save_message = MagicMock()
     get_inbox = MagicMock()
+    get_contacts = MagicMock()
     device_token_repository = MagicMock()
     user_repository = MagicMock()
     controller = ChatController(
-        get_history, save_message, get_inbox, device_token_repository, user_repository
+        get_history, save_message, get_inbox, get_contacts, device_token_repository, user_repository
     )
     return controller, save_message, device_token_repository, user_repository
 

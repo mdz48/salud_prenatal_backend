@@ -23,6 +23,15 @@ class PatientDiaryRepository(IPatientDiaryRepository):
         db_items = self.db.query(PatientDiary).filter(PatientDiary.medical_record_id == medical_record_id).all()
         return [PatientDiaryEntity.model_validate(item) for item in db_items]
 
+    def get_latest_by_medical_record_id(self, medical_record_id: int) -> Optional[PatientDiaryEntity]:
+        db_obj = (
+            self.db.query(PatientDiary)
+            .filter(PatientDiary.medical_record_id == medical_record_id)
+            .order_by(PatientDiary.created_at.desc(), PatientDiary.patient_diary_id.desc())
+            .first()
+        )
+        return PatientDiaryEntity.model_validate(db_obj) if db_obj else None
+
     def create(self, diary_data: PatientDiaryEntity) -> PatientDiaryEntity:
         db_diary = PatientDiary(**diary_data.model_dump(exclude_unset=True, exclude={"patient_diary_id", "created_at", "updated_at", "weight_gain"}))
         self.db.add(db_diary)

@@ -1,0 +1,513 @@
+# ADR-01: Cifrado de Datos Sensibles
+
+## Fecha
+
+18/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio recolecta datos médicos e identificables extremadamente sensibles para la estimación de riesgos del embarazo. Según regulaciones internacionales y políticas de Google Play Store, es obligatorio cifrar esta información para proteger la confidencialidad de la paciente contra posibles filtraciones.
+
+## Decisión
+
+Implementar el patrón Data Mapper (Fowler) para separar el dominio de la persistencia e interceptar y cifrar los campos sensibles antes del almacenamiento físico.
+
+## Consecuencias
+
+### Pros
+
+- Centraliza la seguridad en la persistencia, manteniendo el dominio libre de lógica criptográfica.
+
+- Cumple estrictamente con las normativas legales de protección de datos clínicos del paciente.
+
+### Contras
+
+- Impide búsquedas parciales directas en base de datos, requiriendo indexación o descifrado previo.
+
+- Incrementa ligeramente el uso de CPU debido a operaciones constantes de cifrado.
+
+# ADR-02: Optimización de Consultas Históricas
+
+## Fecha
+
+18/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+Los médicos obstetras requieren consultar el historial completo de automonitoreo diario de la paciente para evaluar su evolución. Cargar todos los registros históricos de forma anticipada degradaría el rendimiento del servidor y aumentaría el consumo de ancho de banda.
+
+## Decisión
+
+Implementar el patrón Lazy Load (Fowler) para posponer la carga de los registros históricos del diario hasta que el médico los solicite explícitamente.
+
+## Consecuencias
+
+### Pros
+
+- Reduce la memoria del servidor and el ancho de banda en consultas iniciales.
+
+- Optimiza el tiempo de respuesta al abrir el perfil básico del paciente.
+
+### Contras
+
+- Puede generar múltiples llamadas consecutivas a la base de datos si no se optimiza.
+
+- Incrementa la complejidad del mapeador al gestionar cargas diferidas en colecciones.
+
+# ADR-03: Restricción de Acceso Clínico
+
+## Fecha
+
+18/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio exige salvaguardar la privacidad de la paciente, garantizando que su expediente solo sea consultado por su obstetra vinculado. Al cambiar de médico, se debe impedir que el nuevo profesional herede el historial clínico del médico anterior.
+
+## Decisión
+
+Implementar el patrón Protection Proxy (GoF) para interceptar consultas y validar que el médico tenga una vinculación activa autorizada con la paciente.
+
+## Consecuencias
+
+### Pros
+
+- Asegura un control de acceso riguroso y transparente a nivel de dominio.
+
+- Evita fugas de información clínica entre diferentes médicos de la plataforma.
+
+### Contras
+
+- Introduce una capa intermedia que añade complejidad a las pruebas de unidad.
+
+- Requiere duplicar datos demográficos básicos al crear expedientes aislados por vinculación.
+
+# ADR-04: Desacoplamiento de Notificaciones
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio requiere enviar notificaciones automáticas ante diversos eventos: cambios de vinculación, citas agendadas y nuevos mensajes de chat. Acoplar el envío de notificaciones dentro de los servicios principales dificulta añadir nuevos canales de entrega.
+
+## Decisión
+
+Implementar el patrón Observer (GoF) para tratar los servicios principales como sujetos observables y notificar eventos de estado a los despachadores de notificaciones.
+
+## Consecuencias
+
+### Pros
+
+- Desacopla la lógica de negocio de los mecanismos de entrega de notificaciones.
+
+- Permite añadir nuevos canales de notificación sin modificar los servicios existentes.
+
+### Contras
+
+- El flujo reactivo dificulta el seguimiento de errores si falla la entrega.
+
+- Requiere un despachador de eventos que incrementa la complejidad del sistema.
+
+# ADR-05: Validación de Datos Entrada
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El sistema debe garantizar la integridad física de las mediciones clínicas capturadas en el automonitoreo diario. Si múltiples mediciones son incorrectas, el sistema debe validar todos los campos y reportar de forma unificada los errores del formulario.
+
+## Decisión
+
+Implementar el patrón Notification (Fowler) para acumular todos los errores de validación física en un objeto antes de rechazar y retornar la solicitud.
+
+## Consecuencias
+
+### Pros
+
+- Permite a la paciente conocer y corregir todos los errores en un viaje.
+
+- Evita estados inconsistentes o físicamente imposibles en la base de datos.
+
+### Contras
+
+- Obliga a procesar todas las validaciones incluso si la primera ya falló.
+
+- Requiere estructurar un objeto de notificación adicional en toda la API.
+
+# ADR-06: Integración del Servicio Inferencia
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio necesita clasificar el riesgo del embarazo usando un microservicio externo de Machine Learning. Esta llamada introduce latencia de red y posibles fallos que pueden afectar el tiempo de respuesta del servidor backend principal.
+
+## Decisión
+
+Implementar el patrón Gateway (Fowler) para encapsular la comunicación con el microservicio externo, administrando los payloads, reintentos y timeouts del servicio.
+
+## Consecuencias
+
+### Pros
+
+- Aísla la integración de red del modelo de dominio de la aplicación.
+
+- Facilita la implementación de políticas de resiliencia y fallbacks locales.
+
+### Contras
+
+- Requiere mantener una interfaz intermedia acoplada al contrato del servicio externo.
+
+- Añade latencia adicional al realizar llamadas a través de la red.
+
+# ADR-07: Búsquedas Dinámicas en Directorio
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio requiere que los médicos busquen y filtren dinámicamente pacientes según nombre, residencia y nivel de riesgo. Escribir estas consultas condicionales en los repositorios tradicionales de datos duplica el código y dificulta la mantenibilidad.
+
+## Decisión
+
+Implementar el patrón Query Object (Fowler) para representar los filtros del directorio como objetos de consulta que traducen condicionales a sentencias SQL.
+
+## Consecuencias
+
+### Pros
+
+- Aísla la sintaxis de base de datos de las reglas de filtrado.
+
+- Facilita la reutilización y composición de filtros en múltiples endpoints.
+
+### Contras
+
+- Exige diseñar una abstracción de consultas personalizada en lugar de directo.
+
+- Incrementa la cantidad de clases necesarias para dar soporte a búsquedas.
+
+## Nota de implementación (estado real)
+
+Estado: **parcialmente aplicable**. La búsqueda por nombre (RF-14) está implementada en `SearchPatientsByNameUseCase` y `SearchMedicalRecordsByPatientNameUseCase`, pero el filtrado ocurre **en memoria (Python)**, no como Query Object traducido a SQL.
+
+Motivo: los campos `name`/`last_name` están cifrados con `EncryptedString` (Fernet, ADR-01), que es **no determinista** — el mismo texto produce ciphertext distinto en cada fila. Por eso es imposible filtrar por nombre con `WHERE ... LIKE` sobre la columna cifrada; hay que descifrar y comparar en memoria. Se acota primero a los pacientes del médico (`get_patients_by_doctor`) para limitar el conjunto. Es exactamente la contra documentada del ADR-01.
+
+Dónde sí aplicaría Query Object: los filtros de RF-15 sobre columnas en **texto plano** (residencia, nivel de riesgo/cluster, fecha de vinculación). Esos aún no se implementan.
+
+Alternativa futura para habilitar búsqueda por nombre en SQL: **índice ciego (blind index)** — una columna hash determinista (HMAC del nombre normalizado) poblada al escribir y consultada por SQL, sin exponer el texto plano.
+
+# ADR-08: Gestión de Agenda Citas
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio exige validar que el médico tenga disponibilidad horaria y vinculación activa con la paciente antes de registrar una cita. Mezclar estas reglas comerciales con el flujo de almacenamiento dificulta modificar las políticas de agenda del consultorio.
+
+## Decisión
+
+Implementar el patrón Specification (Fowler) para encapsular las políticas de disponibilidad y vinculación en objetos de reglas independientes que se evalúan dinámicamente.
+
+## Consecuencias
+
+### Pros
+
+- Facilita modificar las reglas de agendamiento sin tocar el servicio principal.
+
+- Permite reutilizar las mismas reglas de validación en diferentes endpoints.
+
+### Contras
+
+- Añade indirección y complejidad al separar la validación del flujo principal.
+
+- Requiere definir clases adicionales para cada regla o combinación lógica.
+
+# ADR-09: Ruteo del Chat WebSocket
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio requiere un chat en tiempo real entre pacientes y recepción, verificando la autenticación JWT. Conectar a los usuarios de forma directa colapsaría el sistema de red y dificultaría la persistencia centralizada de las conversaciones.
+
+## Decisión
+
+Implementar el patrón Mediator (GoF) mediante un manager central que autentica conexiones, administra sockets activos, persiste mensajes y los enruta al destinatario.
+
+## Consecuencias
+
+### Pros
+
+- Centraliza el control de conexiones activas, autenticación JWT y auditoría.
+
+- Evita que los clientes de chat tengan que conocerse directamente.
+
+### Contras
+
+- El mediador centralizado constituye un punto único de falla del sistema.
+
+- Puede congestionarse bajo un volumen extremo de tráfico de mensajes simultáneos.
+
+# ADR-10: Lógica Cuentas de Usuarios
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El sistema maneja múltiples roles (médicos, pacientes, recepcionistas) con procesos específicos de registro, activación y visualización de cuentas. Escribir estas reglas comerciales en la capa de persistencia mezcla responsabilidades y vulnera el control de acceso.
+
+## Decisión
+
+Implementar el patrón Service Layer (Fowler) para encapsular la lógica de creación, activación y consulta de cuentas de usuario en servicios independientes del controlador.
+
+## Consecuencias
+
+### Pros
+
+- Define una frontera clara de servicios disponibles para los clientes web.
+
+- Centraliza las transacciones de negocio facilitando el mantenimiento y pruebas.
+
+### Contras
+
+- Añade una capa de código adicional que puede resultar redundante inicialmente.
+
+- Exige mapear datos entre capas incrementando ligeramente la sobrecarga de desarrollo.
+
+# ADR-11: Autenticación Segura con JWT
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio requiere verificar la identidad de los usuarios mediante tokens JWT en cada petición REST y WebSocket. Distribuir la verificación del token en cada servicio del backend incrementa el riesgo de vulnerabilidades de seguridad por descuido.
+
+## Decisión
+
+Implementar el patrón Remote Facade (Fowler) para centralizar la autenticación, validación de JWT y extracción de identidad en un componente único de interceptación de entrada.
+
+## Consecuencias
+
+### Pros
+
+- Agrupa y centraliza la lógica de validación de seguridad para toda la aplicación.
+
+- Evita duplicación de código de validación de tokens en los controladores.
+
+### Contras
+
+- Introduce una dependencia obligatoria en la cabecera de todas las peticiones.
+
+- Puede convertirse en un cuello de botella para el rendimiento general.
+
+# ADR-12: Generación Código de Vinculación
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio requiere generar códigos alfanuméricos de vinculación que expiren y sean de un solo uso. La lógica para generar, firmar y estructurar el formato de estos códigos debe estar separada de los controladores de usuarios.
+
+## Decisión
+
+Implementar el patrón Factory Method (GoF) para delegar la creación y formato del código de vinculación en un generador especializado de tokens clínicos.
+
+## Consecuencias
+
+### Pros
+
+- Aísla la lógica de generación y firma del código del resto del sistema.
+
+- Facilita cambiar el formato de los códigos (QR o alfanumérico) sin modificar clientes.
+
+### Contras
+
+- Requiere crear subclases o fábricas específicas que complican el diseño de clases.
+
+- Incrementa la indirección al crear códigos de vinculación sencillos del sistema.
+
+# ADR-13: Estructura del Foro Comunitario
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio requiere que las pacientes publiquen experiencias, creen grupos de apoyo temáticos y comenten publicaciones. Administrar este árbol jerárquico de publicaciones y comentarios de forma separada acopla el sistema y complica su representación.
+
+## Decisión
+
+Implementar el patrón de diseño Composite (GoF) para tratar de forma uniforme las publicaciones individuales y los hilos de conversación jerárquicos del foro.
+
+## Consecuencias
+
+### Pros
+
+- Simplifica el cliente al permitir tratar publicaciones simples e hilos de comentarios idénticamente.
+
+- Facilita la incorporación de nuevas categorías o grupos de discusión en el foro.
+
+### Contras
+
+- Dificulta restringir operaciones específicas en ciertos nodos del árbol sin añadir lógica adicional.
+
+- Complica el diseño del esquema de base de datos para mapear jerarquías recursivas.
+
+# ADR-14: Procesamiento de Lenguaje Natural
+
+## Fecha
+
+24/06/2026
+
+## Estado
+
+Suggested
+
+## Responsables
+
+Maximiliano Diaz
+
+## Contexto
+
+El negocio requiere procesar síntomas e inquietudes clínicas en texto libre ingresados por las pacientes mediante técnicas de procesamiento de lenguaje natural. Esto permite identificar automáticamente anomalías médicas complejas que no se reportan numéricamente.
+
+## Decisión
+
+Implementar el patrón Strategy (GoF) para definir e intercambiar dinámicamente diferentes algoritmos de extracción y procesamiento de lenguaje natural de los síntomas clínicos.
+
+## Consecuencias
+
+### Pros
+
+- Permite evaluar e intercambiar motores de análisis de texto sin afectar la persistencia.
+
+- Encapsula cada algoritmo de procesamiento de lenguaje natural de forma totalmente aislada.
+
+### Contras
+
+- El backend debe manejar múltiples estrategias aumentando la complejidad del mantenimiento de algoritmos.
+
+- Requiere mapear diferentes formatos de salida de los distintos proveedores de análisis de texto.

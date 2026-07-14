@@ -13,7 +13,7 @@ def test_create_medical_record_success():
     
     patient_mock = MagicMock()
     patient_mock.doctor_id = 2
-    patient_repo.get_by_id.return_value = patient_mock
+    patient_repo.get_patient_info.return_value = patient_mock
     
     mr_repo.get_by_patient_and_doctor.return_value = None
     mr_repo.create.return_value = {"id": 1}
@@ -29,7 +29,7 @@ def test_create_medical_record_patient_not_found():
     
     data = MedicalRecordEntity(patient_id=1, doctor_id=2, previous_pregnancies=0, previous_deliveries=0, previous_miscarriages=0, previous_cesareans=0, diabetes=False, chronic_hypertension=False, previous_preeclampsia=False, family_history_hypertension=False, family_history_heart_disease=False, chronic_kidney_disease=False, multiple_pregnancy=False, active_smoking=False)
     
-    patient_repo.get_by_id.return_value = None
+    patient_repo.get_patient_info.return_value = None
     
     with pytest.raises(ValueError, match="Patient not found"):
         usecase.execute(data)
@@ -43,7 +43,7 @@ def test_create_medical_record_already_exists():
     
     patient_mock = MagicMock()
     patient_mock.doctor_id = 2
-    patient_repo.get_by_id.return_value = patient_mock
+    patient_repo.get_patient_info.return_value = patient_mock
     
     mr_repo.get_by_patient_and_doctor.return_value = MagicMock()
     

@@ -5,6 +5,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from app.features.chat.application.get_history_usecase import GetHistoryUseCase
 from app.features.chat.application.save_message_usecase import SaveMessageUseCase
 from app.features.chat.application.get_chat_inbox_usecase import GetChatInboxUseCase
+from app.features.chat.application.get_chat_contacts_usecase import GetChatContactsUseCase
 from app.features.chat.infrastructure.websocket_manager import manager
 from app.features.notifications.infrastructure.repositories.device_token_repository import DeviceTokenRepository
 from app.features.users.infrastructure.repositories.user_repository import UserRepository
@@ -18,20 +19,24 @@ class ChatController:
         get_history_usecase: GetHistoryUseCase,
         save_message_usecase: SaveMessageUseCase,
         get_chat_inbox_usecase: GetChatInboxUseCase,
+        get_chat_contacts_usecase: GetChatContactsUseCase,
         device_token_repository: DeviceTokenRepository,
         user_repository: UserRepository
     ):
         self.get_history_usecase = get_history_usecase
         self.save_message_usecase = save_message_usecase
         self.get_chat_inbox_usecase = get_chat_inbox_usecase
+        self.get_chat_contacts_usecase = get_chat_contacts_usecase
         self.device_token_repository = device_token_repository
         self.user_repository = user_repository
 
     def get_inbox(self, current_user_id: int):
         return self.get_chat_inbox_usecase.execute(current_user_id)
 
+    def get_contacts(self, current_user_id: int, role: str):
+        return self.get_chat_contacts_usecase.execute(current_user_id, role)
+
     def get_chat_history(self, current_user_id: int, other_user_id: int):
-        # Note: current_user_id is passed as query param for testing (RBAC skipped for now)
         return self.get_history_usecase.execute(current_user_id, other_user_id)
 
     async def websocket_endpoint(self, websocket: WebSocket, user_id: int):
@@ -42,11 +47,11 @@ class ChatController:
                 data = await websocket.receive_json()
                 receiver_id = data.get("receiver_id")
                 content = data.get("content")
-                
+
                 if receiver_id and content:
                     # Save to DB
                     db_msg = self.save_message_usecase.execute(sender_id=user_id, receiver_id=receiver_id, content=content)
-                    
+
                     # Format message to send back
                     msg_payload = {
                         "message_id": db_msg.message_id,
@@ -56,7 +61,7 @@ class ChatController:
                         "created_at": db_msg.created_at.isoformat() if db_msg.created_at else None,
                         "is_read": db_msg.is_read
                     }
-                    
+
                     # Send to receiver if online
                     await manager.send_personal_message(msg_payload, receiver_id)
 

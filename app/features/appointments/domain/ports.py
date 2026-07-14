@@ -1,4 +1,3 @@
-from typing import List, Optional, Dict
 from typing import Protocol, List, Optional
 from app.features.appointments.domain.appointment_entity import AppointmentEntity
 
@@ -9,3 +8,12 @@ class IAppointmentRepository(Protocol):
     def create(self, appointment_entity: AppointmentEntity) -> AppointmentEntity: ...
     def update(self, appointment_entity: AppointmentEntity) -> AppointmentEntity: ...
     def delete(self, appointment_id: int) -> None: ...
+
+
+# Ports propios hacia users: appointments solo verifica existencia, por eso el
+# retorno es Optional[object] (solo se hace truth-test, nunca se leen atributos).
+class IPatientLookup(Protocol):
+    def get_by_id(self, patient_id: int) -> Optional[object]: ...
+
+class IDoctorLookup(Protocol):
+    def get_by_id(self, doctor_id: int) -> Optional[object]: ...

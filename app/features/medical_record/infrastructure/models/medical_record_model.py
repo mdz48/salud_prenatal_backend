@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, ForeignKey, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Boolean, Enum, UniqueConstraint
 from sqlalchemy.orm import relationship
+from app.core.enums import BloodTypeEnum
 from app.core.database import Base
+from app.core.pregnancy_calculations import gestational_weeks
 
 class MedicalRecord(Base):
     __tablename__ = "medical_records"
@@ -9,6 +11,18 @@ class MedicalRecord(Base):
     medical_record_id = Column(Integer, primary_key=True, autoincrement=True)
     patient_id = Column(Integer, ForeignKey("patients.patient_id"), nullable=False, index=True)
     doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=False, index=True)
+
+    # Clinical profile (del expediente, capturado por el doctor)
+    blood_type = Column(Enum(BloodTypeEnum), nullable=True) # Tipo de sangre
+    weeks_at_registration = Column(Integer, nullable=True) # Semana de gestación al registrarse
+    last_menstrual_period = Column(Date, nullable=True) # Fecha del ultimo periodo menstrual
+    residence = Column(String(100), nullable=True) # Residencia
+    education_level = Column(String(50), nullable=True) # Nivel educativo
+    marital_status = Column(String(50), nullable=True) # Estado civil
+    height_cm = Column(Integer, nullable=True) # Altura en centimetros
+    initial_weight = Column(Float, nullable=True) # Peso inicial en kilogramos
+    initial_systolic = Column(Integer, nullable=True) # Presion sistolica de la primera visita
+    initial_diastolic = Column(Integer, nullable=True) # Presion diastolica de la primera visita
 
     # Medical history
     previous_hypertension = Column(Boolean, nullable=True) # Hipertensión previa
@@ -40,3 +54,7 @@ class MedicalRecord(Base):
     doctor = relationship("Doctor")
     consultations = relationship("Consultation", back_populates="medical_record")
     patient_diaries = relationship("PatientDiary", back_populates="medical_record")
+
+    @property
+    def current_gestational_weeks(self) -> int | None:
+        return gestational_weeks(self.last_menstrual_period, self.weeks_at_registration)

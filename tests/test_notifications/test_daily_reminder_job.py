@@ -9,7 +9,10 @@ def _patches(tokens):
     fake_db = MagicMock()
     fake_repo = MagicMock()
     fake_repo.get_all_tokens.return_value = tokens
-    session_local = MagicMock(return_value=fake_db)
+    # tasks.py hace db = get_session_factory()(): get_session_factory() debe
+    # devolver el "sessionmaker" (callable) que a su vez devuelve fake_db.
+    session_factory = MagicMock(return_value=fake_db)
+    session_local = MagicMock(return_value=session_factory)
     repo_cls = MagicMock(return_value=fake_repo)
     return fake_db, fake_repo, session_local, repo_cls
 
@@ -17,7 +20,7 @@ def _patches(tokens):
 class TestSendDailyBitacoraReminderJob:
     def test_does_nothing_when_no_tokens(self):
         fake_db, fake_repo, session_local, repo_cls = _patches([])
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             send_daily_bitacora_reminder_job()
@@ -27,7 +30,7 @@ class TestSendDailyBitacoraReminderJob:
 
     def test_sends_notification_with_expected_title_body_and_data(self):
         fake_db, fake_repo, session_local, repo_cls = _patches(["tok-1", "tok-2"])
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             fcm.send_multicast_notification.return_value = []
@@ -42,7 +45,7 @@ class TestSendDailyBitacoraReminderJob:
 
     def test_deletes_invalid_tokens_returned_by_fcm(self):
         fake_db, fake_repo, session_local, repo_cls = _patches(["tok-1", "tok-2"])
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             fcm.send_multicast_notification.return_value = ["tok-2"]
@@ -52,7 +55,7 @@ class TestSendDailyBitacoraReminderJob:
 
     def test_does_not_delete_anything_when_all_succeed(self):
         fake_db, fake_repo, session_local, repo_cls = _patches(["tok-1"])
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             fcm.send_multicast_notification.return_value = []
@@ -62,7 +65,7 @@ class TestSendDailyBitacoraReminderJob:
 
     def test_closes_db_session_even_when_fcm_raises(self):
         fake_db, fake_repo, session_local, repo_cls = _patches(["tok-1"])
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             fcm.send_multicast_notification.side_effect = RuntimeError("fcm down")
@@ -73,7 +76,7 @@ class TestSendDailyBitacoraReminderJob:
     def test_batches_more_than_500_tokens(self):
         tokens = [f"tok-{i}" for i in range(750)]
         fake_db, fake_repo, session_local, repo_cls = _patches(tokens)
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             fcm.send_multicast_notification.return_value = []
@@ -88,7 +91,7 @@ class TestSendDailyBitacoraReminderJob:
     def test_exactly_500_tokens_is_a_single_batch(self):
         tokens = [f"tok-{i}" for i in range(500)]
         fake_db, fake_repo, session_local, repo_cls = _patches(tokens)
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             fcm.send_multicast_notification.return_value = []
@@ -99,7 +102,7 @@ class TestSendDailyBitacoraReminderJob:
     def test_501_tokens_creates_a_second_small_batch(self):
         tokens = [f"tok-{i}" for i in range(501)]
         fake_db, fake_repo, session_local, repo_cls = _patches(tokens)
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             fcm.send_multicast_notification.return_value = []
@@ -112,7 +115,7 @@ class TestSendDailyBitacoraReminderJob:
     def test_invalid_tokens_from_multiple_batches_are_all_deleted(self):
         tokens = [f"tok-{i}" for i in range(600)]
         fake_db, fake_repo, session_local, repo_cls = _patches(tokens)
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService") as fcm:
             fcm.send_multicast_notification.side_effect = [["tok-1"], ["tok-599"]]
@@ -123,7 +126,7 @@ class TestSendDailyBitacoraReminderJob:
 
     def test_uses_repository_bound_to_the_session_db(self):
         fake_db, fake_repo, session_local, repo_cls = _patches([])
-        with patch(f"{MODULE}.SessionLocal", session_local), \
+        with patch(f"{MODULE}.get_session_factory", session_local), \
                 patch(f"{MODULE}.DeviceTokenRepository", repo_cls), \
                 patch(f"{MODULE}.FirebaseNotificationService"):
             send_daily_bitacora_reminder_job()

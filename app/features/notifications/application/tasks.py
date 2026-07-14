@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from app.core.database import SessionLocal
+from app.core.database import get_session_factory
 from app.features.appointments.infrastructure.models.appointment_model import Appointment
 from app.features.notifications.infrastructure.repositories.device_token_repository import DeviceTokenRepository
 from app.core.services.firebase_service import FirebaseNotificationService
@@ -9,7 +9,7 @@ from app.core.enums import AppointmentStatusEnum
 logger = logging.getLogger(__name__)
 
 def notify_upcoming_appointments_job():
-    db = SessionLocal()
+    db = get_session_factory()()
     token_repo = DeviceTokenRepository(db)
     try:
         now = datetime.now()
@@ -93,7 +93,7 @@ def notify_upcoming_appointments_job():
         db.close()
 
 def send_daily_bitacora_reminder_job():
-    db = SessionLocal()
+    db = get_session_factory()()
     token_repo = DeviceTokenRepository(db)
     try:
         tokens = token_repo.get_all_tokens()

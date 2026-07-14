@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, status
 from app.features.notifications.infrastructure.schemas.notification_schema import DeviceTokenCreate, DeviceTokenUnregister
 from app.features.notifications.infrastructure.controllers.notification_controller import NotificationController
 from app.core.dependencies import get_current_user, get_current_user_optional
-from app.features.users.infrastructure.models.user_model import Usuario
+from app.features.users.domain.user_entity import UserEntity
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 def register_token(
     data: DeviceTokenCreate,
     controller: NotificationController = Depends(Provide[Container.notification_controller]),
-    current_user: Optional[Usuario] = Depends(get_current_user_optional)
+    current_user: Optional[UserEntity] = Depends(get_current_user_optional)
 ):
     # Sin sesión iniciada se registra el token a nivel de dispositivo
     # (user_id=None); al loguearse, un nuevo llamado a este endpoint
@@ -29,6 +29,6 @@ def register_token(
 def unregister_token(
     data: DeviceTokenUnregister,
     controller: NotificationController = Depends(Provide[Container.notification_controller]),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UserEntity = Depends(get_current_user)
 ):
     return controller.unregister_token(user_id=current_user.user_id, data=data)

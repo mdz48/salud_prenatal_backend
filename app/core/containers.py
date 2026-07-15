@@ -100,6 +100,11 @@ from app.features.users.infrastructure.controllers.auth_controller import AuthCo
 from app.features.users.infrastructure.controllers.patient_controller import PatientController
 from app.features.users.infrastructure.controllers.doctor_controller import DoctorController
 
+from app.features.notifications.infrastructure.repositories.device_token_repository import DeviceTokenRepository
+from app.features.notifications.application.use_cases.register_device_token_use_case import RegisterDeviceTokenUseCase
+from app.features.notifications.application.use_cases.unregister_device_token_use_case import UnregisterDeviceTokenUseCase
+from app.features.notifications.infrastructure.controllers.notification_controller import NotificationController
+
 from app.features.subscriptions.infrastructure.repositories.subscription_repository import SubscriptionRepository
 from app.features.subscriptions.infrastructure.adapters.stripe_gateway_adapter import StripeGatewayAdapter
 from app.features.users.infrastructure.adapters.subscription_initializer_adapter import SubscriptionInitializerAdapter
@@ -126,6 +131,7 @@ class Container(containers.DeclarativeContainer):
             "app.features.forums.infrastructure.routes.groups_router",
             "app.features.forums.infrastructure.routes.posts_router",
             "app.features.forums.infrastructure.routes.reports_router",
+            "app.features.notifications.infrastructure.routes.notification_router",
             "app.features.subscriptions.infrastructure.routes.subscription_router",
         ]
     )
@@ -154,6 +160,7 @@ class Container(containers.DeclarativeContainer):
     receptionist_repository = providers.Factory(ReceptionistRepository, db=db)
     user_repository = providers.Factory(UserRepository, db=db)
     forums_repository = providers.Factory(ForumsRepository, db=db)
+    device_token_repository = providers.Factory(DeviceTokenRepository, db=db)
     social_cluster_adapter = providers.Factory(SocialClusterAdapter, forums_repository=forums_repository)
     patient_cluster_adapter = providers.Factory(PatientClusterAdapter, patient_repository=patient_repository, medical_record_repository=medical_record_repository, risk_prediction_repository=risk_prediction_repository)
     subscription_repository = providers.Factory(SubscriptionRepository, db=db)
@@ -189,10 +196,10 @@ class Container(containers.DeclarativeContainer):
     update_patient_diary_use_case = providers.Factory(UpdatePatientDiaryUseCase, repository=patient_diary_repository)
     get_diary_symptoms_use_case = providers.Factory(GetDiarySymptomsUseCase, symptom_repository=diary_symptom_repository)
     get_medical_record_symptom_history_use_case = providers.Factory(GetMedicalRecordSymptomHistoryUseCase, symptom_repository=diary_symptom_repository)
-    
+
     appointment_lookup_adapter = providers.Factory(AppointmentLookupAdapter, appointment_repository=appointment_repository)
     medical_record_lookup_adapter = providers.Factory(MedicalRecordLookupAdapter, medical_record_repository=medical_record_repository)
-    
+
     authenticate_user_use_case = providers.Factory(AuthenticateUserUseCase, user_repository=user_repository, patient_repository=patient_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository, medical_record_lookup=medical_record_lookup_adapter, subscription_status_lookup=subscription_initializer_adapter)
     register_doctor_use_case = providers.Factory(RegisterDoctorUseCase, user_repository=user_repository, doctor_repository=doctor_repository, subscription_initializer=subscription_initializer_adapter)
     create_receptionist_use_case = providers.Factory(CreateReceptionistUseCase, user_repository=user_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository)
@@ -226,6 +233,8 @@ class Container(containers.DeclarativeContainer):
     add_comment_use_case = providers.Factory(AddCommentUseCase, forums_repo=forums_repository)
     get_comments_use_case = providers.Factory(GetCommentsUseCase, forums_repo=forums_repository)
     create_report_use_case = providers.Factory(CreateReportUseCase, forums_repo=forums_repository)
+    register_device_token_use_case = providers.Factory(RegisterDeviceTokenUseCase, device_token_repository=device_token_repository)
+    unregister_device_token_use_case = providers.Factory(UnregisterDeviceTokenUseCase, device_token_repository=device_token_repository)
     create_checkout_session_use_case = providers.Factory(CreateCheckoutSessionUseCase, subscription_repository=subscription_repository, payment_gateway=stripe_payment_gateway)
     get_my_subscription_use_case = providers.Factory(GetMySubscriptionUseCase, subscription_repository=subscription_repository)
     handle_payment_event_use_case = providers.Factory(HandlePaymentEventUseCase, subscription_repository=subscription_repository, payment_gateway=stripe_payment_gateway)
@@ -236,7 +245,8 @@ class Container(containers.DeclarativeContainer):
     consultation_controller = providers.Factory(ConsultationController, create_consultation_use_case, get_consultations_by_medical_record_use_case)
     medical_record_controller = providers.Factory(MedicalRecordController, create_medical_record_use_case, get_patient_medical_record_use_case, update_medical_record_use_case, search_medical_records_by_patient_name_use_case, evaluate_patient_risk_use_case)
     patient_diary_controller = providers.Factory(PatientDiaryController, create_patient_diary_use_case, get_all_patient_diaries_use_case, get_diaries_by_medical_record_use_case, get_patient_diary_by_id_use_case, update_patient_diary_use_case, delete_patient_diary_use_case, get_diary_symptoms_use_case, get_medical_record_symptom_history_use_case)
-    chat_controller = providers.Factory(ChatController, get_history_use_case, save_message_use_case, get_chat_inbox_use_case, get_chat_contacts_use_case)
+    chat_controller = providers.Factory(ChatController, get_history_use_case, save_message_use_case, get_chat_inbox_use_case, get_chat_contacts_use_case, device_token_repository, user_repository)
+    notification_controller = providers.Factory(NotificationController, register_device_token_use_case, unregister_device_token_use_case)
     user_controller = providers.Factory(UserController, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case, create_user_use_case)
     auth_controller = providers.Factory(AuthController, authenticate_user_use_case)
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)

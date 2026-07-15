@@ -49,6 +49,8 @@ EXPECTED_ROUTES = [
     "/api/v1/medical-records/search",
     "/api/v1/medical-records/{medical_record_id}",
     "/api/v1/medical-records/{medical_record_id}/risk-evaluation",
+    "/api/v1/notifications/register",
+    "/api/v1/notifications/unregister",
     "/api/v1/patient-diaries/",
     "/api/v1/patient-diaries/medical-record/{medical_record_id}",
     "/api/v1/patient-diaries/medical-record/{medical_record_id}/symptoms",

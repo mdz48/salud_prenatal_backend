@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -11,6 +13,10 @@ from app.features.subscriptions.domain.ports import ISubscriptionRepository
 from app.core.security import get_secret_key, ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
+# auto_error=False: no lanza 401 si no viene token, para endpoints que deben
+# funcionar tanto con sesión iniciada como sin ella (p. ej. registro de
+# token de dispositivo antes de login).
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login", auto_error=False)
 
 
 def authenticate_token(token: str, user_repo: IUserRepository) -> UserEntity | None:
@@ -38,6 +44,17 @@ def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+@inject
+def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    user_repo: IUserRepository = Depends(Provide[Container.user_repository]),
+) -> Optional[UserEntity]:
+    if token is None:
+        return None
+    return authenticate_token(token, user_repo)
+
 
 @inject
 def require_active_subscription(

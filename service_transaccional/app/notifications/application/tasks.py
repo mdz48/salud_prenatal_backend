@@ -5,8 +5,17 @@ from app.appointments.infrastructure.models.appointment_model import Appointment
 from app.notifications.infrastructure.repositories.device_token_repository import DeviceTokenRepository
 from app.core.services.firebase_service import FirebaseNotificationService
 from salud_prenatal_shared_core.enums import AppointmentStatusEnum
+# En el split, Appointment ya no tiene la relación ORM `patient` (patient_id es una
+# columna plana). El user_id del paciente se resuelve leyendo el read-model de la
+# tabla `patients` (owned por el servicio usuarios) sobre la DB compartida.
+from app.readmodels.users_readmodels import PatientRead
 
 logger = logging.getLogger(__name__)
+
+
+def _user_id_for_patient(db, patient_id: int):
+    patient = db.query(PatientRead).filter(PatientRead.patient_id == patient_id).first()
+    return patient.user_id if patient else None
 
 def notify_upcoming_appointments_job():
     db = get_session_factory()()
@@ -46,8 +55,8 @@ def notify_upcoming_appointments_job():
 
         # Send 24h notifications
         for appt in appointments_24h:
-            if appt.patient and appt.patient.user_id:
-                user_id = appt.patient.user_id
+            user_id = _user_id_for_patient(db, appt.patient_id)
+            if user_id:
                 tokens = token_repo.get_tokens_by_user_id(user_id)
                 if tokens:
                     time_str = appt.appointment_date.strftime("%I:%M %p")
@@ -60,8 +69,8 @@ def notify_upcoming_appointments_job():
 
         # Send 12h notifications
         for appt in appointments_12h:
-            if appt.patient and appt.patient.user_id:
-                user_id = appt.patient.user_id
+            user_id = _user_id_for_patient(db, appt.patient_id)
+            if user_id:
                 tokens = token_repo.get_tokens_by_user_id(user_id)
                 if tokens:
                     time_str = appt.appointment_date.strftime("%I:%M %p")
@@ -74,8 +83,8 @@ def notify_upcoming_appointments_job():
 
         # Send 1h notifications
         for appt in appointments_1h:
-            if appt.patient and appt.patient.user_id:
-                user_id = appt.patient.user_id
+            user_id = _user_id_for_patient(db, appt.patient_id)
+            if user_id:
                 tokens = token_repo.get_tokens_by_user_id(user_id)
                 if tokens:
                     title = "Cita Próxima"

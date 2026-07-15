@@ -7,11 +7,16 @@ read-models. La autorización de rutas usa el JWT (claims) de shared_core.
 """
 from contextlib import asynccontextmanager
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from salud_prenatal_shared_core.database import Base, get_engine
 from salud_prenatal_shared_core.error_handlers import register_exception_handlers
+from app.notifications.application.tasks import (
+    notify_upcoming_appointments_job,
+    send_daily_bitacora_reminder_job,
+)
 
 # --- Registrar modelos propios en Base.metadata antes de create_all ---
 from app.appointments.infrastructure.models import appointment_model  # noqa: F401
@@ -55,7 +60,16 @@ async def lifespan(app: FastAPI):
     # si faltan. Las tablas de users/subscriptions las owned sus servicios; aquí
     # solo se leen por read-model (extend_existing, no las recrea).
     Base.metadata.create_all(bind=get_engine())
+
+    # Jobs de notificaciones (antes en el monolito). Viven aquí porque transaccional
+    # es dueño de appointments + notifications. Sin esto, los recordatorios de cita
+    # y el aviso diario de bitácora no se envían.
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(notify_upcoming_appointments_job, "interval", minutes=15)
+    scheduler.add_job(send_daily_bitacora_reminder_job, "cron", hour=9, minute=0)
+    scheduler.start()
     yield
+    scheduler.shutdown()
 
 
 container = Container()

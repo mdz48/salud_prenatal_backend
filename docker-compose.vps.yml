@@ -1,0 +1,123 @@
+# docker-compose.vps.yml
+# ---------------------------------------------------------------------------
+# Cómo queda /home/mdz/proyectos/docker-compose.yml en el VPS tras reemplazar
+# el monolito (servicio `backend`) por los 5 servicios del split.
+#
+# Contexto del VPS (ya existente):
+#   - El monorepo vive en ./salud_prenatal_backend (checkout de la rama split-servicios).
+#   - DB = Supabase (via ./salud_prenatal_backend/.env). NO hay postgres local.
+#   - ml_service (:8001), admin_backend (:8002), admin_frontend (:8003) NO cambian.
+#   - nginx enruta:  / -> :8000 (gateway),  /ml/ -> :8001,  /api/v1/admin/ -> :8002,
+#     /admin/ -> :8003,  /api/v1/chat/ws -> :8000 (el gateway proxya el WebSocket).
+#
+# El gateway es un DROP-IN del monolito en :8000: gracias a la paridad de rutas
+# (/api/v1/...), nginx no necesita cambios. Los 4 servicios internos NO publican
+# puerto al host (solo se alcanzan por nombre dentro de app_network), así no
+# chocan con ml(8001)/admin(8002/8003).
+# ---------------------------------------------------------------------------
+
+services:
+  # === GATEWAY: reemplaza al monolito en :8000 ===
+  gateway:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_gateway/Dockerfile
+    container_name: salud_prenatal_gateway
+    ports:
+      - "8000:8000"
+    restart: always
+    env_file:
+      - ./salud_prenatal_backend/.env
+    environment:
+      # Ruteo interno por nombre de servicio de compose (no localhost).
+      AUTH_URL: http://auth:8001
+      USUARIOS_URL: http://usuarios:8002
+      PAGOS_URL: http://pagos:8003
+      TRANSACCIONAL_URL: http://transaccional:8004
+    networks: [app_network]
+    depends_on: [auth, usuarios, pagos, transaccional]
+
+  # === 4 servicios internos: SIN `ports` (solo app_network) ===
+  auth:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_auth/Dockerfile
+    container_name: sp_auth
+    restart: always
+    env_file: [./salud_prenatal_backend/.env]
+    networks: [app_network]
+
+  usuarios:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_usuarios/Dockerfile
+    container_name: sp_usuarios
+    restart: always
+    env_file: [./salud_prenatal_backend/.env]
+    environment:
+      # tokenUrl del botón "Authorize" en el Swagger del gateway -> login público real.
+      AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+    networks: [app_network]
+
+  pagos:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_pagos/Dockerfile
+    container_name: sp_pagos
+    restart: always
+    env_file: [./salud_prenatal_backend/.env]
+    environment:
+      AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+    networks: [app_network]
+
+  transaccional:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_transaccional/Dockerfile
+    container_name: sp_transaccional
+    restart: always
+    env_file: [./salud_prenatal_backend/.env]
+    environment:
+      AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+      # El ML corre en su propio contenedor; se alcanza por nombre en la red.
+      ML_SERVICE_URL: http://ml_service:8001
+    volumes:
+      # notifications (firebase) vive ahora en transaccional -> mismo mount que el monolito.
+      - ./salud_prenatal_backend/firebasecredencials.json:/app/firebasecredencials.json
+    networks: [app_network]
+
+  # === SIN CAMBIOS respecto a tu compose actual ===
+  ml_service:
+    build:
+      context: ./machine_learning_service
+    container_name: machine_learning_service
+    ports:
+      - "8001:8001"
+    restart: always
+    env_file:
+      - ./machine_learning_service/.env
+    networks: [app_network]
+
+  admin_backend:
+    build:
+      context: ./salud_prenatal_administrador_backend
+    container_name: salud_prenatal_administrador_backend
+    ports:
+      - "8002:8002"
+    restart: always
+    env_file:
+      - ./salud_prenatal_administrador_backend/.env
+    networks: [app_network]
+
+  admin_frontend:
+    build:
+      context: ./admin_salud_prenatal
+    container_name: admin_salud_prenatal
+    ports:
+      - "8003:80"
+    restart: always
+    networks: [app_network]
+
+networks:
+  app_network:
+    driver: bridge

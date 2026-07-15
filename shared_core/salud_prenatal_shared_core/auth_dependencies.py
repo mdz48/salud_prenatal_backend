@@ -7,6 +7,7 @@ No consulta ningún repositorio: por eso vive en shared_core y sirve a los 4 ser
 Solo el servicio `auth` EMITE tokens (con esos claims, ver el use case de login);
 el resto de servicios solo los VALIDA con estas dependencias.
 """
+import os
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
@@ -14,14 +15,22 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-from salud_prenatal_shared_core.security import get_secret_key, ALGORITHM
+from salud_prenatal_shared_core.jwt_key_provider import get_jwt_key_provider
 from salud_prenatal_shared_core.enums import RoleEnum, SubscriptionStatusEnum
 
-# tokenUrl solo alimenta el botón "Authorize" de la doc OpenAPI; no cambia la validación.
-# Apunta al login real del servicio auth (mismo path que el monolito): /api/v1/users/login.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
+# tokenUrl solo alimenta el botón "Authorize" de Swagger UI; no cambia la validación
+# del token (esa siempre es local, por claims). Debe ser una URL ABSOLUTA: el login
+# vive únicamente en el servicio auth, y este módulo se usa desde pagos/transaccional/
+# usuarios/gateway también. Si fuera relativa ("/api/v1/users/login"), al abrir el
+# Swagger de, por ejemplo, pagos (:8003/docs) y pulsar Authorize, el navegador
+# intentaría loguearse contra localhost:8003/api/v1/users/login (no existe ahí) y
+# fallaría. AUTH_LOGIN_URL se configura por env (docker-compose: http://auth:8001/...;
+# local: http://localhost:8001/...); default sensato para dev local.
+AUTH_LOGIN_URL = os.getenv("AUTH_LOGIN_URL", "http://localhost:8001/api/v1/users/login")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=AUTH_LOGIN_URL)
 # auto_error=False: no lanza 401 si falta el token (endpoints que funcionan con o sin sesión).
-oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login", auto_error=False)
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl=AUTH_LOGIN_URL, auto_error=False)
 
 
 class Principal(BaseModel):
@@ -35,8 +44,11 @@ class Principal(BaseModel):
 def principal_from_token(token: str) -> Optional[Principal]:
     """Decodifica el JWT y arma un `Principal`. Devuelve None si el token es
     inválido o no trae `sub` (email)."""
+    # La llave de validación la provee el Key Manager (port). El gateway (Auth
+    # Checker) y los servicios validan aquí sin saber de dónde sale la llave.
+    provider = get_jwt_key_provider()
     try:
-        payload = jwt.decode(token, get_secret_key(), algorithms=[ALGORITHM])
+        payload = jwt.decode(token, provider.get_verification_key(), algorithms=[provider.algorithm])
     except JWTError:
         return None
 

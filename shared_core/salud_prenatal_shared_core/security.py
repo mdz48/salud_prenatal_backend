@@ -9,6 +9,7 @@ from functools import lru_cache
 from sqlalchemy import TypeDecorator, String
 from salud_prenatal_shared_core.crypto.key_manager import EnvKeyManager
 from salud_prenatal_shared_core.crypto.crypto_pipes import FernetCipherPipe, FernetDecryptPipe
+from salud_prenatal_shared_core.jwt_key_provider import get_jwt_key_provider
 
 @lru_cache()
 def get_secret_key() -> str:
@@ -40,8 +41,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, get_secret_key(), algorithm=ALGORITHM)
-    return encoded_jwt
+    # La llave de firma la provee el Key Manager (port). Hoy es HS256/env; si el
+    # key manager se externaliza, se cambia el provider, no esta función.
+    provider = get_jwt_key_provider()
+    return jwt.encode(to_encode, provider.get_signing_key(), algorithm=provider.algorithm)
 
 @lru_cache()
 def get_cipher_pipe():

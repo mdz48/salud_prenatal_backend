@@ -1,15 +1,18 @@
-# service_auth — Dockerfile (scaffold, Sesión 0)
-# Build context = raíz del monorepo (ver docker-compose.yml) para poder copiar shared_core/.
+# service_auth — Dockerfile (Sesión 7).
+# El build context es la RAÍZ del monorepo (ver docker-compose.yml) para poder
+# copiar shared_core/ y el propio servicio.
 FROM python:3.11-slim
 WORKDIR /app
 
-# Sesión 1+: instalar shared_core como paquete común
-# COPY shared_core/ /shared_core/
-# RUN pip install --no-cache-dir -e /shared_core
+# shared_core: paquete común (Base/ReadModelBase, seguridad JWT, cripto, enums…).
+COPY shared_core/ /shared_core/
+RUN pip install --no-cache-dir /shared_core
 
+# Deps del servicio
 COPY service_auth/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Código del servicio
 COPY service_auth/ .
 
 EXPOSE 8001

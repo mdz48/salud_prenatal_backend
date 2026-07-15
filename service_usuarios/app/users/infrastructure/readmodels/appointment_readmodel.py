@@ -3,7 +3,7 @@ transaccional). El servicio usuarios la lee para armar los dashboards, sin decla
 FK ni relaciones ORM: en la DB compartida basta con mapear las columnas necesarias.
 """
 from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum
-from salud_prenatal_shared_core.database import Base
+from salud_prenatal_shared_core.database import ReadModelBase as Base
 from salud_prenatal_shared_core.enums import AppointmentStatusEnum
 
 

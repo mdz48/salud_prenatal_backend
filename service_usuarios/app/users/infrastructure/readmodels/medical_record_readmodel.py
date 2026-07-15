@@ -3,7 +3,7 @@ servicio transaccional). El servicio usuarios lo usa para resolver el expediente
 y las semanas de gestación en los dashboards / listado de pacientes.
 """
 from sqlalchemy import Column, Integer, Date
-from salud_prenatal_shared_core.database import Base
+from salud_prenatal_shared_core.database import ReadModelBase as Base
 from salud_prenatal_shared_core.pregnancy_calculations import gestational_weeks
 
 

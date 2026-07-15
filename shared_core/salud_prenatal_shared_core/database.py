@@ -11,6 +11,12 @@ load_dotenv()
 
 Base = declarative_base()
 
+# Base APARTE para read-models (tablas que un servicio LEE pero NO posee en la DB
+# compartida). Nunca se pasa a create_all: así un servicio no-dueño jamás crea una
+# versión parcial de una tabla ajena (p. ej. `users` sin `password`). El dueño de
+# la tabla la crea con su modelo completo; los demás solo la mapean para leerla.
+ReadModelBase = declarative_base()
+
 
 class TimestampMixin:
     created_at = Column(DateTime, default=now_cdmx, nullable=False)

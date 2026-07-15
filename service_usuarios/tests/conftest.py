@@ -22,6 +22,12 @@ import pytest
 def app():
     import main
 
+    # El lifespan crea las tablas PROPIAS (Base). Los read-models (appointments/
+    # medical_records) viven en ReadModelBase y en producción los crea el servicio
+    # dueño (transaccional); en test los creamos aquí para ejercitar los dashboards.
+    from salud_prenatal_shared_core.database import ReadModelBase, get_engine
+
+    ReadModelBase.metadata.create_all(bind=get_engine())
     return main.app
 
 

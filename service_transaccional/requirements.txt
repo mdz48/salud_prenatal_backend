@@ -1,4 +1,18 @@
-# service_transaccional — deps (scaffold). Se ampliará en la Sesión 6.
+# service_transaccional — dependencias.
+# shared_core se instala aparte (editable): local `pip install -e ../shared_core`,
+# Docker `pip install -e /shared_core` (ver Dockerfile / Sesión 7).
 fastapi[standard]
 uvicorn
-# httpx    (para el ML/NLP service, se confirma en la Sesión 6)
+dependency-injector
+SQLAlchemy
+psycopg2-binary
+python-dotenv
+pydantic
+email-validator
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+cryptography
+python-multipart
+requests
+firebase-admin

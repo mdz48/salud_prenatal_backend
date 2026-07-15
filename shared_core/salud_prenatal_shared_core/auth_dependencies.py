@@ -18,9 +18,10 @@ from salud_prenatal_shared_core.security import get_secret_key, ALGORITHM
 from salud_prenatal_shared_core.enums import RoleEnum, SubscriptionStatusEnum
 
 # tokenUrl solo alimenta el botón "Authorize" de la doc OpenAPI; no cambia la validación.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/login")
+# Apunta al login real del servicio auth (mismo path que el monolito): /api/v1/users/login.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
 # auto_error=False: no lanza 401 si falta el token (endpoints que funcionan con o sin sesión).
-oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/login", auto_error=False)
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login", auto_error=False)
 
 
 class Principal(BaseModel):

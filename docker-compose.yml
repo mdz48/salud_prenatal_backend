@@ -1,6 +1,8 @@
-# Orquestación del monorepo — SCAFFOLD (Sesión 0).
-# Los servicios apuntan a placeholders; se completan en sesiones sucesivas.
+# Orquestación del monorepo (Sesión 7) — 4 servicios FastAPI + postgres.
 # build.context es la RAÍZ del monorepo para que cada Dockerfile pueda copiar shared_core/.
+# Variables compartidas (SECRET_KEY, ENCRYPTION_KEY, DB_*) desde .env (env_file), idénticas
+# en los 4 servicios. Cada servicio crea SOLO sus tablas propias (los read-models no se
+# crean: viven en ReadModelBase), así que no hay carrera de create_all entre servicios.
 
 services:
   postgres:

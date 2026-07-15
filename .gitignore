@@ -1,5 +1,7 @@
 .env
 __pycache__/
+*.egg-info/
+.worktrees/
 .venv/
 venv/
 .idea/

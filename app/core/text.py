@@ -1,8 +1,2 @@
-import unicodedata
-
-
-def normalize_text(value: str) -> str:
-    """Minúsculas y sin acentos, para comparaciones de búsqueda."""
-    decomposed = unicodedata.normalize("NFD", value)
-    without_accents = "".join(c for c in decomposed if not unicodedata.combining(c))
-    return without_accents.casefold()
+"""Shim de migración → salud_prenatal_shared_core.text (plan Sesión 1)."""
+from salud_prenatal_shared_core.text import *  # noqa: F401,F403

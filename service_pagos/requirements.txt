@@ -1,0 +1,4 @@
+# service_pagos — deps (scaffold). Se ampliará en la Sesión 3.
+fastapi[standard]
+uvicorn
+# stripe   (se agrega en la Sesión 3)

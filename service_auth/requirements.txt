@@ -1,0 +1,4 @@
+# service_auth — deps (scaffold). Se ampliará en la Sesión 5.
+# shared_core se instalará con: pip install -e ../shared_core  (o en el Dockerfile)
+fastapi[standard]
+uvicorn

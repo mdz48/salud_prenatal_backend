@@ -1,0 +1,4 @@
+# service_transaccional — deps (scaffold). Se ampliará en la Sesión 6.
+fastapi[standard]
+uvicorn
+# httpx    (para el ML/NLP service, se confirma en la Sesión 6)

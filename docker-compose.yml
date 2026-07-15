@@ -1,0 +1,67 @@
+# Orquestación del monorepo — SCAFFOLD (Sesión 0).
+# Los servicios apuntan a placeholders; se completan en sesiones sucesivas.
+# build.context es la RAÍZ del monorepo para que cada Dockerfile pueda copiar shared_core/.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-salud_prenatal}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth:
+    build:
+      context: .
+      dockerfile: service_auth/Dockerfile
+    ports:
+      - "8001:8001"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  usuarios:
+    build:
+      context: .
+      dockerfile: service_usuarios/Dockerfile
+    ports:
+      - "8002:8002"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  pagos:
+    build:
+      context: .
+      dockerfile: service_pagos/Dockerfile
+    ports:
+      - "8003:8003"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  transaccional:
+    build:
+      context: .
+      dockerfile: service_transaccional/Dockerfile
+    ports:
+      - "8004:8004"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

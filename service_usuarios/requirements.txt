@@ -1,0 +1,3 @@
+# service_usuarios — deps (scaffold). Se ampliará en la Sesión 4.
+fastapi[standard]
+uvicorn

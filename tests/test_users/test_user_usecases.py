@@ -13,44 +13,45 @@ class TestUserUseCases(unittest.TestCase):
         self.doctor_repo_mock = MagicMock()
         self.receptionist_repo_mock = MagicMock()
         self.medical_record_repo_mock = MagicMock()
-        
-    def test_authenticate_user_success(self):
-        usecase = AuthenticateUserUseCase(
+        self.subscription_status_mock = MagicMock()
+
+    def _build_usecase(self):
+        return AuthenticateUserUseCase(
             self.user_repo_mock,
             self.patient_repo_mock,
             self.doctor_repo_mock,
             self.receptionist_repo_mock,
-            self.medical_record_repo_mock
+            self.medical_record_repo_mock,
+            self.subscription_status_mock,
         )
+
+    def test_authenticate_user_success(self):
+        usecase = self._build_usecase()
         mock_user = MagicMock(spec=UserEntity)
         mock_user.password = get_password_hash("password123")
         mock_user.is_active = True
         mock_user.user_id = 1
         mock_user.email = "test@example.com"
-        
+
         class MockRole:
-            value = "medico"
-            def __str__(self): return "medico"
+            value = "doctor"
+            def __str__(self): return "doctor"
         mock_user.role = MockRole()
-        
+
         self.user_repo_mock.get_by_email.return_value = mock_user
         self.patient_repo_mock.get_by_user_id.return_value = None
         self.doctor_repo_mock.get_by_user_id.return_value = MagicMock(spec=DoctorEntity, doctor_id=10)
-        
+        self.subscription_status_mock.get_status.return_value = "active"
+
         result = usecase.execute("test@example.com", "password123")
-        
+
         self.assertEqual(result["user_id"], 1)
         self.assertEqual(result["doctor_id"], 10)
+        self.assertEqual(result["subscription_status"], "active")
         self.assertIn("access_token", result)
-        
+
     def test_authenticate_user_wrong_password(self):
-        usecase = AuthenticateUserUseCase(
-            self.user_repo_mock,
-            self.patient_repo_mock,
-            self.doctor_repo_mock,
-            self.receptionist_repo_mock,
-            self.medical_record_repo_mock
-        )
+        usecase = self._build_usecase()
         mock_user = MagicMock(spec=UserEntity)
         mock_user.password = get_password_hash("password123")
         self.user_repo_mock.get_by_email.return_value = mock_user

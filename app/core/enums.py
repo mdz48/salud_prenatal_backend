@@ -21,3 +21,13 @@ class AppointmentStatusEnum(str, Enum):
     confirmed = "confirmada"
     cancelled = "cancelada"
     rescheduled = "reprogramada"
+
+class PlanTypeEnum(str, Enum):
+    basic = "basic"
+    premium = "premium"
+
+class SubscriptionStatusEnum(str, Enum):
+    pending = "pending"
+    active = "active"
+    past_due = "past_due"
+    canceled = "canceled"

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 class PatientDiaryBase(BaseModel):
@@ -25,5 +25,39 @@ class PatientDiaryResponse(PatientDiaryBase):
     created_at: datetime
     updated_at: datetime
     weight_gain: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BodyZoneResponse(BaseModel):
+    code: str
+    label: Optional[str] = None
+    raw_text: Optional[str] = None
+    negated: bool = False
+    score: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExtractedSymptomResponse(BaseModel):
+    code: str
+    label: Optional[str] = None
+    raw_text: Optional[str] = None
+    negated: bool = False
+    score: Optional[float] = None
+    alarm: bool = False
+    zones: List[BodyZoneResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AggregatedSymptomResponse(BaseModel):
+    code: str
+    label: Optional[str] = None
+    occurrences: int
+    first_seen: Optional[datetime] = None
+    last_seen: Optional[datetime] = None
+    alarm: bool = False
+    zones: List[str] = []
 
     model_config = ConfigDict(from_attributes=True)

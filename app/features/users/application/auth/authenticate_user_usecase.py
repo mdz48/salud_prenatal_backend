@@ -1,19 +1,20 @@
-from app.features.users.domain.ports import IUserRepository, IPatientRepository, IDoctorRepository, IReceptionistRepository
-from app.features.medical_record.domain.ports import IMedicalRecordRepository
+from app.features.users.domain.ports import IUserRepository, IPatientRepository, IDoctorRepository, IReceptionistRepository, IMedicalRecordLookup, ISubscriptionStatusLookup
 from app.core.security import verify_password, create_access_token
 
 class AuthenticateUserUseCase:
-    def __init__(self, 
+    def __init__(self,
                  user_repository: IUserRepository,
                  patient_repository: IPatientRepository,
                  doctor_repository: IDoctorRepository,
                  receptionist_repository: IReceptionistRepository,
-                 medical_record_repository: IMedicalRecordRepository):
+                 medical_record_lookup: IMedicalRecordLookup,
+                 subscription_status_lookup: ISubscriptionStatusLookup):
         self.user_repository = user_repository
         self.patient_repository = patient_repository
         self.doctor_repository = doctor_repository
         self.receptionist_repository = receptionist_repository
-        self.medical_record_repository = medical_record_repository
+        self.medical_record_lookup = medical_record_lookup
+        self.subscription_status_lookup = subscription_status_lookup
 
     def execute(self, email: str, password: str):
         user = self.user_repository.get_by_email(email)
@@ -33,23 +34,25 @@ class AuthenticateUserUseCase:
         doctor_id = None
         medical_record_id = None
         receptionist_info = None
+        receptionist_id = None
+        subscription_status = None
 
         if user.role.value == "paciente":
             patient = self.patient_repository.get_by_user_id(user.user_id)
             if patient:
                 patient_id = patient.patient_id
                 doctor_id = patient.doctor_id
-                medical_record = self.medical_record_repository.get_by_patient_and_doctor(patient.patient_id, patient.doctor_id)
-                if medical_record:
-                    medical_record_id = medical_record.medical_record_id
-        elif user.role.value == "medico":
+                medical_record_id = self.medical_record_lookup.get_medical_record_id(patient.patient_id, patient.doctor_id)
+        elif user.role.value == "doctor":
             doctor = self.doctor_repository.get_by_user_id(user.user_id)
             if doctor:
                 doctor_id = doctor.doctor_id
+            subscription_status = self.subscription_status_lookup.get_status(user.user_id)
         elif user.role.value == "recepcionista":
             receptionist = self.receptionist_repository.get_by_user_id(user.user_id)
             if receptionist:
                 doctor_id = receptionist.doctor_id
+                receptionist_id = receptionist.receptionist_id
 
         if doctor_id:
             receptionists = self.receptionist_repository.get_by_doctor_id(doctor_id)
@@ -69,5 +72,7 @@ class AuthenticateUserUseCase:
             "patient_id": patient_id,
             "doctor_id": doctor_id,
             "medical_record_id": medical_record_id,
-            "receptionist": receptionist_info
+            "receptionist_id": receptionist_id,
+            "receptionist": receptionist_info,
+            "subscription_status": subscription_status
         }

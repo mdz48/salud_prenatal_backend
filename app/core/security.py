@@ -1,19 +1,34 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Optional
 import os
 from jose import jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
+from functools import lru_cache
+from sqlalchemy import TypeDecorator, String
+from app.core.crypto.key_manager import EnvKeyManager
+from app.core.crypto.crypto_pipes import FernetCipherPipe, FernetDecryptPipe
 
-load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
+@lru_cache()
+def get_secret_key() -> str:
+    load_dotenv()
+    key = os.getenv("SECRET_KEY")
+    if not key:
+        raise RuntimeError("SECRET_KEY no configurada; requerida para firmar JWTs.")
+    return key
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except (ValueError, TypeError):
+        # hash irreconocible (p.ej. cuentas anonimizadas con "deleted::...") = credencial invalida
+        return False
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
@@ -21,21 +36,22 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, get_secret_key(), algorithm=ALGORITHM)
     return encoded_jwt
 
-from sqlalchemy import TypeDecorator, String
-from app.core.crypto.key_manager import EnvKeyManager
-from app.core.crypto.crypto_pipes import FernetCipherPipe, FernetDecryptPipe
+@lru_cache()
+def get_cipher_pipe():
+    key_manager = EnvKeyManager()
+    return FernetCipherPipe(key_manager)
 
-# Initialize dependencies for the ORM adapter
-_key_manager = EnvKeyManager()
-_cipher_pipe = FernetCipherPipe(_key_manager)
-_decrypt_pipe = FernetDecryptPipe(_key_manager)
+@lru_cache()
+def get_decrypt_pipe():
+    key_manager = EnvKeyManager()
+    return FernetDecryptPipe(key_manager)
 
 class EncryptedString(TypeDecorator):
     """
@@ -47,9 +63,9 @@ class EncryptedString(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        return _cipher_pipe.execute(value)
+        return get_cipher_pipe().execute(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        return _decrypt_pipe.execute(value)
+        return get_decrypt_pipe().execute(value)

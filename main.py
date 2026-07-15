@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from app.core.database import engine, Base
+from app.core.database import get_engine, Base
 from app.features.users.infrastructure.routes.user_router import router as user_router
 from app.features.users.infrastructure.routes.patient_router import router as patient_router
 from app.features.users.infrastructure.routes.doctor_router import router as doctor_router
@@ -14,10 +16,29 @@ from app.features.forums.infrastructure.routes.profiles_router import router as 
 from app.features.forums.infrastructure.routes.groups_router import router as groups_router
 from app.features.forums.infrastructure.routes.posts_router import router as posts_router
 from app.features.forums.infrastructure.routes.reports_router import router as reports_router
+from app.features.notifications.infrastructure.routes.notification_router import router as notification_router
+from app.features.notifications.application.tasks import notify_upcoming_appointments_job, send_daily_bitacora_reminder_job
+from app.features.subscriptions.infrastructure.routes.subscription_router import router as subscription_router
 from app.core.containers import Container
+from app.core.error_handlers import register_exception_handlers
 
 container = Container()
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # El wiring lo declara Container.wiring_config; aqui solo se inicializa el esquema.
+    Base.metadata.create_all(bind=get_engine())
+
+    # Start APScheduler to check upcoming appointments and send daily reminders
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(notify_upcoming_appointments_job, 'interval', minutes=15)
+    scheduler.add_job(send_daily_bitacora_reminder_job, 'cron', hour=9, minute=0)
+    scheduler.start()
+    yield
+    # Shutdown: Cleanly shut down scheduler
+    scheduler.shutdown()
+
+app = FastAPI(lifespan=lifespan)
 app.container = container
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(patient_router, prefix="/api/v1")
@@ -31,6 +52,10 @@ app.include_router(profiles_router, prefix="/api/v1")
 app.include_router(groups_router, prefix="/api/v1")
 app.include_router(posts_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
+app.include_router(notification_router, prefix="/api/v1")
+app.include_router(subscription_router, prefix="/api/v1")
+
+register_exception_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,5 +68,3 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
-
-Base.metadata.create_all(bind=engine)

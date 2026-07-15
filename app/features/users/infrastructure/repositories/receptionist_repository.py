@@ -23,6 +23,15 @@ class ReceptionistRepository(IReceptionistRepository):
         self.db.refresh(db_receptionist)
         return ReceptionistEntity.model_validate(db_receptionist)
 
+    def get_by_id(self, receptionist_id: int) -> Optional[ReceptionistEntity]:
+        db_rec = self.db.query(Receptionist).filter(Receptionist.receptionist_id == receptionist_id).first()
+        return ReceptionistEntity.model_validate(db_rec) if db_rec else None
+
     def get_by_doctor_id(self, doctor_id: int) -> List[UserEntity]:
-        db_users = self.db.query(Usuario).join(Receptionist).filter(Receptionist.doctor_id == doctor_id).all()
+        db_users = (
+            self.db.query(Usuario)
+            .join(Receptionist)
+            .filter(Receptionist.doctor_id == doctor_id, Usuario.is_active == True)
+            .all()
+        )
         return [UserEntity.model_validate(u) for u in db_users]

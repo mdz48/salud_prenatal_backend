@@ -6,7 +6,10 @@ from app.features.patient_diaries.application.get_patient_diary_by_id_usecase im
 from app.features.patient_diaries.application.get_diaries_by_medical_record_usecase import GetDiariesByMedicalRecordUseCase
 from app.features.patient_diaries.application.update_patient_diary_usecase import UpdatePatientDiaryUseCase
 from app.features.patient_diaries.application.delete_patient_diary_usecase import DeletePatientDiaryUseCase
+from app.features.patient_diaries.application.get_diary_symptoms_usecase import GetDiarySymptomsUseCase
+from app.features.patient_diaries.application.get_medical_record_symptom_history_usecase import GetMedicalRecordSymptomHistoryUseCase
 from app.features.patient_diaries.domain.patient_diary_entity import PatientDiaryEntity
+from app.core.error_handlers import internal_error
 
 class PatientDiaryController:
     def __init__(
@@ -16,7 +19,9 @@ class PatientDiaryController:
         get_diaries_by_medical_record_use_case: GetDiariesByMedicalRecordUseCase,
         get_patient_diary_by_id_use_case: GetPatientDiaryByIdUseCase,
         update_patient_diary_use_case: UpdatePatientDiaryUseCase,
-        delete_patient_diary_use_case: DeletePatientDiaryUseCase
+        delete_patient_diary_use_case: DeletePatientDiaryUseCase,
+        get_diary_symptoms_use_case: GetDiarySymptomsUseCase,
+        get_medical_record_symptom_history_use_case: GetMedicalRecordSymptomHistoryUseCase
     ):
         self.create_patient_diary_use_case = create_patient_diary_use_case
         self.get_all_patient_diaries_use_case = get_all_patient_diaries_use_case
@@ -24,13 +29,15 @@ class PatientDiaryController:
         self.get_patient_diary_by_id_use_case = get_patient_diary_by_id_use_case
         self.update_patient_diary_use_case = update_patient_diary_use_case
         self.delete_patient_diary_use_case = delete_patient_diary_use_case
+        self.get_diary_symptoms_use_case = get_diary_symptoms_use_case
+        self.get_medical_record_symptom_history_use_case = get_medical_record_symptom_history_use_case
 
     def create_patient_diary(self, data: PatientDiaryCreate):
         try:
             entity = PatientDiaryEntity(**data.model_dump())
             return self.create_patient_diary_use_case.execute(data=entity)
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)
 
     def get_all_patient_diaries(self, skip: int = 0, limit: int = 100):
         return self.get_all_patient_diaries_use_case.execute(skip=skip, limit=limit)
@@ -44,6 +51,12 @@ class PatientDiaryController:
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
+    def get_diary_symptoms(self, patient_diary_id: int):
+        return self.get_diary_symptoms_use_case.execute(patient_diary_id=patient_diary_id)
+
+    def get_medical_record_symptom_history(self, medical_record_id: int):
+        return self.get_medical_record_symptom_history_use_case.execute(medical_record_id=medical_record_id)
+
     def update_patient_diary(self, patient_diary_id: int, data: PatientDiaryUpdate):
         try:
             entity = PatientDiaryEntity(**data.model_dump(exclude_unset=True))
@@ -51,7 +64,7 @@ class PatientDiaryController:
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)
 
     def delete_patient_diary(self, patient_diary_id: int):
         try:
@@ -59,4 +72,4 @@ class PatientDiaryController:
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            raise internal_error(e)

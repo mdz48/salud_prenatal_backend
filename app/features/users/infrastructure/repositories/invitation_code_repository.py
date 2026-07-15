@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from app.features.users.infrastructure.models.invitation_code_model import InvitationCode
 from app.features.users.domain.ports import IInvitationCodeRepository
@@ -13,7 +13,7 @@ class InvitationCodeRepository(IInvitationCodeRepository):
     def create(self, doctor_id: int) -> InvitationCodeEntity:
         # Generate an 8-character UUID-based code
         code = str(uuid.uuid4())[:8]
-        expires_at = datetime.utcnow() + timedelta(hours=72)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=72)
         
         db_invitation_code = InvitationCode(
             code=code,

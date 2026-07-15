@@ -12,3 +12,7 @@ httpx
 dotenv
 requests
 dependency-injector
+firebase-admin
+apscheduler
+stripe
+pytest

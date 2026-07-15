@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.features.users.infrastructure.models.user_model import Usuario
 from app.features.users.domain.ports import IUserRepository
 from app.features.users.domain.user_entity import UserEntity
+from app.core.enums import RoleEnum
 from typing import Optional
 
 class UserRepository(IUserRepository):
@@ -16,6 +17,18 @@ class UserRepository(IUserRepository):
     def get_by_email(self, email: str) -> Optional[UserEntity]:
         user_db = self.db.query(Usuario).filter(Usuario.email == email).first()
         return UserEntity.model_validate(user_db) if user_db else None
+
+    def get_by_ids(self, user_ids: List[int]) -> List[UserEntity]:
+        users_db = self.db.query(Usuario).filter(Usuario.user_id.in_(user_ids)).all()
+        return [UserEntity.model_validate(u) for u in users_db]
+
+    def get_by_role(self, role: RoleEnum) -> List[UserEntity]:
+        users_db = (
+            self.db.query(Usuario)
+            .filter(Usuario.role == role, Usuario.is_active == True)
+            .all()
+        )
+        return [UserEntity.model_validate(u) for u in users_db]
 
     def get_all(self, skip: int = 0, limit: int = 100) -> List[UserEntity]:
         users_db = self.db.query(Usuario).offset(skip).limit(limit).all()

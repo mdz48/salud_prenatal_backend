@@ -8,7 +8,8 @@ antes, para seguir sirviendo el flujo OAuth2 de la doc.
 from dependency_injector.wiring import inject, Provide
 from fastapi import APIRouter, Depends, status, Request, HTTPException
 
-from app.auth.infrastructure.schemas.auth_schema import Token
+from salud_prenatal_shared_core.auth_dependencies import get_current_user, Principal
+from app.auth.infrastructure.schemas.auth_schema import Token, RefreshResponse
 from app.auth.infrastructure.controllers.auth_controller import AuthController
 from container import Container
 
@@ -44,3 +45,15 @@ async def login(
         )
 
     return controller.login(email=str(email), password=str(password))
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+@inject
+def refresh(
+    current_user: Principal = Depends(get_current_user),
+    controller: AuthController = Depends(Provide[Container.auth_controller]),
+):
+    role_str = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    return controller.refresh(
+        email=current_user.email, user_id=current_user.user_id, role=role_str
+    )

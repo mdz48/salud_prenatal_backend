@@ -4,7 +4,8 @@ Reemplaza a los repos/adapters que en el monolito vivían en la feature `users`
 (user/patient/doctor/receptionist repositories + medical_record & subscription
 lookups). Aquí es UN solo repositorio de lectura sobre los read-models de auth.
 """
-from typing import Optional, List
+from typing import Optional, List, Tuple
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.auth.domain.ports import IAuthReadPort
@@ -59,10 +60,10 @@ class AuthReadRepository(IAuthReadPort):
         )
         return mr.medical_record_id if mr else None
 
-    def get_subscription_status(self, user_id: int) -> Optional[str]:
+    def get_subscription_status(self, user_id: int) -> Optional[Tuple[str, Optional[datetime]]]:
         sub = (
             self.db.query(SubscriptionAuth)
             .filter(SubscriptionAuth.user_id == user_id)
             .first()
         )
-        return sub.status.value if sub else None
+        return (sub.status.value, sub.current_period_end) if sub else None

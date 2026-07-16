@@ -31,3 +31,7 @@ class SubscriptionStatusEnum(str, Enum):
     active = "active"
     past_due = "past_due"
     canceled = "canceled"
+
+class PaymentModeEnum(str, Enum):
+    recurring = "recurring"
+    one_time = "one_time"

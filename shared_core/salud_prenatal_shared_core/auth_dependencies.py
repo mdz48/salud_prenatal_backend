@@ -12,11 +12,13 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from datetime import datetime
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
 from salud_prenatal_shared_core.jwt_key_provider import get_jwt_key_provider
 from salud_prenatal_shared_core.enums import RoleEnum, SubscriptionStatusEnum
+from salud_prenatal_shared_core.time import now_cdmx
 
 # tokenUrl solo alimenta el botón "Authorize" de Swagger UI; no cambia la validación
 # del token (esa siempre es local, por claims). Debe ser una URL ABSOLUTA: el login
@@ -39,6 +41,7 @@ class Principal(BaseModel):
     email: Optional[str] = None
     role: Optional[RoleEnum] = None
     subscription_status: Optional[str] = None
+    subscription_current_period_end: Optional[datetime] = None
 
 
 def principal_from_token(token: str) -> Optional[Principal]:
@@ -64,11 +67,15 @@ def principal_from_token(token: str) -> Optional[Principal]:
         except ValueError:
             role = None
 
+    end_ts = payload.get("subscription_current_period_end")
+    end_dt = datetime.fromisoformat(end_ts) if end_ts else None
+
     return Principal(
         user_id=payload.get("user_id"),
         email=email,
         role=role,
         subscription_status=payload.get("subscription_status"),
+        subscription_current_period_end=end_dt,
     )
 
 
@@ -108,6 +115,14 @@ def require_active_subscription(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=f"Active subscription required. Current status: {current_status}",
         )
+
+    end_dt = current_user.subscription_current_period_end
+    if end_dt is not None and end_dt < now_cdmx():
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Subscription expired",
+        )
+
     return current_user
 
 

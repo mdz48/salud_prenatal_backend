@@ -16,8 +16,13 @@ class RefreshTokenUseCase:
 
     def execute(self, email: str, user_id: int, role: str) -> dict:
         subscription_status = None
+        subscription_current_period_end = None
         if role == "doctor":
-            subscription_status = self.auth_read.get_subscription_status(user_id)
+            sub_info = self.auth_read.get_subscription_status(user_id)
+            if sub_info:
+                subscription_status = sub_info[0]
+                if sub_info[1]:
+                    subscription_current_period_end = sub_info[1].isoformat()
 
         access_token = create_access_token(
             data={
@@ -25,10 +30,12 @@ class RefreshTokenUseCase:
                 "user_id": user_id,
                 "role": role,
                 "subscription_status": subscription_status,
+                "subscription_current_period_end": subscription_current_period_end,
             }
         )
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "subscription_status": subscription_status,
+            "subscription_current_period_end": subscription_current_period_end,
         }

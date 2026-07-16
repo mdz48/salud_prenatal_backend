@@ -8,7 +8,7 @@ sin importar los modelos de otros servicios. El *schema* es el contrato.
 `EncryptedString` viene de shared_core: garantiza que auth lea la PII (name/last_name)
 con exactamente el mismo cifrado Fernet que el resto de servicios.
 """
-from sqlalchemy import Boolean, Column, Integer, String, Enum as SAEnum
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, Enum as SAEnum
 
 from salud_prenatal_shared_core.database import ReadModelBase as Base
 from salud_prenatal_shared_core.security import EncryptedString
@@ -71,3 +71,4 @@ class SubscriptionAuth(Base):
     subscription_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, unique=True, index=True)
     status = Column(SAEnum(SubscriptionStatusEnum), nullable=False)
+    current_period_end = Column(DateTime, nullable=True)

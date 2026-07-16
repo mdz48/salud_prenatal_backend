@@ -15,7 +15,7 @@ class TestRefreshTokenUseCase(unittest.TestCase):
         return jwt.decode(token, p.get_verification_key(), algorithms=[p.algorithm])
 
     def test_doctor_gets_fresh_subscription_status_in_token(self):
-        self.auth_read.get_subscription_status.return_value = "active"
+        self.auth_read.get_subscription_status.return_value = ("active", None)
 
         result = self.usecase.execute(email="d@x.com", user_id=1, role="doctor")
 

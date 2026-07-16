@@ -1,5 +1,7 @@
 from typing import Optional
+from datetime import timedelta
 from salud_prenatal_shared_core.enums import PlanTypeEnum, SubscriptionStatusEnum
+from salud_prenatal_shared_core.time import now_cdmx
 from app.subscriptions.domain.ports import ISubscriptionRepository, IPaymentGateway
 from app.subscriptions.domain.subscription_entity import SubscriptionEntity
 from app.subscriptions.application.dtos import PaymentEventDTO
@@ -43,6 +45,30 @@ class HandlePaymentEventUseCase:
             if event.plan_type:
                 sub.plan_type = PlanTypeEnum(event.plan_type)
             sub.status = SubscriptionStatusEnum.active
+            return True
+            
+        if event.kind == "one_time_payment_succeeded":
+            if event.stripe_customer_id:
+                sub.stripe_customer_id = event.stripe_customer_id
+            if event.plan_type:
+                sub.plan_type = PlanTypeEnum(event.plan_type)
+            
+            sub.status = SubscriptionStatusEnum.active
+            now = now_cdmx()
+            # Si sub.current_period_end es naïve (sin zona horaria) y now es aware, dará error.
+            # Convertimos ambos a datetime base si es necesario, o aseguramos tzinfo.
+            # now_cdmx() devuelve datetime aware. Si DB devuelve naïve, asumimos UTC, 
+            # pero el código del proyecto antes no lidiaba con tz en models.
+            # Veamos si es mejor usar now_cdmx() y quitar tz, o adaptar.
+            # Para evitar bugs de tz-naive vs tz-aware, usamos now.replace(tzinfo=None) si falla.
+            # Asumiendo SQLAlchemy guarda timestamp sin tz:
+            try:
+                base = sub.current_period_end if (sub.current_period_end and sub.current_period_end > now) else now
+            except TypeError:
+                now_naive = now.replace(tzinfo=None)
+                base = sub.current_period_end if (sub.current_period_end and sub.current_period_end > now_naive) else now_naive
+                
+            sub.current_period_end = base + timedelta(days=30)
             return True
 
         if event.kind == "payment_succeeded":

@@ -26,13 +26,6 @@ class StripeGatewayAdapter(IPaymentGateway):
     conftest importa main sin las claves de Stripe, asi que nada puede leerse a
     nivel de modulo."""
 
-    def _price_id_for(self, plan_type: PlanTypeEnum) -> str:
-        if plan_type == PlanTypeEnum.basic:
-            return _require_env("STRIPE_PRICE_ID_BASIC")
-        if plan_type == PlanTypeEnum.premium:
-            return _require_env("STRIPE_PRICE_ID_PREMIUM")
-        raise ValueError(f"Unsupported plan type: {plan_type}")
-
     def create_portal_session(self, stripe_customer_id: str) -> str:
         stripe.api_key = _require_env("STRIPE_PRIVATE_KEY")
         frontend_url = _require_env("FRONTEND_URL")
@@ -41,30 +34,6 @@ class StripeGatewayAdapter(IPaymentGateway):
             return_url=f"{frontend_url}/subscription/me",
         )
         return session.url
-
-    def create_checkout_session(
-        self, user_id: int, email: str, plan_type: PlanTypeEnum
-    ) -> CheckoutSessionResult:
-        stripe.api_key = _require_env("STRIPE_PRIVATE_KEY")
-        frontend_url = _require_env("FRONTEND_URL")
-        metadata = {"user_id": str(user_id), "plan_type": plan_type.value}
-
-        session = stripe.checkout.Session.create(
-            mode="subscription",
-            line_items=[{"price": self._price_id_for(plan_type), "quantity": 1}],
-            customer_email=email,
-            client_reference_id=str(user_id),
-            metadata=metadata,
-            subscription_data={"metadata": metadata},
-            success_url=f"{frontend_url}/subscription/success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{frontend_url}/subscription/cancel",
-        )
-
-        return CheckoutSessionResult(
-            checkout_url=session.url,
-            stripe_customer_id=self._f(session, "customer"),
-            stripe_subscription_id=self._f(session, "subscription"),
-        )
 
     def parse_webhook_event(self, payload: bytes, signature: str) -> Optional[PaymentEventDTO]:
         webhook_secret = _require_env("STRIPE_WEBHOOK_SECRET")
@@ -80,13 +49,40 @@ class StripeGatewayAdapter(IPaymentGateway):
 
         if event_type == "checkout.session.completed":
             meta = self._f(obj, "metadata")
+            mode = self._f(obj, "mode")
+            payment_status = self._f(obj, "payment_status")
+            
+            if mode == "subscription":
+                return PaymentEventDTO(
+                    kind="checkout_completed",
+                    user_id=self._user_id_from(self._f(obj, "client_reference_id"), meta),
+                    stripe_customer_id=self._f(obj, "customer"),
+                    stripe_subscription_id=self._f(obj, "subscription"),
+                    plan_type=self._f(meta, "plan_type"),
+                )
+            elif mode == "payment" and payment_status == "paid":
+                return PaymentEventDTO(
+                    kind="one_time_payment_succeeded",
+                    user_id=self._user_id_from(self._f(obj, "client_reference_id"), meta),
+                    stripe_customer_id=self._f(obj, "customer"),
+                    stripe_subscription_id=None,
+                    plan_type=self._f(meta, "plan_type"),
+                )
+            # Si mode == "payment" y no es "paid" (ej. voucher pendiente), ignoramos.
+            return None
+
+        if event_type == "checkout.session.async_payment_succeeded":
+            meta = self._f(obj, "metadata")
             return PaymentEventDTO(
-                kind="checkout_completed",
+                kind="one_time_payment_succeeded",
                 user_id=self._user_id_from(self._f(obj, "client_reference_id"), meta),
                 stripe_customer_id=self._f(obj, "customer"),
-                stripe_subscription_id=self._f(obj, "subscription"),
+                stripe_subscription_id=None,
                 plan_type=self._f(meta, "plan_type"),
             )
+            
+        if event_type == "checkout.session.async_payment_failed":
+            return None
 
         if event_type == "invoice.paid":
             return PaymentEventDTO(

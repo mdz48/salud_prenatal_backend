@@ -1,6 +1,7 @@
 import json
 import os
 import asyncio
+from urllib.parse import urlsplit
 import httpx
 import websockets
 from fastapi import FastAPI, Request, Response, HTTPException, status, WebSocket, WebSocketDisconnect
@@ -204,10 +205,21 @@ async def gateway_proxy(request: Request, path: str):
             content=body,
             timeout=30.0,
         )
+        resp_headers = dict(response.headers)
+        # Reescribir el header Location de los redirects. FastAPI redirige las rutas
+        # de colección sin "/" final (p.ej. GET /api/v1/users -> 307 /api/v1/users/),
+        # y el servicio interno pone Location: http://usuarios:8002/api/v1/users/ (host
+        # interno de Docker, inalcanzable desde el navegador). Se deja solo el path
+        # (relativo al dominio público) para que el redirect funcione tras el gateway.
+        location = resp_headers.get("location")
+        if location:
+            parts = urlsplit(location)
+            if parts.netloc:  # es absoluta (tiene host) -> volverla relativa
+                resp_headers["location"] = parts.path + (f"?{parts.query}" if parts.query else "")
         return Response(
             content=response.content,
             status_code=response.status_code,
-            headers=dict(response.headers),
+            headers=resp_headers,
         )
     except httpx.ConnectError:
         raise HTTPException(

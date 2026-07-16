@@ -84,9 +84,14 @@ El esquema `saludprenatal://` lo reconoce el sistema operativo (Android/iOS) com
 ```
 1. Mostrar "Confirmando tu pago..."
 2. Hacer polling a GET /subscriptions/me cada 2s (máx. ~15s)
-3. Cuando status == "active" → mostrar éxito y navegar al dashboard
-4. Si pasan 15s sin confirmar → mostrar "Tu pago se está procesando, te avisaremos" (no es un error, solo tardó) + botón "Ya pagué, verificar de nuevo"
+3. Cuando status == "active":
+   a. Llamar POST /api/v1/users/refresh con el token ACTUAL (Bearer).
+   b. Reemplazar el token guardado por el `access_token` que devuelve.
+   c. Mostrar éxito y navegar al dashboard.
+4. Si pasan 15s sin confirmar → mostrar "Tu pago se está procesando, te avisaremos" (no es un error, solo tardó) + botón "Ya pagué, verificar de nuevo" (que reintenta desde el paso 2).
 ```
+
+> **Importante — por qué el refresh:** el backend gatea los endpoints (citas, expedientes) leyendo el `subscription_status` que viene *dentro del JWT*, no consultándolo en vivo. Ese claim solo se actualiza al emitir un token nuevo. Tras pagar, `GET /me` ya dice "active" (lo lee en vivo), pero **el token viejo sigue diciendo "pending"** → los endpoints gateados darían 402. Por eso, al confirmarse el pago, hay que pedir un token nuevo con `POST /users/refresh` y reemplazar el guardado. Sin ese paso, el doctor pagó pero seguiría bloqueado ~30 min (hasta que el token expire y re-loguee).
 
 En la pantalla de cancelación, simplemente ofrecer reintentar (volver a llamar `checkout-session`).
 
@@ -151,6 +156,7 @@ Si `cancel_at_period_end` es `true` mientras `status` sigue siendo `"active"`, e
 | Endpoint | Método | Auth | Body | Respuesta |
 |---|---|---|---|---|
 | `/api/v1/users/login` | POST | — | `{email, password}` | agrega `subscription_status` |
+| `/api/v1/users/refresh` | POST | token válido | — | `{access_token, token_type, subscription_status}` |
 | `/api/v1/subscriptions/me` | GET | doctor | — | `{status, plan_type, current_period_end, cancel_at_period_end}` |
 | `/api/v1/subscriptions/checkout-session` | POST | doctor | `{plan_type: "basic"|"premium"}` | `{checkout_url}` |
 | `/api/v1/subscriptions/portal-session` | POST | doctor | — | `{portal_url}` |

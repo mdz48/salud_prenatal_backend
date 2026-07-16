@@ -34,6 +34,7 @@ class AuthenticateUserUseCase:
         receptionist_info = None
         receptionist_id = None
         subscription_status = None
+        subscription_current_period_end = None
 
         if role_str == "paciente":
             patient = self.auth_read.get_patient_by_user_id(user.user_id)
@@ -47,7 +48,11 @@ class AuthenticateUserUseCase:
             doctor = self.auth_read.get_doctor_by_user_id(user.user_id)
             if doctor:
                 doctor_id = doctor.doctor_id
-            subscription_status = self.auth_read.get_subscription_status(user.user_id)
+            sub_info = self.auth_read.get_subscription_status(user.user_id)
+            if sub_info:
+                subscription_status = sub_info[0]
+                if sub_info[1]:
+                    subscription_current_period_end = sub_info[1].isoformat()
         elif role_str == "recepcionista":
             receptionist = self.auth_read.get_receptionist_by_user_id(user.user_id)
             if receptionist:
@@ -60,6 +65,7 @@ class AuthenticateUserUseCase:
                 "user_id": user.user_id,
                 "role": role_str,
                 "subscription_status": subscription_status,
+                "subscription_current_period_end": subscription_current_period_end,
             }
         )
 

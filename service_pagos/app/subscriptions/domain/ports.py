@@ -14,13 +14,14 @@ class ISubscriptionRepository(Protocol):
 class InvalidWebhookError(Exception):
     """Firma de webhook invalida o payload no verificable."""
 
+class ICheckoutStrategy(Protocol):
+    def create_checkout_session(
+        self, user_id: int, email: str, plan_type: PlanTypeEnum, stripe_customer_id: Optional[str] = None
+    ) -> CheckoutSessionResult: ...
+
 
 class IPaymentGateway(Protocol):
     def create_portal_session(self, stripe_customer_id: str) -> str: ...
-
-    def create_checkout_session(
-        self, user_id: int, email: str, plan_type: PlanTypeEnum
-    ) -> CheckoutSessionResult: ...
 
     def parse_webhook_event(
         self, payload: bytes, signature: str

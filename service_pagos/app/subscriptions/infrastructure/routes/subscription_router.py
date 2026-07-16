@@ -24,7 +24,7 @@ def create_checkout_session(
     controller: SubscriptionController = Depends(Provide[Container.subscription_controller]),
 ):
     return controller.create_checkout_session(
-        user_id=current_user.user_id, email=current_user.email, plan_type=data.plan_type
+        user_id=current_user.user_id, email=current_user.email, req=data
     )
 
 

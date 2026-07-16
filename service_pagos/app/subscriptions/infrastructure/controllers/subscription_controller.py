@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 from salud_prenatal_shared_core.enums import PlanTypeEnum
 from app.subscriptions.domain.ports import InvalidWebhookError
 from app.subscriptions.infrastructure.schemas.subscription_schema import (
+    CheckoutSessionRequest,
     CheckoutSessionResponse,
     PortalSessionResponse,
     SubscriptionResponse,
@@ -21,10 +22,10 @@ class SubscriptionController:
         self.handle_payment_event_use_case = handle_payment_event_use_case
         self.create_portal_session_use_case = create_portal_session_use_case
 
-    def create_checkout_session(self, user_id: int, email: str, plan_type: PlanTypeEnum) -> CheckoutSessionResponse:
+    def create_checkout_session(self, user_id: int, email: str, req: CheckoutSessionRequest) -> CheckoutSessionResponse:
         try:
             url = self.create_checkout_session_use_case.execute(
-                user_id=user_id, email=email, plan_type=plan_type
+                user_id=user_id, email=email, plan_type=req.plan_type, payment_mode=req.payment_mode
             )
             return CheckoutSessionResponse(checkout_url=url)
         except ValueError as e:
@@ -56,6 +57,7 @@ class SubscriptionController:
             plan_type=dto.plan_type,
             current_period_end=dto.current_period_end,
             cancel_at_period_end=dto.cancel_at_period_end,
+            auto_renewal=dto.auto_renewal,
         )
 
     def handle_webhook(self, payload: bytes, signature: str) -> dict:

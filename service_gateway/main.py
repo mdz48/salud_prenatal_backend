@@ -104,7 +104,7 @@ def get_target_url(path: str) -> str:
         return f"{PROXY_URL.rstrip('/')}/{path.lstrip('/')}"
 
     path_lower = path.lower()
-    if "users/login" in path_lower:
+    if "users/login" in path_lower or "users/refresh" in path_lower:
         base = SERVICE_URLS["auth"]
     elif "users" in path_lower or "doctors" in path_lower or "patients" in path_lower or "receptionists" in path_lower:
         base = SERVICE_URLS["usuarios"]

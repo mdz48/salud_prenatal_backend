@@ -24,3 +24,9 @@ class Token(BaseModel):
     receptionist_id: Optional[int] = None
     receptionist: Optional[ReceptionistInfo] = None
     subscription_status: Optional[str] = None
+
+
+class RefreshResponse(BaseModel):
+    access_token: str
+    token_type: str
+    subscription_status: Optional[str] = None

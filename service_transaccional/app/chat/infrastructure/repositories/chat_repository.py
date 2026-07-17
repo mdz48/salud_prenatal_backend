@@ -23,6 +23,15 @@ class ChatRepository(IChatRepository):
         self.db.refresh(db_msg)
         return ChatMessage.model_validate(db_msg)
 
+    def mark_conversation_read(self, reader_id: int, other_user_id: int) -> int:
+        updated = self.db.query(Message).filter(
+            Message.sender_id == other_user_id,
+            Message.receiver_id == reader_id,
+            Message.is_read == False,  # noqa: E712
+        ).update({"is_read": True}, synchronize_session=False)
+        self.db.commit()
+        return updated
+
     def get_inbox(self, current_user_id: int) -> List[InboxSummary]:
         messages = self.db.query(Message).filter(
             (Message.sender_id == current_user_id) | (Message.receiver_id == current_user_id)

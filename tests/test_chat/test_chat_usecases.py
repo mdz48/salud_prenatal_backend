@@ -25,9 +25,21 @@ def test_get_history_usecase():
     result = usecase.execute(1, 2)
     
     # Assert
+    mock_repo.mark_conversation_read.assert_called_once_with(reader_id=1, other_user_id=2)
     mock_repo.get_conversation.assert_called_once_with(1, 2)
     assert len(result) == 1
     assert result[0].content == "Hello"
+
+
+def test_get_history_usecase_marca_leido_antes_de_leer():
+    mock_repo = MagicMock()
+    mock_repo.get_conversation.return_value = []
+
+    GetHistoryUseCase(mock_repo).execute(1, 2)
+
+    # El mark debe ocurrir antes del fetch para que la respuesta ya venga con is_read=True
+    metodos_llamados = [name for name, _, _ in mock_repo.mock_calls]
+    assert metodos_llamados.index("mark_conversation_read") < metodos_llamados.index("get_conversation")
 
 def test_save_message_usecase():
     # Arrange

@@ -41,6 +41,12 @@ services:
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      # IGNORAR los contenedores del stack de staging (sp.stack=staging). Sin esto,
+      # este Traefik ve TAMBIÉN los de sp_staging (comparten el socket) y como usan
+      # los MISMOS nombres de router (gateway, usuarios, auth...) los detecta como
+      # "defined multiple times" y los DESCARTA -> 404 en toda la API. (Pasó en el
+      # corte 2026-07-18: staging estaba arriba y tumbó el ruteo de prod.)
+      - "--providers.docker.constraints=!Label(`sp.stack`,`staging`)"
       # Nombre REAL de la red (verificado en el VPS: docker network ls).
       - "--providers.docker.network=proyectos_app_network"
       - "--entrypoints.web.address=:80"

@@ -70,4 +70,7 @@ def get_jwt_key_provider() -> IJwtKeyProvider:
     """Punto ÚNICO para obtener el Key Manager activo. Para externalizarlo (JWKS de
     un servicio de llaves) se cambia SOLO esta función por el nuevo adapter; ni la
     firma ni la validación se enteran."""
+    if os.getenv("JWT_KEY_BACKEND") == "vault":
+        from .vault_jwt_key_provider import VaultJwtKeyProvider
+        return VaultJwtKeyProvider()
     return EnvJwtKeyProvider()

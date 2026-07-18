@@ -18,3 +18,4 @@ firebase-admin
 apscheduler
 stripe
 pytest
+hvac

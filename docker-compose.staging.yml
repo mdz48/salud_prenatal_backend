@@ -42,6 +42,15 @@ services:
       - pagos
       - transaccional
 
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: sp_staging_vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-root}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+
   postgres:
     image: postgres:16-alpine
     container_name: sp_staging_postgres
@@ -70,6 +79,10 @@ services:
       USUARIOS_URL: http://usuarios:8002
       PAGOS_URL: http://pagos:8003
       TRANSACCIONAL_URL: http://transaccional:8004
+      JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-}
+      VAULT_ADDR: ${VAULT_ADDR:-http://sp_staging_vault:8200}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID_GATEWAY:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID_GATEWAY:-}
     labels:
       - "sp.stack=staging"
       - "traefik.enable=true"
@@ -77,6 +90,9 @@ services:
       - "traefik.http.middlewares.jwt-auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
       - "traefik.http.middlewares.jwt-strict.forwardauth.address=http://gateway:8000/validate/strict"
       - "traefik.http.middlewares.jwt-strict.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
+      # Rate limit (réplica del limit_req de nginx, 10r/s burst 20) — igual que el VPS.
+      - "traefik.http.middlewares.ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.ratelimit.ratelimit.burst=20"
       - "traefik.http.routers.gateway.rule=Path(`/`) || Path(`/health`) || Path(`/docs`) || Path(`/openapi.json`) || Path(`/api/v1/auth/openapi.json`) || Path(`/api/v1/usuarios/openapi.json`) || Path(`/api/v1/pagos/openapi.json`) || Path(`/api/v1/transaccional/openapi.json`)"
       - "traefik.http.routers.gateway.priority=500"
       - "traefik.http.routers.gateway.entrypoints=web"
@@ -98,18 +114,22 @@ services:
       DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
       AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
       FORWARDED_ALLOW_IPS: "*"
+      JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-}
+      VAULT_ADDR: ${VAULT_ADDR:-http://sp_staging_vault:8200}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID_AUTH:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID_AUTH:-}
     labels:
       - "sp.stack=staging"
       - "traefik.enable=true"
       - "traefik.http.routers.auth-login.rule=Path(`/api/v1/users/login`)"
       - "traefik.http.routers.auth-login.priority=400"
       - "traefik.http.routers.auth-login.entrypoints=web"
-      - "traefik.http.routers.auth-login.middlewares=jwt-auth@docker"
+      - "traefik.http.routers.auth-login.middlewares=ratelimit@docker,jwt-auth@docker"
       - "traefik.http.routers.auth-login.service=auth"
       - "traefik.http.routers.auth-refresh.rule=Path(`/api/v1/users/refresh`)"
       - "traefik.http.routers.auth-refresh.priority=400"
       - "traefik.http.routers.auth-refresh.entrypoints=web"
-      - "traefik.http.routers.auth-refresh.middlewares=jwt-strict@docker"
+      - "traefik.http.routers.auth-refresh.middlewares=ratelimit@docker,jwt-strict@docker"
       - "traefik.http.routers.auth-refresh.service=auth"
       - "traefik.http.services.auth.loadbalancer.server.port=8001"
     depends_on:
@@ -132,7 +152,7 @@ services:
       - "traefik.http.routers.usuarios.rule=PathPrefix(`/api/v1/users`) || PathPrefix(`/api/v1/doctors`) || PathPrefix(`/api/v1/patients`)"
       - "traefik.http.routers.usuarios.priority=300"
       - "traefik.http.routers.usuarios.entrypoints=web"
-      - "traefik.http.routers.usuarios.middlewares=jwt-auth@docker"
+      - "traefik.http.routers.usuarios.middlewares=ratelimit@docker,jwt-auth@docker"
       - "traefik.http.routers.usuarios.service=usuarios"
       - "traefik.http.services.usuarios.loadbalancer.server.port=8002"
     depends_on:
@@ -155,12 +175,12 @@ services:
       - "traefik.http.routers.pagos-webhook.rule=Path(`/api/v1/subscriptions/webhook`)"
       - "traefik.http.routers.pagos-webhook.priority=350"
       - "traefik.http.routers.pagos-webhook.entrypoints=web"
-      - "traefik.http.routers.pagos-webhook.middlewares=jwt-auth@docker"
+      - "traefik.http.routers.pagos-webhook.middlewares=ratelimit@docker,jwt-auth@docker"
       - "traefik.http.routers.pagos-webhook.service=pagos"
       - "traefik.http.routers.pagos.rule=PathPrefix(`/api/v1/subscriptions`)"
       - "traefik.http.routers.pagos.priority=300"
       - "traefik.http.routers.pagos.entrypoints=web"
-      - "traefik.http.routers.pagos.middlewares=jwt-strict@docker"
+      - "traefik.http.routers.pagos.middlewares=ratelimit@docker,jwt-strict@docker"
       - "traefik.http.routers.pagos.service=pagos"
       - "traefik.http.services.pagos.loadbalancer.server.port=8003"
     depends_on:
@@ -185,13 +205,13 @@ services:
       - "traefik.http.routers.transaccional-chat.rule=PathPrefix(`/api/v1/chat`)"
       - "traefik.http.routers.transaccional-chat.priority=300"
       - "traefik.http.routers.transaccional-chat.entrypoints=web"
-      - "traefik.http.routers.transaccional-chat.middlewares=jwt-strict@docker"
+      - "traefik.http.routers.transaccional-chat.middlewares=ratelimit@docker,jwt-strict@docker"
       - "traefik.http.routers.transaccional-chat.service=transaccional"
       # forums cae al catch-all (jwt-auth): tiene 6 endpoints públicos hoy.
       - "traefik.http.routers.transaccional.rule=PathPrefix(`/api/v1`)"
       - "traefik.http.routers.transaccional.priority=1"
       - "traefik.http.routers.transaccional.entrypoints=web"
-      - "traefik.http.routers.transaccional.middlewares=jwt-auth@docker"
+      - "traefik.http.routers.transaccional.middlewares=ratelimit@docker,jwt-auth@docker"
       - "traefik.http.routers.transaccional.service=transaccional"
       - "traefik.http.services.transaccional.loadbalancer.server.port=8004"
     depends_on:

@@ -19,3 +19,7 @@ integration
 .run_logs/
 .smoke_logs/
 .local_dev*.db
+
+# Binario de Vault (herramienta local, no del proyecto)
+vault.zip
+vault_bin/

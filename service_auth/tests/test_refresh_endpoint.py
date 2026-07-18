@@ -28,6 +28,16 @@ def _decode(token):
     return jwt.decode(token, p.get_verification_key(), algorithms=[p.algorithm])
 
 
+def _headers(user):
+    """Identidad como la inyecta el edge (ForwardAuth) tras validar el Bearer.
+    El servicio ya no decodifica el token: solo lee estos headers."""
+    return {
+        "X-User-Id": str(user["user_id"]),
+        "X-User-Email": user["email"],
+        "X-User-Role": user["role"],
+    }
+
+
 def test_refresh_token_endpoint(client, seed_user):
     # 1. Crear un doctor
     user = seed_user(role=pytest.importorskip("salud_prenatal_shared_core.enums").RoleEnum.doctor)
@@ -47,10 +57,12 @@ def test_refresh_token_endpoint(client, seed_user):
     # 4. Simular que paga -> DB pasa a active
     _set_subscription_status(user["user_id"], SubscriptionStatusEnum.active)
 
-    # 5. Llamar refresh con el token viejo
+    # 5. Llamar refresh con la identidad que inyectaría el edge tras validar el
+    #    token viejo. El use case relee el status FRESCO de la DB: por eso el
+    #    token nuevo dice active aunque el viejo dijera pending.
     res_refresh = client.post(
         "/api/v1/users/refresh",
-        headers={"Authorization": f"Bearer {old_token}"}
+        headers=_headers(user),
     )
 
     assert res_refresh.status_code == 200
@@ -64,5 +76,6 @@ def test_refresh_token_endpoint(client, seed_user):
 
 def test_refresh_token_unauthorized(client):
     res = client.post("/api/v1/users/refresh")
-    # without token should be 401
+    # Sin identidad inyectada -> 401. En producción el request ni llega: el
+    # router de refresh lleva el middleware estricto (jwt-strict) en Traefik.
     assert res.status_code == 401

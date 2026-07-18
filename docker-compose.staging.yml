@@ -1,36 +1,39 @@
-# Orquestación del monorepo — Traefik (edge) + gateway ForwardAuth + 4 servicios + postgres.
+# docker-compose.staging.yml — stack de PRUEBA aislado, para validar la migración
+# a Traefik + ForwardAuth SIN tocar producción.
 #
-# TOPOLOGÍA: Traefik publica :8000 (misma URL pública que antes; el frontend no cambia).
-# Enruta por labels y, antes de enrutar, le pregunta al gateway si el request trae
-# identidad válida (ForwardAuth). El gateway YA NO proxea: solo valida el JWT UNA vez
-# y devuelve los headers X-User-*; Traefik los copia al request y BORRA los que
-# mandara el cliente (authResponseHeaders). Los servicios solo leen esos headers.
+# Se levanta EN EL VPS, junto a producción, sin interferir:
+#   docker compose -p sp_staging -f docker-compose.staging.yml up --build -d
+#   docker compose -p sp_staging -f docker-compose.staging.yml down -v   # limpieza total
 #
-# DOS MIDDLEWARES:
-#   jwt-auth   (valida-si-viene) -> anónimo pasa con identidad vacía; token inválido = 401.
-#                                   Para prefijos donde conviven rutas públicas y protegidas.
-#   jwt-strict (fail-closed)     -> anónimo = 401 en el edge. Para prefijos 100% protegidos.
+# TRES AISLAMIENTOS (los tres importan):
+#   1. Puertos: edge en 8081 (prod usa 80/443/8000). Ningún servicio publica puerto.
+#   2. Proyecto (-p sp_staging): red y contenedores propios, nombres prefijados.
+#   3. BASE DE DATOS PROPIA: postgres local a este stack, NO Supabase.
+#      Esto es obligatorio, no cosmético: transaccional arranca APScheduler
+#      (recordatorio de citas cada 15 min + aviso diario 9:00) y contra la DB real
+#      mandaría push DUPLICADOS a pacientes reales. Con DB vacía no hay device
+#      tokens, así que los jobs no envían nada.
 #
-# build.context es la RAÍZ del monorepo para que cada Dockerfile pueda copiar shared_core/.
-# Variables compartidas (SECRET_KEY, ENCRYPTION_KEY, DB_*) desde .env (env_file).
+# Los labels de Traefik son IDÉNTICOS a los de docker-compose.yml — son justo lo que
+# se está probando. Lo único que cambia es el puerto del entrypoint y que aquí no hay TLS.
 
 services:
   traefik:
     image: traefik:v3.7
-    container_name: traefik
+    container_name: sp_staging_traefik
     command:
       - "--providers.docker=true"
-      # Sin exposedbydefault: un servicio se publica solo si trae traefik.enable=true.
       - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:8000"
-      # Dashboard SOLO local (en el VPS jamás: api.insecure expone la config completa).
+      # Solo descubre contenedores de ESTE proyecto: sin esto Traefik vería también
+      # los contenedores de producción (comparten el socket de Docker).
+      - "--providers.docker.constraints=Label(`sp.stack`,`staging`)"
+      - "--entrypoints.web.address=:8081"
       - "--api.dashboard=true"
       - "--api.insecure=true"
     ports:
-      - "8000:8000"   # edge público (antes lo ocupaba el gateway-proxy)
-      - "8090:8080"   # dashboard http://localhost:8090
+      - "8081:8081"   # edge de prueba
+      - "8091:8080"   # dashboard
     volumes:
-      # Read-only: Traefik solo LEE los labels de los contenedores.
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     depends_on:
       - gateway
@@ -41,44 +44,39 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    container_name: sp_staging_postgres
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-salud_prenatal}
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: staging
+      POSTGRES_DB: salud_prenatal_staging
+    # SIN `ports`: solo lo alcanzan los contenedores de este stack.
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - staging_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # === GATEWAY: backend ForwardAuth + docs agregadas. Sin `ports`: solo interno. ===
   gateway:
     build:
       context: .
       dockerfile: service_gateway/Dockerfile
+    container_name: sp_staging_gateway
     env_file: .env
-    # Server-to-server dentro de la red de compose: el slice docs_aggregation
-    # descarga el openapi.json de cada servicio por nombre.
     environment:
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
       AUTH_URL: http://auth:8001
       USUARIOS_URL: http://usuarios:8002
       PAGOS_URL: http://pagos:8003
       TRANSACCIONAL_URL: http://transaccional:8004
     labels:
+      - "sp.stack=staging"
       - "traefik.enable=true"
-      # --- Los dos middlewares del sistema (se definen aquí una vez; se referencian
-      #     desde cualquier servicio como jwt-auth@docker / jwt-strict@docker) ---
       - "traefik.http.middlewares.jwt-auth.forwardauth.address=http://gateway:8000/validate"
       - "traefik.http.middlewares.jwt-auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
       - "traefik.http.middlewares.jwt-strict.forwardauth.address=http://gateway:8000/validate/strict"
       - "traefik.http.middlewares.jwt-strict.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
-      # --- Router del propio gateway: docs + specs + health. SIN middleware (público).
-      #     /validate y /validate/strict NO se rutean: solo los llama Traefik por red interna.
-      #     Prioridad 500 para ganarle al catch-all de transaccional en los openapi.json.
       - "traefik.http.routers.gateway.rule=Path(`/`) || Path(`/health`) || Path(`/docs`) || Path(`/openapi.json`) || Path(`/api/v1/auth/openapi.json`) || Path(`/api/v1/usuarios/openapi.json`) || Path(`/api/v1/pagos/openapi.json`) || Path(`/api/v1/transaccional/openapi.json`)"
       - "traefik.http.routers.gateway.priority=500"
       - "traefik.http.routers.gateway.entrypoints=web"
@@ -90,42 +88,29 @@ services:
       - pagos
       - transaccional
 
-  # === SERVICIOS ===
-  # Los puertos 8001-8004 quedan publicados SOLO para debug local: pegarles directo
-  # BYPASEA el edge, así que se creen cualquier X-User-* que les mandes. En el VPS
-  # ninguno publica puerto (docker-compose.vps.yml).
-  # FORWARDED_ALLOW_IPS: uvicorn solo confía en 127.0.0.1 por default; sin esto los
-  # redirects 307 (trailing slash) saldrían con http/host interno tras el proxy.
-  # AUTH_LOGIN_URL alimenta el botón "Authorize" del Swagger: debe apuntar al EDGE
-  # para que el request pase por el ForwardAuth y gane identidad.
-
   auth:
     build:
       context: .
       dockerfile: service_auth/Dockerfile
-    ports:
-      - "8001:8001"
+    container_name: sp_staging_auth
     env_file: .env
     environment:
-      AUTH_LOGIN_URL: http://localhost:8000/api/v1/users/login
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
       FORWARDED_ALLOW_IPS: "*"
     labels:
+      - "sp.stack=staging"
       - "traefik.enable=true"
-      # login es público (nadie tiene token antes de loguearse) -> jwt-auth.
       - "traefik.http.routers.auth-login.rule=Path(`/api/v1/users/login`)"
       - "traefik.http.routers.auth-login.priority=400"
       - "traefik.http.routers.auth-login.entrypoints=web"
       - "traefik.http.routers.auth-login.middlewares=jwt-auth@docker"
       - "traefik.http.routers.auth-login.service=auth"
-      # refresh exige token válido -> jwt-strict (fail-closed en el edge).
       - "traefik.http.routers.auth-refresh.rule=Path(`/api/v1/users/refresh`)"
       - "traefik.http.routers.auth-refresh.priority=400"
       - "traefik.http.routers.auth-refresh.entrypoints=web"
       - "traefik.http.routers.auth-refresh.middlewares=jwt-strict@docker"
       - "traefik.http.routers.auth-refresh.service=auth"
-      # .service explícito en cada router: cuando el nombre del router no coincide
-      # con el del service, Traefik solo lo adivina por fallback. Declararlo evita
-      # 404 silenciosos si mañana el contenedor expone otro service.
       - "traefik.http.services.auth.loadbalancer.server.port=8001"
     depends_on:
       postgres:
@@ -135,16 +120,15 @@ services:
     build:
       context: .
       dockerfile: service_usuarios/Dockerfile
-    ports:
-      - "8002:8002"
+    container_name: sp_staging_usuarios
     env_file: .env
     environment:
-      AUTH_LOGIN_URL: http://localhost:8000/api/v1/users/login
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
       FORWARDED_ALLOW_IPS: "*"
     labels:
+      - "sp.stack=staging"
       - "traefik.enable=true"
-      # Registro y lecturas públicas conviven aquí -> jwt-auth (prioridad 300:
-      # login/refresh en 400 le ganan /api/v1/users/login y /refresh).
       - "traefik.http.routers.usuarios.rule=PathPrefix(`/api/v1/users`) || PathPrefix(`/api/v1/doctors`) || PathPrefix(`/api/v1/patients`)"
       - "traefik.http.routers.usuarios.priority=300"
       - "traefik.http.routers.usuarios.entrypoints=web"
@@ -159,23 +143,20 @@ services:
     build:
       context: .
       dockerfile: service_pagos/Dockerfile
-    ports:
-      - "8003:8003"
+    container_name: sp_staging_pagos
     env_file: .env
     environment:
-      AUTH_LOGIN_URL: http://localhost:8000/api/v1/users/login
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
       FORWARDED_ALLOW_IPS: "*"
     labels:
+      - "sp.stack=staging"
       - "traefik.enable=true"
-      # Stripe no manda nuestro JWT: el webhook DEBE pasar anónimo (lo protege la
-      # firma del payload, que ForwardAuth no toca porque solo ve headers).
-      # Prioridad 350 > 300 para escaparse del jwt-strict del resto del prefijo.
       - "traefik.http.routers.pagos-webhook.rule=Path(`/api/v1/subscriptions/webhook`)"
       - "traefik.http.routers.pagos-webhook.priority=350"
       - "traefik.http.routers.pagos-webhook.entrypoints=web"
       - "traefik.http.routers.pagos-webhook.middlewares=jwt-auth@docker"
       - "traefik.http.routers.pagos-webhook.service=pagos"
-      # El resto de /subscriptions es 100% require_doctor -> jwt-strict.
       - "traefik.http.routers.pagos.rule=PathPrefix(`/api/v1/subscriptions`)"
       - "traefik.http.routers.pagos.priority=300"
       - "traefik.http.routers.pagos.entrypoints=web"
@@ -190,31 +171,23 @@ services:
     build:
       context: .
       dockerfile: service_transaccional/Dockerfile
-    ports:
-      - "8004:8004"
+    container_name: sp_staging_transaccional
     env_file: .env
     environment:
-      AUTH_LOGIN_URL: http://localhost:8000/api/v1/users/login
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
       FORWARDED_ALLOW_IPS: "*"
+      # Sin ML: este stack no lo necesita para las pruebas de ruteo/auth.
+      ML_SERVICE_URL: http://ml-inexistente:8001
     labels:
+      - "sp.stack=staging"
       - "traefik.enable=true"
-      # chat (HTTP + WS) es el ÚNICO prefijo 100% protegido de transaccional
-      # (inbox, contacts, history, ws) -> jwt-strict.
-      # El WS lo proxea Traefik nativo; el ForwardAuth valida el upgrade leyendo
-      # ?token= de X-Forwarded-Uri.
       - "traefik.http.routers.transaccional-chat.rule=PathPrefix(`/api/v1/chat`)"
       - "traefik.http.routers.transaccional-chat.priority=300"
       - "traefik.http.routers.transaccional-chat.entrypoints=web"
       - "traefik.http.routers.transaccional-chat.middlewares=jwt-strict@docker"
       - "traefik.http.routers.transaccional-chat.service=transaccional"
-      # OJO: forums NO lleva jwt-strict y por eso no tiene router propio — cae al
-      # catch-all. Tiene 6 endpoints públicos hoy (GET /forums/groups,
-      # /posts/global, /posts/{id}/comments, /groups/{id}/posts, /profiles/{id},
-      # /profiles/{id}/timeline). Ponerle strict los rompería (401 donde hoy hay 200).
-      # Catch-all: forums, appointments, medical-records, patient-diaries,
-      # consultations, notifications. Mezclan público y protegido dentro del mismo
-      # prefijo, así que la decisión vive en cada router (RoleChecker) y aquí solo
-      # se inyecta identidad -> jwt-auth.
+      # forums cae al catch-all (jwt-auth): tiene 6 endpoints públicos hoy.
       - "traefik.http.routers.transaccional.rule=PathPrefix(`/api/v1`)"
       - "traefik.http.routers.transaccional.priority=1"
       - "traefik.http.routers.transaccional.entrypoints=web"
@@ -226,4 +199,4 @@ services:
         condition: service_healthy
 
 volumes:
-  pgdata:
+  staging_pgdata:

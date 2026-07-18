@@ -64,16 +64,21 @@ exp                 = expiración
 ## 4. Punto de entrada (sin cambios para ti, contexto útil)
 
 ```
-Frontend  ─HTTPS→  saludprenatal.sytes.net (nginx)
+Frontend  ─HTTPS/WSS→  saludprenatal.sytes.net (Traefik)
+                        │   └── por cada request le pregunta al API Gateway
+                        │       si el token es válido (y quién eres)
                         │
-                        └─→ API Gateway :8000
-                              ├─ /api/v1/users/login        → servicio auth
-                              ├─ /api/v1/users|doctors|patients|receptionists → servicio usuarios
-                              ├─ /api/v1/subscriptions/*     → servicio pagos
-                              └─ /api/v1/* (resto) + chat ws → servicio transaccional
+                        ├─ /api/v1/users/login|refresh   → servicio auth
+                        ├─ /api/v1/users|doctors|patients → servicio usuarios
+                        ├─ /api/v1/subscriptions/*        → servicio pagos
+                        └─ /api/v1/* (resto) + chat ws    → servicio transaccional
 ```
 
-- El gateway valida el token (si viene) y reenvía. **Tú le pegas solo al dominio, como siempre.**
+- El token se valida **una sola vez** en la entrada. **Tú le pegas solo al dominio, como siempre.**
+- **Cambio de comportamiento a tener en cuenta:** un token inválido o expirado ahora se
+  rechaza con `401` en la entrada, antes de llegar al servicio. En el **WebSocket** eso
+  significa que el *handshake falla* (el connect no se abre) en vez de conectar y cerrarse
+  al instante. Si tu código ya maneja el error de conexión del WS, no hay nada que hacer.
 - **Swagger** para explorar: `https://saludprenatal.sytes.net/docs` (selector arriba a la derecha para elegir servicio: Usuarios / Pagos / Transaccional / Auth).
 
 ---

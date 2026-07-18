@@ -1,9 +1,15 @@
-"""Smoke del servicio pagos: health, rutas presentes y auth por claims."""
-from salud_prenatal_shared_core.security import create_access_token
+"""Smoke del servicio pagos: health, rutas presentes y auth por headers del edge."""
 
 
-def _bearer(**claims):
-    return {"Authorization": f"Bearer {create_access_token(claims)}"}
+def _headers(**claims):
+    """Identidad como la inyecta el ForwardAuth del gateway tras validar el JWT.
+    Los claims se nombran igual que antes para no reescribir cada test."""
+    return {
+        "X-User-Id": str(claims.get("user_id", "")),
+        "X-User-Email": claims.get("sub", ""),
+        "X-User-Role": claims.get("role", ""),
+        "X-Subscription-Status": claims.get("subscription_status") or "",
+    }
 
 
 def test_health(client):
@@ -27,7 +33,7 @@ def test_me_requires_auth(client):
 def test_me_forbidden_for_non_doctor(client):
     r = client.get(
         "/api/v1/subscriptions/me",
-        headers=_bearer(sub="p@e.com", user_id=1, role="paciente"),
+        headers=_headers(sub="p@e.com", user_id=1, role="paciente"),
     )
     assert r.status_code == 403
 
@@ -36,7 +42,7 @@ def test_me_doctor_returns_pending_when_no_row(client):
     # Ejercita DB + repo + use case + controller: doctor sin fila -> pending.
     r = client.get(
         "/api/v1/subscriptions/me",
-        headers=_bearer(sub="d@e.com", user_id=99, role="doctor", subscription_status=None),
+        headers=_headers(sub="d@e.com", user_id=99, role="doctor", subscription_status=None),
     )
     assert r.status_code == 200
     assert r.json()["status"] == "pending"

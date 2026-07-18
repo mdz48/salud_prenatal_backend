@@ -1,7 +1,7 @@
 """Composition root del servicio usuarios — slice de la feature users (sin login)."""
 from dependency_injector import containers, providers
 
-from salud_prenatal_shared_core.database import get_db
+from salud_prenatal_shared_core.database import get_session_factory
 
 from app.users.infrastructure.repositories.user_repository import UserRepository
 from app.users.infrastructure.repositories.patient_repository import PatientRepository
@@ -46,7 +46,7 @@ class Container(containers.DeclarativeContainer):
         ]
     )
 
-    db = providers.Resource(get_db)
+    db = providers.ContextLocalSingleton(lambda: get_session_factory()())
 
     # Repositories
     user_repository = providers.Factory(UserRepository, db=db)

@@ -15,6 +15,7 @@ dependencies = [
     "cryptography",
     "python-dotenv",
     "psycopg2-binary",
+    "hvac",
 ]
 
 [tool.setuptools.packages.find]

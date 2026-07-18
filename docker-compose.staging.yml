@@ -1,0 +1,222 @@
+# docker-compose.staging.yml — stack de PRUEBA aislado, para validar la migración
+# a Traefik + ForwardAuth SIN tocar producción.
+#
+# Se levanta EN EL VPS, junto a producción, sin interferir:
+#   docker compose -p sp_staging -f docker-compose.staging.yml up --build -d
+#   docker compose -p sp_staging -f docker-compose.staging.yml down -v   # limpieza total
+#
+# TRES AISLAMIENTOS (los tres importan):
+#   1. Puertos: edge en 8081 (prod usa 80/443/8000). Ningún servicio publica puerto.
+#   2. Proyecto (-p sp_staging): red y contenedores propios, nombres prefijados.
+#   3. BASE DE DATOS PROPIA: postgres local a este stack, NO Supabase.
+#      Esto es obligatorio, no cosmético: transaccional arranca APScheduler
+#      (recordatorio de citas cada 15 min + aviso diario 9:00) y contra la DB real
+#      mandaría push DUPLICADOS a pacientes reales. Con DB vacía no hay device
+#      tokens, así que los jobs no envían nada.
+#
+# Los labels de Traefik son IDÉNTICOS a los de docker-compose.yml — son justo lo que
+# se está probando. Lo único que cambia es el puerto del entrypoint y que aquí no hay TLS.
+
+services:
+  traefik:
+    image: traefik:v3.7
+    container_name: sp_staging_traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # Solo descubre contenedores de ESTE proyecto: sin esto Traefik vería también
+      # los contenedores de producción (comparten el socket de Docker).
+      - "--providers.docker.constraints=Label(`sp.stack`,`staging`)"
+      - "--entrypoints.web.address=:8081"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+    ports:
+      - "8081:8081"   # edge de prueba
+      - "8091:8080"   # dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    depends_on:
+      - gateway
+      - auth
+      - usuarios
+      - pagos
+      - transaccional
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: sp_staging_vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-root}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: sp_staging_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: staging
+      POSTGRES_DB: salud_prenatal_staging
+    # SIN `ports`: solo lo alcanzan los contenedores de este stack.
+    volumes:
+      - staging_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+      dockerfile: service_gateway/Dockerfile
+    container_name: sp_staging_gateway
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_URL: http://auth:8001
+      USUARIOS_URL: http://usuarios:8002
+      PAGOS_URL: http://pagos:8003
+      TRANSACCIONAL_URL: http://transaccional:8004
+      JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-}
+      VAULT_ADDR: ${VAULT_ADDR:-http://sp_staging_vault:8200}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID_GATEWAY:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID_GATEWAY:-}
+    labels:
+      - "sp.stack=staging"
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.jwt-auth.forwardauth.address=http://gateway:8000/validate"
+      - "traefik.http.middlewares.jwt-auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
+      - "traefik.http.middlewares.jwt-strict.forwardauth.address=http://gateway:8000/validate/strict"
+      - "traefik.http.middlewares.jwt-strict.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
+      # Rate limit (réplica del limit_req de nginx, 10r/s burst 20) — igual que el VPS.
+      - "traefik.http.middlewares.ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.ratelimit.ratelimit.burst=20"
+      - "traefik.http.routers.gateway.rule=Path(`/`) || Path(`/health`) || Path(`/docs`) || Path(`/openapi.json`) || Path(`/api/v1/auth/openapi.json`) || Path(`/api/v1/usuarios/openapi.json`) || Path(`/api/v1/pagos/openapi.json`) || Path(`/api/v1/transaccional/openapi.json`)"
+      - "traefik.http.routers.gateway.priority=500"
+      - "traefik.http.routers.gateway.entrypoints=web"
+      - "traefik.http.routers.gateway.service=gateway"
+      - "traefik.http.services.gateway.loadbalancer.server.port=8000"
+    depends_on:
+      - auth
+      - usuarios
+      - pagos
+      - transaccional
+
+  auth:
+    build:
+      context: .
+      dockerfile: service_auth/Dockerfile
+    container_name: sp_staging_auth
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+      JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-}
+      VAULT_ADDR: ${VAULT_ADDR:-http://sp_staging_vault:8200}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID_AUTH:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID_AUTH:-}
+    labels:
+      - "sp.stack=staging"
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth-login.rule=Path(`/api/v1/users/login`)"
+      - "traefik.http.routers.auth-login.priority=400"
+      - "traefik.http.routers.auth-login.entrypoints=web"
+      - "traefik.http.routers.auth-login.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.auth-login.service=auth"
+      - "traefik.http.routers.auth-refresh.rule=Path(`/api/v1/users/refresh`)"
+      - "traefik.http.routers.auth-refresh.priority=400"
+      - "traefik.http.routers.auth-refresh.entrypoints=web"
+      - "traefik.http.routers.auth-refresh.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.auth-refresh.service=auth"
+      - "traefik.http.services.auth.loadbalancer.server.port=8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  usuarios:
+    build:
+      context: .
+      dockerfile: service_usuarios/Dockerfile
+    container_name: sp_staging_usuarios
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+    labels:
+      - "sp.stack=staging"
+      - "traefik.enable=true"
+      - "traefik.http.routers.usuarios.rule=PathPrefix(`/api/v1/users`) || PathPrefix(`/api/v1/doctors`) || PathPrefix(`/api/v1/patients`)"
+      - "traefik.http.routers.usuarios.priority=300"
+      - "traefik.http.routers.usuarios.entrypoints=web"
+      - "traefik.http.routers.usuarios.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.usuarios.service=usuarios"
+      - "traefik.http.services.usuarios.loadbalancer.server.port=8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  pagos:
+    build:
+      context: .
+      dockerfile: service_pagos/Dockerfile
+    container_name: sp_staging_pagos
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+    labels:
+      - "sp.stack=staging"
+      - "traefik.enable=true"
+      - "traefik.http.routers.pagos-webhook.rule=Path(`/api/v1/subscriptions/webhook`)"
+      - "traefik.http.routers.pagos-webhook.priority=350"
+      - "traefik.http.routers.pagos-webhook.entrypoints=web"
+      - "traefik.http.routers.pagos-webhook.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.pagos-webhook.service=pagos"
+      - "traefik.http.routers.pagos.rule=PathPrefix(`/api/v1/subscriptions`)"
+      - "traefik.http.routers.pagos.priority=300"
+      - "traefik.http.routers.pagos.entrypoints=web"
+      - "traefik.http.routers.pagos.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.pagos.service=pagos"
+      - "traefik.http.services.pagos.loadbalancer.server.port=8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  transaccional:
+    build:
+      context: .
+      dockerfile: service_transaccional/Dockerfile
+    container_name: sp_staging_transaccional
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
+      AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+      # Sin ML: este stack no lo necesita para las pruebas de ruteo/auth.
+      ML_SERVICE_URL: http://ml-inexistente:8001
+    labels:
+      - "sp.stack=staging"
+      - "traefik.enable=true"
+      - "traefik.http.routers.transaccional-chat.rule=PathPrefix(`/api/v1/chat`)"
+      - "traefik.http.routers.transaccional-chat.priority=300"
+      - "traefik.http.routers.transaccional-chat.entrypoints=web"
+      - "traefik.http.routers.transaccional-chat.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.transaccional-chat.service=transaccional"
+      # forums cae al catch-all (jwt-auth): tiene 6 endpoints públicos hoy.
+      - "traefik.http.routers.transaccional.rule=PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.transaccional.priority=1"
+      - "traefik.http.routers.transaccional.entrypoints=web"
+      - "traefik.http.routers.transaccional.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.transaccional.service=transaccional"
+      - "traefik.http.services.transaccional.loadbalancer.server.port=8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  staging_pgdata:

@@ -8,7 +8,7 @@ Los adapters internos (medical_record<->patient_diaries/forums) quedan en-proces
 """
 from dependency_injector import containers, providers
 
-from salud_prenatal_shared_core.database import get_db
+from salud_prenatal_shared_core.database import get_session_factory
 
 # Repositorios propios (features de este servicio)
 from app.appointments.infrastructure.repositories.appointment_repository import AppointmentRepository
@@ -116,7 +116,7 @@ class Container(containers.DeclarativeContainer):
         ]
     )
 
-    db = providers.Resource(get_db)
+    db = providers.ContextLocalSingleton(lambda: get_session_factory()())
 
     # Adapters externos (HTTP a ML/NLP) — sin cambios
     ml_prediction_service = providers.Factory(MlPredictionServiceAdapter)

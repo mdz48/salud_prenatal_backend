@@ -1,21 +1,42 @@
-"""Verifica la auth basada en claims de shared_core (sin DB)."""
+"""Verifica la auth basada en headers de identidad (X-User-*) de shared_core.
+
+Modelo de confianza: Traefik ForwardAuth valida el JWT UNA vez en el edge
+(gateway /validate) e inyecta los headers; los servicios solo los leen.
+principal_from_token se conserva porque lo usa el validador del gateway.
+"""
 import pytest
 from fastapi import HTTPException
+from starlette.requests import Request
 
 from salud_prenatal_shared_core.security import create_access_token
 from salud_prenatal_shared_core.enums import RoleEnum, SubscriptionStatusEnum
 from salud_prenatal_shared_core.auth_dependencies import (
     Principal,
     principal_from_token,
+    principal_from_headers,
     get_current_user,
     get_current_user_optional,
     require_active_subscription,
     RoleChecker,
+    HEADER_USER_ID,
+    HEADER_USER_EMAIL,
+    HEADER_USER_ROLE,
+    HEADER_SUBSCRIPTION_STATUS,
+    HEADER_SUBSCRIPTION_PERIOD_END,
+    IDENTITY_HEADERS,
 )
 
 
 def _token(**claims):
     return create_access_token(data=claims)
+
+
+def _request(headers: dict) -> Request:
+    scope = {
+        "type": "http",
+        "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
+    }
+    return Request(scope)
 
 
 class TestPrincipalFromToken:
@@ -38,21 +59,74 @@ class TestPrincipalFromToken:
         assert p is not None and p.role is None
 
 
+class TestPrincipalFromHeaders:
+    def test_full_headers_build_principal(self):
+        p = principal_from_headers({
+            HEADER_USER_ID: "7",
+            HEADER_USER_EMAIL: "doc@example.com",
+            HEADER_USER_ROLE: "doctor",
+            HEADER_SUBSCRIPTION_STATUS: "active",
+            HEADER_SUBSCRIPTION_PERIOD_END: "2026-08-15T12:00:00",
+        })
+        assert p.user_id == 7
+        assert p.email == "doc@example.com"
+        assert p.role is RoleEnum.doctor
+        assert p.subscription_status == "active"
+        assert p.subscription_current_period_end.year == 2026
+
+    def test_lookup_is_case_insensitive(self):
+        p = principal_from_headers({"x-user-email": "d@e.com", "X-USER-ID": "1"})
+        assert p is not None and p.user_id == 1 and p.email == "d@e.com"
+
+    def test_empty_email_is_anonymous(self):
+        # Header vacío == ausente: mismo criterio de presencia que el claim `sub`.
+        assert principal_from_headers({HEADER_USER_EMAIL: "", HEADER_USER_ID: "7"}) is None
+
+    def test_missing_email_is_anonymous(self):
+        assert principal_from_headers({HEADER_USER_ID: "7"}) is None
+
+    def test_all_empty_is_anonymous(self):
+        assert principal_from_headers({h: "" for h in IDENTITY_HEADERS}) is None
+
+    def test_unknown_role_stays_none(self):
+        p = principal_from_headers({HEADER_USER_EMAIL: "x@e.com", HEADER_USER_ROLE: "marciano"})
+        assert p is not None and p.role is None
+
+    def test_non_numeric_user_id_degrades_to_none(self):
+        p = principal_from_headers({HEADER_USER_EMAIL: "x@e.com", HEADER_USER_ID: "abc"})
+        assert p is not None and p.user_id is None
+
+    def test_malformed_period_end_degrades_to_none(self):
+        p = principal_from_headers({HEADER_USER_EMAIL: "x@e.com",
+                                    HEADER_SUBSCRIPTION_PERIOD_END: "no-es-fecha"})
+        assert p is not None and p.subscription_current_period_end is None
+
+    def test_starlette_headers_supported(self):
+        req = _request({HEADER_USER_EMAIL: "d@e.com", HEADER_USER_ID: "3"})
+        p = principal_from_headers(req.headers)
+        assert p is not None and p.user_id == 3
+
+
 class TestGetCurrentUser:
-    def test_valid(self):
-        token = _token(sub="p@e.com", user_id=3, role="paciente")
-        assert get_current_user(token=token).user_id == 3
+    def test_request_with_identity_headers_builds_principal(self):
+        req = _request({HEADER_USER_ID: "3", HEADER_USER_EMAIL: "p@e.com",
+                        HEADER_USER_ROLE: "paciente"})
+        principal = get_current_user_optional(request=req, _token=None)
+        assert principal is not None and principal.user_id == 3
+        assert get_current_user(principal=principal).user_id == 3
 
-    def test_invalid_raises_401(self):
+    def test_anonymous_raises_401(self):
         with pytest.raises(HTTPException) as exc:
-            get_current_user(token="garbage")
+            get_current_user(principal=None)
         assert exc.value.status_code == 401
+        assert exc.value.headers["WWW-Authenticate"] == "Bearer"
 
-    def test_optional_none_returns_none(self):
-        assert get_current_user_optional(token=None) is None
+    def test_optional_without_headers_returns_none(self):
+        assert get_current_user_optional(request=_request({}), _token=None) is None
 
-    def test_optional_invalid_returns_none(self):
-        assert get_current_user_optional(token="garbage") is None
+    def test_optional_with_empty_headers_returns_none(self):
+        req = _request({HEADER_USER_ID: "", HEADER_USER_EMAIL: ""})
+        assert get_current_user_optional(request=req, _token=None) is None
 
 
 class TestRequireActiveSubscription:

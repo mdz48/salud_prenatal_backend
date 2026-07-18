@@ -1,7 +1,7 @@
 """Composition root del servicio pagos — solo el slice de subscriptions."""
 from dependency_injector import containers, providers
 
-from salud_prenatal_shared_core.database import get_db
+from salud_prenatal_shared_core.database import get_session_factory
 
 from app.subscriptions.infrastructure.repositories.subscription_repository import SubscriptionRepository
 from app.subscriptions.infrastructure.adapters.stripe_gateway_adapter import StripeGatewayAdapter
@@ -22,7 +22,7 @@ class Container(containers.DeclarativeContainer):
         ]
     )
 
-    db = providers.Resource(get_db)
+    db = providers.ContextLocalSingleton(lambda: get_session_factory()())
 
     subscription_repository = providers.Factory(SubscriptionRepository, db=db)
     stripe_payment_gateway = providers.Factory(StripeGatewayAdapter)

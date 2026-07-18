@@ -1,43 +1,136 @@
 # docker-compose.vps.yml
 # ---------------------------------------------------------------------------
-# Cómo queda /home/mdz/proyectos/docker-compose.yml en el VPS tras reemplazar
-# el monolito (servicio `backend`) por los 5 servicios del split.
+# Cómo queda /home/mdz/proyectos/docker-compose.yml en el VPS tras migrar a
+# Traefik + ForwardAuth (nginx desaparece del flujo).
+#
+# ANTES:  internet -> nginx (TLS certbot, rate limit) -> gateway-proxy :8000 -> servicios
+#                     nginx también ruteaba /ml/, /api/v1/admin/, /admin/
+# AHORA:  internet -> Traefik (TLS reusando certs de certbot, rate limit) -> servicios
+#                     Traefik pregunta al gateway (/validate) por cada request;
+#                     el gateway solo VALIDA el JWT (una vez) y devuelve los
+#                     headers X-User-*. Ya no proxea nada.
 #
 # Contexto del VPS (ya existente):
-#   - El monorepo vive en ./salud_prenatal_backend (checkout de la rama split-servicios).
+#   - El monorepo vive en ./salud_prenatal_backend.
 #   - DB = Supabase (via ./salud_prenatal_backend/.env). NO hay postgres local.
-#   - ml_service (:8001), admin_backend (:8002), admin_frontend (:8003) NO cambian.
-#   - nginx enruta:  / -> :8000 (gateway),  /ml/ -> :8001,  /api/v1/admin/ -> :8002,
-#     /admin/ -> :8003,  /api/v1/chat/ws -> :8000 (el gateway proxya el WebSocket).
+#   - ml_service, admin_backend y admin_frontend siguen igual (los rutea Traefik
+#     SIN el middleware de auth: tienen su propia autenticación).
 #
-# El gateway es un DROP-IN del monolito en :8000: gracias a la paridad de rutas
-# (/api/v1/...), nginx no necesita cambios. Los 4 servicios internos NO publican
-# puerto al host (solo se alcanzan por nombre dentro de app_network), así no
-# chocan con ml(8001)/admin(8002/8003).
+# DECISIONES DE ESTE CORTE (ver plan 2026-07-16-traefik-forwardauth.md):
+#   - Backend de llaves: HS256 (JWT_KEY_BACKEND vacío). Vault entra DESPUÉS de
+#     probarse en staging. La infra de Vault ya está cableada pero inerte.
+#   - TLS: se REUTILIZAN los certs de certbot (file provider), NO ACME.
+#   - Rate limit: réplica del limit_req de nginx (10r/s burst 20).
+#
+# PRE-CHECKS YA HECHOS (2026-07-17, contra el VPS real):
+#   - nginx sites-enabled: SOLO saludprenatal (sin otros dominios) -> seguro apagarlo.
+#   - Red real: proyectos_app_network (ya puesta arriba).
+#   - Strip de prefijo: /ml y /api/v1/admin NO recortan; /admin SÍ (ya reflejado).
+#
+# ANTES DE APLICAR, EN EL VPS:
+#   - Deshabilitar certbot.timer (Traefik toma el :80; evitar que peleen).
+#     Los certs NO se tocan: certbot los seguirá teniendo para el rollback.
 # ---------------------------------------------------------------------------
 
 services:
-  # === GATEWAY: reemplaza al monolito en :8000 ===
+  # === EDGE: Traefik toma 80/443 (los libera nginx al apagarse) ===
+  traefik:
+    image: traefik:v3.7
+    container_name: traefik
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # IGNORAR los contenedores del stack de staging (sp.stack=staging). Sin esto,
+      # este Traefik ve TAMBIÉN los de sp_staging (comparten el socket) y como usan
+      # los MISMOS nombres de router (gateway, usuarios, auth...) los detecta como
+      # "defined multiple times" y los DESCARTA -> 404 en toda la API. (Pasó en el
+      # corte 2026-07-18: staging estaba arriba y tumbó el ruteo de prod.)
+      - "--providers.docker.constraints=!Label(`sp.stack`,`staging`)"
+      # Nombre REAL de la red (verificado en el VPS: docker network ls).
+      - "--providers.docker.network=proyectos_app_network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Todo http -> https (paridad con el redirect que hacía nginx).
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      # TLS: se REUTILIZAN los certs que ya emitió certbot (montados abajo), en vez
+      # de emitir con ACME. El corte no depende de una emisión Let's Encrypt en vivo
+      # (sin riesgo de rate-limit ni de challenge fallido en plena ventana), y el
+      # rollback a nginx es trivial porque los certs no se tocan. El provider de
+      # archivo lee traefik-dynamic.yml, que declara el certificado.
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      # Certs de certbot en solo-lectura. Se monta TODO /etc/letsencrypt (no solo
+      # live/) porque fullchain/privkey son symlinks a ../../archive/.
+      - "/etc/letsencrypt:/certs:ro"
+      # Config dinámica: declara el certificado de saludprenatal para el file provider.
+      - "./salud_prenatal_backend/traefik-dynamic.yml:/etc/traefik/dynamic.yml:ro"
+    networks: [app_network]
+    depends_on: [gateway, auth, usuarios, pagos, transaccional, vault]
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: vault
+    restart: always
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-root}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    networks: [app_network]
+
+  # === GATEWAY: backend ForwardAuth + /docs. SIN `ports`: solo lo llama Traefik. ===
   gateway:
     build:
       context: ./salud_prenatal_backend
       dockerfile: service_gateway/Dockerfile
     container_name: salud_prenatal_gateway
-    ports:
-      - "8000:8000"
     restart: always
     env_file:
       - ./salud_prenatal_backend/.env
     environment:
-      # Ruteo interno por nombre de servicio de compose (no localhost).
       AUTH_URL: http://auth:8001
       USUARIOS_URL: http://usuarios:8002
       PAGOS_URL: http://pagos:8003
       TRANSACCIONAL_URL: http://transaccional:8004
+      JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-}
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID_GATEWAY:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID_GATEWAY:-}
+    labels:
+      - "traefik.enable=true"
+      # --- Los dos middlewares del sistema ---
+      # jwt-auth   = valida-si-viene: anónimo pasa con identidad vacía; token inválido 401.
+      # jwt-strict = fail-closed: anónimo 401 en el edge.
+      # authResponseHeaders es el candado anti-spoofing: Traefik BORRA estos headers
+      # del request entrante y solo copia los que emite el validador.
+      - "traefik.http.middlewares.jwt-auth.forwardauth.address=http://gateway:8000/validate"
+      - "traefik.http.middlewares.jwt-auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
+      - "traefik.http.middlewares.jwt-strict.forwardauth.address=http://gateway:8000/validate/strict"
+      - "traefik.http.middlewares.jwt-strict.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
+      # --- Rate limit: réplica del `limit_req rate=10r/s burst=20` de nginx
+      #     (conf.d/limit.conf, por IP). Se aplica ANTES de jwt-auth/jwt-strict en cada
+      #     router para no gastar el validador con tráfico que se va a rechazar. ---
+      - "traefik.http.middlewares.ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.ratelimit.ratelimit.burst=20"
+      # --- Docs agregadas + health (público). /validate NO se rutea: es interno. ---
+      - "traefik.http.routers.gateway.rule=Host(`saludprenatal.sytes.net`) && (Path(`/`) || Path(`/health`) || Path(`/docs`) || Path(`/openapi.json`) || Path(`/api/v1/auth/openapi.json`) || Path(`/api/v1/usuarios/openapi.json`) || Path(`/api/v1/pagos/openapi.json`) || Path(`/api/v1/transaccional/openapi.json`))"
+      - "traefik.http.routers.gateway.priority=500"
+      - "traefik.http.routers.gateway.entrypoints=websecure"
+      - "traefik.http.routers.gateway.tls=true"
+      - "traefik.http.routers.gateway.service=gateway"
+      - "traefik.http.services.gateway.loadbalancer.server.port=8000"
     networks: [app_network]
     depends_on: [auth, usuarios, pagos, transaccional]
 
-  # === 4 servicios internos: SIN `ports` (solo app_network) ===
+  # === 4 servicios internos: SIN `ports` (solo alcanzables por Traefik en app_network) ===
+  # FORWARDED_ALLOW_IPS: uvicorn solo confía en 127.0.0.1 por default; sin esto los
+  # redirects 307 (trailing slash) saldrían con http:// en vez de https://.
   auth:
     build:
       context: ./salud_prenatal_backend
@@ -45,6 +138,30 @@ services:
     container_name: sp_auth
     restart: always
     env_file: [./salud_prenatal_backend/.env]
+    environment:
+      AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+      JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-}
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID_AUTH:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID_AUTH:-}
+    labels:
+      - "traefik.enable=true"
+      # login público (nadie tiene token antes de loguearse).
+      - "traefik.http.routers.auth-login.rule=Host(`saludprenatal.sytes.net`) && Path(`/api/v1/users/login`)"
+      - "traefik.http.routers.auth-login.priority=400"
+      - "traefik.http.routers.auth-login.entrypoints=websecure"
+      - "traefik.http.routers.auth-login.tls=true"
+      - "traefik.http.routers.auth-login.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.auth-login.service=auth"
+      # refresh exige token válido -> fail-closed.
+      - "traefik.http.routers.auth-refresh.rule=Host(`saludprenatal.sytes.net`) && Path(`/api/v1/users/refresh`)"
+      - "traefik.http.routers.auth-refresh.priority=400"
+      - "traefik.http.routers.auth-refresh.entrypoints=websecure"
+      - "traefik.http.routers.auth-refresh.tls=true"
+      - "traefik.http.routers.auth-refresh.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.auth-refresh.service=auth"
+      - "traefik.http.services.auth.loadbalancer.server.port=8001"
     networks: [app_network]
 
   usuarios:
@@ -55,8 +172,18 @@ services:
     restart: always
     env_file: [./salud_prenatal_backend/.env]
     environment:
-      # tokenUrl del botón "Authorize" en el Swagger del gateway -> login público real.
       AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+    labels:
+      - "traefik.enable=true"
+      # Registro y lecturas públicas conviven con rutas con sesión -> jwt-auth.
+      - "traefik.http.routers.usuarios.rule=Host(`saludprenatal.sytes.net`) && (PathPrefix(`/api/v1/users`) || PathPrefix(`/api/v1/doctors`) || PathPrefix(`/api/v1/patients`))"
+      - "traefik.http.routers.usuarios.priority=300"
+      - "traefik.http.routers.usuarios.entrypoints=websecure"
+      - "traefik.http.routers.usuarios.tls=true"
+      - "traefik.http.routers.usuarios.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.usuarios.service=usuarios"
+      - "traefik.http.services.usuarios.loadbalancer.server.port=8002"
     networks: [app_network]
 
   pagos:
@@ -68,6 +195,25 @@ services:
     env_file: [./salud_prenatal_backend/.env]
     environment:
       AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+    labels:
+      - "traefik.enable=true"
+      # Stripe no manda nuestro JWT: el webhook DEBE pasar anónimo (lo protege su
+      # propia firma, que ForwardAuth no toca porque solo inspecciona headers).
+      - "traefik.http.routers.pagos-webhook.rule=Host(`saludprenatal.sytes.net`) && Path(`/api/v1/subscriptions/webhook`)"
+      - "traefik.http.routers.pagos-webhook.priority=350"
+      - "traefik.http.routers.pagos-webhook.entrypoints=websecure"
+      - "traefik.http.routers.pagos-webhook.tls=true"
+      - "traefik.http.routers.pagos-webhook.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.pagos-webhook.service=pagos"
+      # El resto de /subscriptions es 100% require_doctor -> fail-closed.
+      - "traefik.http.routers.pagos.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1/subscriptions`)"
+      - "traefik.http.routers.pagos.priority=300"
+      - "traefik.http.routers.pagos.entrypoints=websecure"
+      - "traefik.http.routers.pagos.tls=true"
+      - "traefik.http.routers.pagos.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.pagos.service=pagos"
+      - "traefik.http.services.pagos.loadbalancer.server.port=8003"
     networks: [app_network]
 
   transaccional:
@@ -79,14 +225,42 @@ services:
     env_file: [./salud_prenatal_backend/.env]
     environment:
       AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
-      # El ML corre en su propio contenedor; se alcanza por nombre en la red.
+      FORWARDED_ALLOW_IPS: "*"
       ML_SERVICE_URL: http://ml_service:8001
     volumes:
-      # notifications (firebase) vive ahora en transaccional -> mismo mount que el monolito.
       - ./salud_prenatal_backend/firebasecredencials.json:/app/firebasecredencials.json
+    labels:
+      - "traefik.enable=true"
+      # chat (HTTP + WS) es el ÚNICO prefijo 100% protegido de transaccional
+      # (inbox, contacts, history, ws) -> fail-closed.
+      # El WS lo proxea Traefik nativo (ya no hay bridge manual en el gateway);
+      # el ForwardAuth valida el upgrade leyendo ?token= de X-Forwarded-Uri.
+      - "traefik.http.routers.transaccional-chat.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1/chat`)"
+      - "traefik.http.routers.transaccional-chat.priority=300"
+      - "traefik.http.routers.transaccional-chat.entrypoints=websecure"
+      - "traefik.http.routers.transaccional-chat.tls=true"
+      - "traefik.http.routers.transaccional-chat.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.transaccional-chat.service=transaccional"
+      # OJO: forums NO lleva jwt-strict y por eso no tiene router propio — cae al
+      # catch-all. Tiene 6 endpoints públicos hoy (GET /forums/groups,
+      # /posts/global, /posts/{id}/comments, /groups/{id}/posts, /profiles/{id},
+      # /profiles/{id}/timeline). Ponerle strict los rompería (401 donde hoy hay 200).
+      # Catch-all: forums, appointments, medical-records, patient-diaries,
+      # consultations, notifications. Mezclan público y protegido dentro del mismo
+      # prefijo, así que la decisión vive en cada router (RoleChecker) -> jwt-auth.
+      - "traefik.http.routers.transaccional.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.transaccional.priority=1"
+      - "traefik.http.routers.transaccional.entrypoints=websecure"
+      - "traefik.http.routers.transaccional.tls=true"
+      - "traefik.http.routers.transaccional.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.transaccional.service=transaccional"
+      - "traefik.http.services.transaccional.loadbalancer.server.port=8004"
     networks: [app_network]
 
-  # === SIN CAMBIOS respecto a tu compose actual ===
+  # === ml/admin: los rutea Traefik en lugar de nginx. SIN middleware de auth:
+  # tienen su propia autenticación y nuestro validador les daría 401 a sus tokens.
+  # Conservan sus `ports` publicados durante la transición (rollback inmediato);
+  # quitarlos es hardening posterior.
   ml_service:
     build:
       context: ./machine_learning_service
@@ -96,6 +270,18 @@ services:
     restart: always
     env_file:
       - ./machine_learning_service/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ml.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/ml`)"
+      - "traefik.http.routers.ml.priority=350"
+      - "traefik.http.routers.ml.entrypoints=websecure"
+      - "traefik.http.routers.ml.tls=true"
+      - "traefik.http.routers.ml.service=ml"
+      # nginx limitaba /ml/ (limit_req). Solo rate limit, SIN jwt (ml tiene su propia auth).
+      - "traefik.http.routers.ml.middlewares=ratelimit@docker"
+      # VERIFICADO (nginx sites-enabled/saludprenatal): `proxy_pass http://localhost:8001;`
+      # SIN barra final -> nginx NO recorta, pasa /ml/... tal cual. Por eso SIN stripprefix.
+      - "traefik.http.services.ml.loadbalancer.server.port=8001"
     networks: [app_network]
 
   admin_backend:
@@ -107,6 +293,19 @@ services:
     restart: always
     env_file:
       - ./salud_prenatal_administrador_backend/.env
+    labels:
+      - "traefik.enable=true"
+      # Prioridad 350 > catch-all de transaccional (1): /api/v1/admin es suyo.
+      - "traefik.http.routers.adminapi.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1/admin`)"
+      - "traefik.http.routers.adminapi.priority=350"
+      - "traefik.http.routers.adminapi.entrypoints=websecure"
+      - "traefik.http.routers.adminapi.tls=true"
+      - "traefik.http.routers.adminapi.service=adminapi"
+      # nginx limitaba /api/v1/admin/ (limit_req). Solo rate limit, SIN jwt (auth propia).
+      - "traefik.http.routers.adminapi.middlewares=ratelimit@docker"
+      # VERIFICADO: `proxy_pass http://localhost:8002;` SIN barra -> nginx NO recorta.
+      # admin_backend recibe /api/v1/admin/... completo. Por eso SIN stripprefix.
+      - "traefik.http.services.adminapi.loadbalancer.server.port=8002"
     networks: [app_network]
 
   admin_frontend:
@@ -116,6 +315,20 @@ services:
     ports:
       - "8003:80"
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminfront.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.adminfront.priority=340"
+      - "traefik.http.routers.adminfront.entrypoints=websecure"
+      - "traefik.http.routers.adminfront.tls=true"
+      - "traefik.http.routers.adminfront.service=adminfront"
+      # VERIFICADO: nginx usa `proxy_pass http://127.0.0.1:8003/;` CON barra final ->
+      # recorta /admin (manda /admin/foo como /foo). Replicamos con stripprefix para
+      # que el frontend reciba las rutas como antes; sin esto, cargaría roto.
+      - "traefik.http.middlewares.adminfront-strip.stripprefix.prefixes=/admin"
+      - "traefik.http.routers.adminfront.middlewares=adminfront-strip@docker"
+      # El contenedor del frontend escucha en 80 (nginx interno de la imagen).
+      - "traefik.http.services.adminfront.loadbalancer.server.port=80"
     networks: [app_network]
 
 networks:

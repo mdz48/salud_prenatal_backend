@@ -1,8 +1,8 @@
 from dependency_injector.wiring import inject, Provide
 from container import Container
-from salud_prenatal_shared_core.auth_dependencies import get_current_user, principal_from_token
+from salud_prenatal_shared_core.auth_dependencies import get_current_user, HEADER_USER_ID
 from salud_prenatal_shared_core.auth_dependencies import Principal as UserEntity
-from fastapi import APIRouter, WebSocket, WebSocketException, Depends, Query, status
+from fastapi import APIRouter, WebSocket, WebSocketException, Depends, status
 from app.chat.infrastructure.controllers.chat_controller import ChatController
 from app.chat.infrastructure.schemas.chat_schema import MessageResponse
 from app.chat.domain.inbox_item_response import InboxItemResponse
@@ -41,11 +41,16 @@ def get_chat_history(
 @inject
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: str = Query(...),
     controller: ChatController = Depends(Provide[Container.chat_controller]),
 ):
-    # Auth por claims: el token se valida localmente (sin DB) y da el Principal.
-    principal = principal_from_token(token)
-    if not principal:
+    # Identidad inyectada por el edge: el ForwardAuth ya validó el `?token=` del
+    # upgrade (lo lee de X-Forwarded-Uri) antes de que Traefik enrutara aquí. El
+    # cliente sigue mandando ?token= en la URL; este servicio ya no lo mira.
+    user_id_raw = websocket.headers.get(HEADER_USER_ID, "").strip()
+    if not user_id_raw:
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-    await controller.websocket_endpoint(websocket, principal.user_id)
+    try:
+        user_id = int(user_id_raw)
+    except ValueError:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+    await controller.websocket_endpoint(websocket, user_id)

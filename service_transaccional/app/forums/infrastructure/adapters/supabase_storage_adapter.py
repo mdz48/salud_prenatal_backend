@@ -13,7 +13,7 @@ class SupabaseStorageAdapter:
             self.base_url = project_id
         
         self.supabase_service_key = supabase_service_key or os.getenv("SUPABASE_SERVICE_KEY", "")
-        self.bucket_name = "post-images"
+        self.bucket_name = os.getenv("SUPABASE_BUCKET_NAME")
 
     def upload_image(self, file_bytes: bytes, filename: str) -> str:
         if len(file_bytes) < 12:

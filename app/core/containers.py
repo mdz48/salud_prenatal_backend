@@ -255,7 +255,7 @@ class Container(containers.DeclarativeContainer):
     auth_controller = providers.Factory(AuthController, authenticate_user_use_case)
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)
     doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case, get_doctor_by_id_use_case, get_doctor_dashboard_use_case, get_receptionist_by_id_use_case, get_receptionist_dashboard_use_case, unlink_patient_use_case)
-    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case, update_profile_use_case, get_profile_timeline_use_case)
+    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case, update_profile_use_case, get_profile_timeline_use_case, supabase_storage_adapter)
     groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case, get_recommended_groups_use_case)
     posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case, supabase_storage_adapter)
     reports_controller = providers.Factory(ReportsController, create_report_use_case)

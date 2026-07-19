@@ -43,6 +43,7 @@ EXPECTED_ROUTES = [
     "/api/v1/forums/posts/{post_id}/comments",
     "/api/v1/forums/profiles",
     "/api/v1/forums/profiles/me",
+    "/api/v1/forums/profiles/upload-avatar",
     "/api/v1/forums/profiles/{user_id}",
     "/api/v1/forums/profiles/{user_id}/timeline",
     "/api/v1/forums/reports",

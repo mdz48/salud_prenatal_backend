@@ -212,7 +212,7 @@ class Container(containers.DeclarativeContainer):
     patient_diary_controller = providers.Factory(PatientDiaryController, create_patient_diary_use_case, get_all_patient_diaries_use_case, get_diaries_by_medical_record_use_case, get_patient_diary_by_id_use_case, update_patient_diary_use_case, delete_patient_diary_use_case, get_diary_symptoms_use_case, get_medical_record_symptom_history_use_case)
     chat_controller = providers.Factory(ChatController, get_history_use_case, save_message_use_case, get_chat_inbox_use_case, get_chat_contacts_use_case, device_token_repository, users_read_repository)
     notification_controller = providers.Factory(NotificationController, register_device_token_use_case, unregister_device_token_use_case)
-    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case, update_profile_use_case, get_profile_timeline_use_case)
+    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case, update_profile_use_case, get_profile_timeline_use_case, supabase_storage_adapter)
     groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case, get_recommended_groups_use_case)
     posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case, supabase_storage_adapter)
     reports_controller = providers.Factory(ReportsController, create_report_use_case)

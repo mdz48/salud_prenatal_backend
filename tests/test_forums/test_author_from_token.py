@@ -31,7 +31,7 @@ def test_create_post_usa_author_del_token():
 def test_create_profile_usa_user_id_del_token():
     create_uc = MagicMock()
     create_uc.execute.side_effect = lambda entity: entity
-    controller = ProfilesController(create_uc, MagicMock(), MagicMock(), MagicMock())
+    controller = ProfilesController(create_uc, MagicMock(), MagicMock(), MagicMock(), MagicMock())
     data = ProfileCreate(alias="ana")
 
     result = controller.create_profile(data, user_id=7)
@@ -42,7 +42,7 @@ def test_create_profile_usa_user_id_del_token():
 def test_update_profile_usa_user_id_del_token():
     update_uc = MagicMock()
     update_uc.execute.side_effect = lambda user_id, changes: SocialProfileEntity(user_id=user_id, **changes)
-    controller = ProfilesController(MagicMock(), MagicMock(), update_uc, MagicMock())
+    controller = ProfilesController(MagicMock(), MagicMock(), update_uc, MagicMock(), MagicMock())
     data = ProfileUpdate(bio="hola")
 
     result = controller.update_profile(data, user_id=7)
@@ -55,7 +55,7 @@ def test_update_profile_usa_user_id_del_token():
 def test_update_profile_no_encontrado_da_404():
     update_uc = MagicMock()
     update_uc.execute.side_effect = ValueError("Profile not found")
-    controller = ProfilesController(MagicMock(), MagicMock(), update_uc, MagicMock())
+    controller = ProfilesController(MagicMock(), MagicMock(), update_uc, MagicMock(), MagicMock())
 
     with pytest.raises(HTTPException) as exc_info:
         controller.update_profile(ProfileUpdate(bio="hola"), user_id=404)
@@ -66,7 +66,7 @@ def test_update_profile_no_encontrado_da_404():
 def test_update_profile_alias_duplicado_da_409():
     update_uc = MagicMock()
     update_uc.execute.side_effect = IntegrityError("stmt", "params", Exception("UNIQUE constraint failed"))
-    controller = ProfilesController(MagicMock(), MagicMock(), update_uc, MagicMock())
+    controller = ProfilesController(MagicMock(), MagicMock(), update_uc, MagicMock(), MagicMock())
 
     with pytest.raises(HTTPException) as exc_info:
         controller.update_profile(ProfileUpdate(alias="taken"), user_id=1)
@@ -79,7 +79,7 @@ def test_get_profile_timeline_devuelve_perfil_y_posts():
     profile = SocialProfileEntity(user_id=3, alias="ana")
     posts = [PostEntity(post_id=1, author_id=3, title="t", content="c")]
     timeline_uc.execute.return_value = (profile, posts)
-    controller = ProfilesController(MagicMock(), MagicMock(), MagicMock(), timeline_uc)
+    controller = ProfilesController(MagicMock(), MagicMock(), MagicMock(), timeline_uc, MagicMock())
 
     result = controller.get_profile_timeline(3, 50, 0)
 
@@ -92,7 +92,7 @@ def test_get_profile_timeline_devuelve_perfil_y_posts():
 def test_get_profile_timeline_no_encontrado_da_404():
     timeline_uc = MagicMock()
     timeline_uc.execute.side_effect = ValueError("Profile not found")
-    controller = ProfilesController(MagicMock(), MagicMock(), MagicMock(), timeline_uc)
+    controller = ProfilesController(MagicMock(), MagicMock(), MagicMock(), timeline_uc, MagicMock())
 
     with pytest.raises(HTTPException) as exc_info:
         controller.get_profile_timeline(404, 50, 0)

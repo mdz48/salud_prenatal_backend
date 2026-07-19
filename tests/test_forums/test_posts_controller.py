@@ -27,15 +27,15 @@ def controller(mock_image_storage):
     )
 
 def test_upload_post_image_success(controller, mock_image_storage):
-    mock_image_storage.upload_image.return_value = "https://supabase.co/ads/123.webp"
+    mock_image_storage.upload_ad_image.return_value = "https://supabase.co/ads/123.webp"
     
     result = controller.upload_post_image(b"dummy_bytes", "test.jpg")
     
     assert result == "https://supabase.co/ads/123.webp"
-    mock_image_storage.upload_image.assert_called_once_with(b"dummy_bytes", "test.jpg")
+    mock_image_storage.upload_ad_image.assert_called_once_with(b"dummy_bytes", "test.jpg")
 
 def test_upload_post_image_value_error(controller, mock_image_storage):
-    mock_image_storage.upload_image.side_effect = ValueError("Invalid format")
+    mock_image_storage.upload_ad_image.side_effect = ValueError("Invalid format")
     
     with pytest.raises(HTTPException) as exc_info:
         controller.upload_post_image(b"dummy_bytes", "test.txt")
@@ -44,7 +44,7 @@ def test_upload_post_image_value_error(controller, mock_image_storage):
     assert "Invalid format" in exc_info.value.detail
 
 def test_upload_post_image_runtime_error(controller, mock_image_storage):
-    mock_image_storage.upload_image.side_effect = RuntimeError("Supabase down")
+    mock_image_storage.upload_ad_image.side_effect = RuntimeError("Supabase down")
     
     with pytest.raises(HTTPException) as exc_info:
         controller.upload_post_image(b"dummy_bytes", "test.jpg")

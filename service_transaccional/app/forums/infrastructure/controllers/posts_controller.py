@@ -88,7 +88,7 @@ class PostsController:
 
     def upload_post_image(self, file_bytes: bytes, filename: str) -> str:
         try:
-            return self.image_storage.upload_image(file_bytes, filename)
+            return self.image_storage.upload_ad_image(file_bytes, filename)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:

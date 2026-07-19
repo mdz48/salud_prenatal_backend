@@ -1,7 +1,7 @@
 from dependency_injector.wiring import inject, Provide
 from app.core.containers import Container
 from app.core.dependencies import get_current_user
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, File, UploadFile
 from app.features.forums.infrastructure.schemas.forums_schemas import (
     ProfileCreate, ProfileUpdate, ProfileResponse, ProfileTimelineResponse
 )
@@ -45,3 +45,15 @@ def get_profile_timeline(
     controller: ProfilesController = Depends(Provide[Container.profiles_controller])
 ):
     return controller.get_profile_timeline(user_id, limit, offset)
+
+@router.post("/profiles/upload-avatar", status_code=status.HTTP_201_CREATED)
+@inject
+def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: UserEntity = Depends(get_current_user),
+    controller: ProfilesController = Depends(Provide[Container.profiles_controller])
+):
+    """Sube una imagen de perfil, la recorta y la procesa en formato WebP, retornando la URL pública."""
+    file_bytes = file.file.read()
+    image_url = controller.upload_profile_avatar(file_bytes, file.filename)
+    return {"image_url": image_url}

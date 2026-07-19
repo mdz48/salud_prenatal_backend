@@ -1,7 +1,7 @@
 from container import Container
 from salud_prenatal_shared_core.db_cleanup import close_db_after
 from salud_prenatal_shared_core.auth_dependencies import get_current_user
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, File, UploadFile
 from app.forums.infrastructure.schemas.forums_schemas import (
     ProfileCreate, ProfileUpdate, ProfileResponse, ProfileTimelineResponse
 )
@@ -49,3 +49,16 @@ def get_profile_timeline(
 ):
     controller = Container.profiles_controller()
     return controller.get_profile_timeline(user_id, limit, offset)
+
+
+@router.post("/profiles/upload-avatar", status_code=status.HTTP_201_CREATED)
+@close_db_after(Container)
+def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: UserEntity = Depends(get_current_user),
+):
+    """Sube una imagen de perfil, la recorta y la procesa en formato WebP, retornando la URL pública."""
+    controller = Container.profiles_controller()
+    file_bytes = file.file.read()
+    image_url = controller.upload_profile_avatar(file_bytes, file.filename)
+    return {"image_url": image_url}

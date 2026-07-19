@@ -20,6 +20,11 @@ def _user_id_for_patient(db, patient_id: int):
 def notify_upcoming_appointments_job():
     db = get_session_factory()()
     token_repo = DeviceTokenRepository(db)
+    
+    appointments_to_notify_24h = []
+    appointments_to_notify_12h = []
+    appointments_to_notify_1h = []
+    
     try:
         now = datetime.now()
         
@@ -53,53 +58,111 @@ def notify_upcoming_appointments_job():
             Appointment.notified_1h == False
         ).all()
 
-        # Send 24h notifications
         for appt in appointments_24h:
             user_id = _user_id_for_patient(db, appt.patient_id)
             if user_id:
                 tokens = token_repo.get_tokens_by_user_id(user_id)
                 if tokens:
-                    time_str = appt.appointment_date.strftime("%I:%M %p")
-                    title = "Recordatorio de Cita"
-                    body = f"Hola, recuerda que tienes una cita programada para mañana a las {time_str}."
-                    invalid_tokens = FirebaseNotificationService.send_multicast_notification(tokens, title, body)
-                    for t in invalid_tokens:
-                        token_repo.delete_token(t)
-            appt.notified_24h = True
-
-        # Send 12h notifications
+                    appointments_to_notify_24h.append({
+                        "appt_id": appt.appointment_id,
+                        "tokens": tokens,
+                        "time_str": appt.appointment_date.strftime("%I:%M %p")
+                    })
+        
         for appt in appointments_12h:
             user_id = _user_id_for_patient(db, appt.patient_id)
             if user_id:
                 tokens = token_repo.get_tokens_by_user_id(user_id)
                 if tokens:
-                    time_str = appt.appointment_date.strftime("%I:%M %p")
-                    title = "Recordatorio de Cita"
-                    body = f"Hola, tu cita médica está programada para dentro de 12 horas, a las {time_str}."
-                    invalid_tokens = FirebaseNotificationService.send_multicast_notification(tokens, title, body)
-                    for t in invalid_tokens:
-                        token_repo.delete_token(t)
-            appt.notified_12h = True
-
-        # Send 1h notifications
+                    appointments_to_notify_12h.append({
+                        "appt_id": appt.appointment_id,
+                        "tokens": tokens,
+                        "time_str": appt.appointment_date.strftime("%I:%M %p")
+                    })
+                    
         for appt in appointments_1h:
             user_id = _user_id_for_patient(db, appt.patient_id)
             if user_id:
                 tokens = token_repo.get_tokens_by_user_id(user_id)
                 if tokens:
-                    title = "Cita Próxima"
-                    body = "Tu cita médica iniciará en 1 hora. ¡No lo olvides!"
-                    invalid_tokens = FirebaseNotificationService.send_multicast_notification(tokens, title, body)
-                    for t in invalid_tokens:
-                        token_repo.delete_token(t)
-            appt.notified_1h = True
-
-        db.commit()
+                    appointments_to_notify_1h.append({
+                        "appt_id": appt.appointment_id,
+                        "tokens": tokens
+                    })
     except Exception as e:
-        db.rollback()
-        logger.error(f"Error in notify_upcoming_appointments_job: {e}")
+        logger.error(f"Error in notify_upcoming_appointments_job (Read Phase): {e}")
+        return
     finally:
         db.close()
+
+    # 2. Fase de notificaciones (Sin DB activa)
+    invalid_tokens_to_delete = []
+    notified_24h_ids = []
+    notified_12h_ids = []
+    notified_1h_ids = []
+
+    for info in appointments_to_notify_24h:
+        title = "Recordatorio de Cita"
+        body = f"Hola, recuerda que tienes una cita programada para mañana a las {info['time_str']}."
+        try:
+            invalid = FirebaseNotificationService.send_multicast_notification(info["tokens"], title, body)
+            if invalid:
+                invalid_tokens_to_delete.extend(invalid)
+            notified_24h_ids.append(info["appt_id"])
+        except Exception as e:
+            logger.error(f"Error sending 24h notification for appt {info['appt_id']}: {e}")
+
+    for info in appointments_to_notify_12h:
+        title = "Recordatorio de Cita"
+        body = f"Hola, tu cita médica está programada para dentro de 12 horas, a las {info['time_str']}."
+        try:
+            invalid = FirebaseNotificationService.send_multicast_notification(info["tokens"], title, body)
+            if invalid:
+                invalid_tokens_to_delete.extend(invalid)
+            notified_12h_ids.append(info["appt_id"])
+        except Exception as e:
+            logger.error(f"Error sending 12h notification for appt {info['appt_id']}: {e}")
+
+    for info in appointments_to_notify_1h:
+        title = "Cita Próxima"
+        body = "Tu cita médica iniciará en 1 hora. ¡No lo olvides!"
+        try:
+            invalid = FirebaseNotificationService.send_multicast_notification(info["tokens"], title, body)
+            if invalid:
+                invalid_tokens_to_delete.extend(invalid)
+            notified_1h_ids.append(info["appt_id"])
+        except Exception as e:
+            logger.error(f"Error sending 1h notification for appt {info['appt_id']}: {e}")
+
+    # 3. Fase de escritura (Nueva sesión DB)
+    if notified_24h_ids or notified_12h_ids or notified_1h_ids or invalid_tokens_to_delete:
+        db = get_session_factory()()
+        token_repo = DeviceTokenRepository(db)
+        try:
+            for t in invalid_tokens_to_delete:
+                try:
+                    token_repo.delete_token(t)
+                except Exception as ex:
+                    logger.error(f"Error deleting invalid token {t}: {ex}")
+            
+            if notified_24h_ids:
+                db.query(Appointment).filter(Appointment.appointment_id.in_(notified_24h_ids)).update(
+                    {Appointment.notified_24h: True}, synchronize_session=False
+                )
+            if notified_12h_ids:
+                db.query(Appointment).filter(Appointment.appointment_id.in_(notified_12h_ids)).update(
+                    {Appointment.notified_12h: True}, synchronize_session=False
+                )
+            if notified_1h_ids:
+                db.query(Appointment).filter(Appointment.appointment_id.in_(notified_1h_ids)).update(
+                    {Appointment.notified_1h: True}, synchronize_session=False
+                )
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error in notify_upcoming_appointments_job (Write Phase): {e}")
+        finally:
+            db.close()
 
 def send_daily_bitacora_reminder_job():
     db = get_session_factory()()

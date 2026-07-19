@@ -8,7 +8,7 @@ read-models. La autorización de rutas usa el JWT (claims) de shared_core.
 from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from salud_prenatal_shared_core.database import Base, get_engine

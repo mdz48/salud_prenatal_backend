@@ -194,11 +194,15 @@ def require_active_subscription(
         )
 
     end_dt = current_user.subscription_current_period_end
-    if end_dt is not None and end_dt < now_cdmx():
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Subscription expired",
-        )
+    if end_dt is not None:
+        compare_now = now_cdmx()
+        if end_dt.tzinfo is None:
+            compare_now = compare_now.replace(tzinfo=None)
+        if end_dt < compare_now:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Subscription expired",
+            )
 
     return current_user
 

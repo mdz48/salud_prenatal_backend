@@ -5,10 +5,11 @@ montado bajo `/api/v1` en main.py.
 Acepta JSON `{email, password}` o Form (`username`/`email`, `password`) igual que
 antes, para seguir sirviendo el flujo OAuth2 de la doc.
 """
-from dependency_injector.wiring import inject, Provide
+from dependency_injector.wiring import inject
 from fastapi import APIRouter, Depends, status, Request, HTTPException
 
 from salud_prenatal_shared_core.auth_dependencies import get_current_user, Principal
+from salud_prenatal_shared_core.db_cleanup import close_db_after
 from app.auth.infrastructure.schemas.auth_schema import Token, RefreshResponse
 from app.auth.infrastructure.controllers.auth_controller import AuthController
 from container import Container
@@ -17,11 +18,11 @@ router = APIRouter(prefix="/users", tags=["Auth"])
 
 
 @router.post("/login", response_model=Token)
-@inject
+@close_db_after(Container)
 async def login(
     request: Request,
-    controller: AuthController = Depends(Provide[Container.auth_controller]),
 ):
+    controller = Container.auth_controller()
     content_type = request.headers.get("content-type", "")
     if "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
         form = await request.form()
@@ -48,11 +49,11 @@ async def login(
 
 
 @router.post("/refresh", response_model=RefreshResponse)
-@inject
+@close_db_after(Container)
 def refresh(
     current_user: Principal = Depends(get_current_user),
-    controller: AuthController = Depends(Provide[Container.auth_controller]),
 ):
+    controller = Container.auth_controller()
     role_str = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     return controller.refresh(
         email=current_user.email, user_id=current_user.user_id, role=role_str

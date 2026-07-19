@@ -47,7 +47,9 @@ def _resolve_database_url() -> str:
 @lru_cache
 def get_engine():
     url = _resolve_database_url()
-    engine_kwargs = {"pool_pre_ping": True, "pool_recycle": 1800}
+    # pool_pre_ping=True verifica la conexion antes de usarla (10ms de RTT en EU).
+    # pool_recycle=60 recicla conexiones antes de que el pooler las cierre.
+    engine_kwargs = {"pool_pre_ping": True, "pool_recycle": 60}
     # keepalives TCP: evita que RDS/firewall corte conexiones idle sin avisar
     # (la caida "server closed the connection unexpectedly" a mitad de query).
     # Solo aplica a postgres; con SQLite (tests) estos connect_args no son validos.

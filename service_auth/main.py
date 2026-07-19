@@ -7,7 +7,7 @@ servicio que emite tokens; los demás solo los validan con la misma `SECRET_KEY`
 No es dueño de ninguna tabla: solo LEE (read-models). Por eso el lifespan no crea
 schema — deja ese trabajo a los servicios dueños (usuarios/pagos/transaccional).
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from salud_prenatal_shared_core.error_handlers import register_exception_handlers

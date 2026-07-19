@@ -5,7 +5,7 @@ servicio auth); la autenticación de rutas usa el JWT (claims) vía shared_core.
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from salud_prenatal_shared_core.database import Base, get_engine

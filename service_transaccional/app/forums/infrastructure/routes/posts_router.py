@@ -1,7 +1,7 @@
 from container import Container
 from salud_prenatal_shared_core.db_cleanup import close_db_after
 from salud_prenatal_shared_core.auth_dependencies import get_current_user
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, File, UploadFile
 from typing import List
 from app.forums.infrastructure.schemas.forums_schemas import (
     PostCreate, PostResponse, CommentCreate, CommentResponse
@@ -20,6 +20,18 @@ def create_post(
 ):
     controller = Container.posts_controller()
     return controller.create_post(data, current_user.user_id)
+
+
+@router.post("/posts/upload-image", status_code=status.HTTP_201_CREATED)
+@close_db_after(Container)
+def upload_image(
+    file: UploadFile = File(...),
+    current_user: UserEntity = Depends(get_current_user),
+):
+    file_bytes = file.file.read()
+    controller = Container.posts_controller()
+    image_url = controller.upload_post_image(file_bytes, file.filename)
+    return {"image_url": image_url}
 
 
 @router.get("/posts/global", response_model=List[PostResponse])

@@ -38,6 +38,7 @@ EXPECTED_ROUTES = [
     "/api/v1/forums/posts",
     "/api/v1/forums/posts/global",
     "/api/v1/forums/posts/recommended",
+    "/api/v1/forums/posts/upload-image",
     "/api/v1/forums/posts/{post_id}/comments",
     "/api/v1/forums/profiles",
     "/api/v1/forums/profiles/me",

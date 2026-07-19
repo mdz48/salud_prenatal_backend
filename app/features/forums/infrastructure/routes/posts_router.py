@@ -1,7 +1,7 @@
 from dependency_injector.wiring import inject, Provide
 from app.core.containers import Container
 from app.core.dependencies import get_current_user
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, File, UploadFile
 from typing import List
 from app.features.forums.infrastructure.schemas.forums_schemas import (
     PostCreate, PostResponse, CommentCreate, CommentResponse
@@ -19,6 +19,17 @@ def create_post(
     controller: PostsController = Depends(Provide[Container.posts_controller])
 ):
     return controller.create_post(data, current_user.user_id)
+
+@router.post("/posts/upload-image", status_code=status.HTTP_201_CREATED)
+@inject
+def upload_image(
+    file: UploadFile = File(...),
+    current_user: UserEntity = Depends(get_current_user),
+    controller: PostsController = Depends(Provide[Container.posts_controller])
+):
+    file_bytes = file.file.read()
+    image_url = controller.upload_post_image(file_bytes, file.filename)
+    return {"image_url": image_url}
 
 @router.get("/posts/global", response_model=List[PostResponse])
 @inject

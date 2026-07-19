@@ -51,6 +51,7 @@ class PostCreate(BaseModel):
     title: str
     content: str
     is_ad: bool = False  # solo doctores pueden marcarlo (se valida en el usecase)
+    image_url: Optional[str] = None
 
 class PostResponse(BaseModel):
     post_id: Optional[int] = None
@@ -59,6 +60,7 @@ class PostResponse(BaseModel):
     title: str
     content: str
     is_ad: bool = False
+    image_url: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

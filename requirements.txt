@@ -19,3 +19,4 @@ apscheduler
 stripe
 pytest
 hvac
+Pillow

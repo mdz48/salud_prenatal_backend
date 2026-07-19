@@ -9,6 +9,7 @@ class PostEntity(BaseModel):
     title: str
     content: str
     is_ad: bool = False
+    image_url: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -29,3 +29,8 @@ class IPatientClusterLookup(Protocol):
 
 class IAdEligibilityLookup(Protocol):
     def is_premium_active(self, user_id: int) -> bool:...
+
+class IImageStoragePort(Protocol):
+    def upload_image(self, file_bytes: bytes, filename: str) -> str:
+        """Procesa, valida magic bytes, redimensiona y sube una imagen al almacenamiento, retornando la URL pública."""
+        ...

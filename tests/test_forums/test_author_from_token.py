@@ -16,7 +16,7 @@ from app.features.forums.infrastructure.schemas.forums_schemas import (
 def _posts_controller():
     create_uc = MagicMock()
     create_uc.execute.side_effect = lambda entity: entity  # devuelve la entidad tal cual
-    return PostsController(create_uc, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    return PostsController(create_uc, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock())
 
 
 def test_create_post_usa_author_del_token():

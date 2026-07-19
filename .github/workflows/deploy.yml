@@ -20,4 +20,4 @@ jobs:
             cd ~/proyectos/salud_prenatal_backend
             git pull origin develop
             cd ~/proyectos
-            docker compose up -d --build backend
+            docker compose up -d --build gateway auth usuarios pagos transaccional

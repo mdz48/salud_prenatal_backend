@@ -23,7 +23,8 @@ class DoctorController:
         get_doctor_by_id_use_case,
         get_doctor_dashboard_use_case,
         get_receptionist_by_id_use_case,
-        get_receptionist_dashboard_use_case
+        get_receptionist_dashboard_use_case,
+        unlink_patient_use_case
     ):
         self.create_receptionist_use_case = create_receptionist_use_case
         self.get_receptionists_by_doctor_use_case = get_receptionists_by_doctor_use_case
@@ -35,6 +36,7 @@ class DoctorController:
         self.get_doctor_dashboard_use_case = get_doctor_dashboard_use_case
         self.get_receptionist_by_id_use_case = get_receptionist_by_id_use_case
         self.get_receptionist_dashboard_use_case = get_receptionist_dashboard_use_case
+        self.unlink_patient_use_case = unlink_patient_use_case
 
     def create_receptionist(self, doctor_id: int, data: ReceptionistCreate):
         from app.features.users.application.dtos import ReceptionistCreateDTO
@@ -141,3 +143,16 @@ class DoctorController:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while generating the invitation code.")
+
+    def unlink_patient(self, doctor_id: int, patient_id: int):
+        try:
+            return self.unlink_patient_use_case.execute(doctor_id=doctor_id, patient_id=patient_id)
+        except ValueError as e:
+            error_str = str(e)
+            if "not found" in error_str:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_str)
+            else:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_str)
+        except Exception as e:
+            print(f"Error unlinking patient: {repr(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while unlinking the patient.")

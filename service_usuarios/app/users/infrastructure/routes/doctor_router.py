@@ -80,3 +80,10 @@ def get_patients_by_doctor(doctor_id: int):
 def generate_invitation_code(doctor_id: int):
     controller = Container.doctor_controller()
     return controller.generate_invitation_code(doctor_id=doctor_id)
+
+
+@router.delete("/{doctor_id}/patients/{patient_id}", response_model=PatientResponse, status_code=status.HTTP_200_OK)
+@close_db_after(Container)
+def unlink_patient(doctor_id: int, patient_id: int):
+    controller = Container.doctor_controller()
+    return controller.unlink_patient(doctor_id=doctor_id, patient_id=patient_id)

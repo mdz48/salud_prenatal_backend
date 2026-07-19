@@ -61,3 +61,8 @@ def get_patients_by_doctor(doctor_id: int, controller: DoctorController = Depend
 @inject
 def generate_invitation_code(doctor_id: int, controller: DoctorController = Depends(Provide[Container.doctor_controller])):
     return controller.generate_invitation_code(doctor_id=doctor_id)
+
+@router.delete("/{doctor_id}/patients/{patient_id}", response_model=PatientResponse, status_code=status.HTTP_200_OK)
+@inject
+def unlink_patient(doctor_id: int, patient_id: int, controller: DoctorController = Depends(Provide[Container.doctor_controller])):
+    return controller.unlink_patient(doctor_id=doctor_id, patient_id=patient_id)

@@ -17,3 +17,17 @@ class AppointmentLookupAdapter(IAppointmentLookup):
 
     def get_appointments_by_doctor_id(self, doctor_id: int) -> List[object]:
         return self.db.query(AppointmentRead).filter(AppointmentRead.doctor_id == doctor_id).all()
+
+    def cancel_future_appointments(self, patient_id: int, doctor_id: int) -> None:
+        from app.users.infrastructure.readmodels.appointment_readmodel import AppointmentRead
+        from salud_prenatal_shared_core.enums import AppointmentStatusEnum
+        from salud_prenatal_shared_core.time import now_cdmx
+        
+        now = now_cdmx().replace(tzinfo=None)
+        self.db.query(AppointmentRead).filter(
+            AppointmentRead.patient_id == patient_id,
+            AppointmentRead.doctor_id == doctor_id,
+            AppointmentRead.appointment_date >= now,
+            AppointmentRead.status.in_([AppointmentStatusEnum.pending, AppointmentStatusEnum.confirmed])
+        ).update({AppointmentRead.status: AppointmentStatusEnum.cancelled}, synchronize_session=False)
+        self.db.commit()

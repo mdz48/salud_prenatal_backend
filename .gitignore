@@ -1,5 +1,7 @@
 .env
 __pycache__/
+*.egg-info/
+.worktrees/
 .venv/
 venv/
 .idea/
@@ -14,3 +16,10 @@ firebasecredencials
 superpowers
 graphify-out
 integration
+.run_logs/
+.smoke_logs/
+.local_dev*.db
+
+# Binario de Vault (herramienta local, no del proyecto)
+vault.zip
+vault_bin/

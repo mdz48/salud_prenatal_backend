@@ -43,11 +43,13 @@ Valores posibles: `"pending"` | `"active"` | `"past_due"` | `"canceled"`.
   "status": "active",
   "plan_type": "basic",
   "current_period_end": "2026-08-07T00:00:00",
-  "cancel_at_period_end": false
+  "cancel_at_period_end": false,
+  "auto_renewal": true
 }
 ```
 
-Si el doctor nunca inició un checkout, `plan_type` y `current_period_end` vienen `null`, `status` es `"pending"` y `cancel_at_period_end` es `false`.
+Si el doctor nunca inició un checkout, `plan_type` y `current_period_end` vienen `null`, `status` es `"pending"`, `cancel_at_period_end` es `false` y `auto_renewal` es `false`.
+El campo `auto_renewal` permite saber si el doctor está en el plan recurrente (suscripción) o pagó un mes manualmente (OXXO/SPEI). Si `auto_renewal` es `false` pero `status` es `active`, la suscripción expirará al final de `current_period_end`.
 
 Útil para refrescar el estado sin re-loguear (ej. al volver de la pantalla de pago, o en un pull-to-refresh de la pantalla de suscripción).
 
@@ -57,9 +59,13 @@ Si el doctor nunca inició un checkout, `plan_type` y `current_period_end` viene
 
 Body:
 ```json
-{ "plan_type": "basic" }
+{ 
+  "plan_type": "basic",
+  "payment_mode": "recurring"
+}
 ```
-`plan_type` acepta `"basic"` o `"premium"` (los únicos dos valores válidos).
+- `plan_type` acepta `"basic"` o `"premium"`.
+- `payment_mode` acepta `"recurring"` (tarjeta/suscripción, default si se omite) o `"one_time"` (pago mes a mes con efectivo, transferencia o tarjeta).
 
 Respuesta (201):
 ```json
@@ -84,9 +90,14 @@ El esquema `saludprenatal://` lo reconoce el sistema operativo (Android/iOS) com
 ```
 1. Mostrar "Confirmando tu pago..."
 2. Hacer polling a GET /subscriptions/me cada 2s (máx. ~15s)
-3. Cuando status == "active" → mostrar éxito y navegar al dashboard
-4. Si pasan 15s sin confirmar → mostrar "Tu pago se está procesando, te avisaremos" (no es un error, solo tardó) + botón "Ya pagué, verificar de nuevo"
+3. Cuando status == "active":
+   a. Llamar POST /api/v1/users/refresh con el token ACTUAL (Bearer).
+   b. Reemplazar el token guardado por el `access_token` que devuelve.
+   c. Mostrar éxito y navegar al dashboard.
+4. Si pasan 15s sin confirmar → mostrar "Tu pago se está procesando, te avisaremos" (no es un error, solo tardó) + botón "Ya pagué, verificar de nuevo" (que reintenta desde el paso 2).
 ```
+
+> **Importante — por qué el refresh:** el backend gatea los endpoints (citas, expedientes) leyendo el `subscription_status` que viene *dentro del JWT*, no consultándolo en vivo. Ese claim solo se actualiza al emitir un token nuevo. Tras pagar, `GET /me` ya dice "active" (lo lee en vivo), pero **el token viejo sigue diciendo "pending"** → los endpoints gateados darían 402. Por eso, al confirmarse el pago, hay que pedir un token nuevo con `POST /users/refresh` y reemplazar el guardado. Sin ese paso, el doctor pagó pero seguiría bloqueado ~30 min (hasta que el token expire y re-loguee).
 
 En la pantalla de cancelación, simplemente ofrecer reintentar (volver a llamar `checkout-session`).
 
@@ -151,8 +162,9 @@ Si `cancel_at_period_end` es `true` mientras `status` sigue siendo `"active"`, e
 | Endpoint | Método | Auth | Body | Respuesta |
 |---|---|---|---|---|
 | `/api/v1/users/login` | POST | — | `{email, password}` | agrega `subscription_status` |
-| `/api/v1/subscriptions/me` | GET | doctor | — | `{status, plan_type, current_period_end, cancel_at_period_end}` |
-| `/api/v1/subscriptions/checkout-session` | POST | doctor | `{plan_type: "basic"|"premium"}` | `{checkout_url}` |
+| `/api/v1/users/refresh` | POST | token válido | — | `{access_token, token_type, subscription_status}` |
+| `/api/v1/subscriptions/me` | GET | doctor | — | `{status, plan_type, current_period_end, cancel_at_period_end, auto_renewal}` |
+| `/api/v1/subscriptions/checkout-session` | POST | doctor | `{plan_type: "basic"\|"premium", payment_mode: "recurring"\|"one_time"}` | `{checkout_url}` |
 | `/api/v1/subscriptions/portal-session` | POST | doctor | — | `{portal_url}` |
 
 Cualquier endpoint de doctor puede responder `402` si la suscripción no está activa — manejarlo como caso global, no por endpoint.

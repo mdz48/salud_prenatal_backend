@@ -1,0 +1,16 @@
+# Config dinámica de Traefik (file provider) — SOLO se usa en el VPS.
+# Declara el certificado TLS que ya emitió certbot, para reutilizarlo sin ACME.
+# Se monta en el contenedor como /etc/traefik/dynamic.yml (ver docker-compose.vps.yml).
+#
+# /etc/letsencrypt se monta como /certs:ro. Estos son los mismos PEM que usaba nginx
+# (fullchain + privkey de saludprenatal.sytes.net), así que el corte no cambia el cert
+# que ve el navegador.
+tls:
+  certificates:
+    - certFile: /certs/live/saludprenatal.sytes.net/fullchain.pem
+      keyFile: /certs/live/saludprenatal.sytes.net/privkey.pem
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/live/saludprenatal.sytes.net/fullchain.pem
+        keyFile: /certs/live/saludprenatal.sytes.net/privkey.pem

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "salud-prenatal-shared-core"
+version = "0.1.0"
+description = "Núcleo compartido (DB base, seguridad JWT, cripto, enums, tiempo) para los servicios de salud prenatal."
+requires-python = ">=3.11"
+dependencies = [
+    "SQLAlchemy",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "bcrypt==4.0.1",
+    "cryptography",
+    "python-dotenv",
+    "psycopg2-binary",
+    "hvac",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["salud_prenatal_shared_core*"]

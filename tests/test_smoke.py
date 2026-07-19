@@ -67,3 +67,12 @@ EXPECTED_ROUTES = [
     "/api/v1/users/login",
     "/api/v1/users/{user_id}",
 ]
+
+
+def test_db_cleanup_decorator_multiple_requests(client):
+    # Hacemos multiples peticiones seguidas a un endpoint que toque base de datos
+    # para verificar que el decorador close_db_after limpia la sesion correctamente y no bloquea el pool.
+    for _ in range(5):
+        response = client.get("/api/v1/users/")
+        assert response.status_code == 200
+

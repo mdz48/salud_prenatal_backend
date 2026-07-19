@@ -26,10 +26,7 @@ class AuthenticateUserUseCase:
             raise ValueError("Inactive user")
 
         role_str = user.role.value if hasattr(user.role, 'value') else str(user.role)
-        access_token = create_access_token(
-            data={"sub": user.email, "user_id": user.user_id, "role": role_str}
-        )
-        
+
         patient_id = None
         doctor_id = None
         medical_record_id = None
@@ -53,6 +50,17 @@ class AuthenticateUserUseCase:
             if receptionist:
                 doctor_id = receptionist.doctor_id
                 receptionist_id = receptionist.receptionist_id
+
+        # El token lleva subscription_status como claim para que los servicios
+        # (require_active_subscription) autoricen sin consultar la DB.
+        access_token = create_access_token(
+            data={
+                "sub": user.email,
+                "user_id": user.user_id,
+                "role": role_str,
+                "subscription_status": subscription_status,
+            }
+        )
 
         if doctor_id:
             receptionists = self.receptionist_repository.get_by_doctor_id(doctor_id)

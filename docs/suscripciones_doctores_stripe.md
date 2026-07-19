@@ -21,7 +21,9 @@ app/features/subscriptions/
 └── infrastructure/
     ├── models/subscription_model.py
     ├── repositories/subscription_repository.py
-    ├── adapters/stripe_gateway_adapter.py   # unico lugar que conoce el SDK stripe
+    ├── adapters/
+    │       ├── stripe_gateway_adapter.py    # parser de webhooks y portals
+    │       └── stripe_checkout_strategies.py # Implementa ICheckoutStrategy (recurring y one_time)
     ├── controllers/subscription_controller.py
     ├── schemas/subscription_schema.py
     └── routes/subscription_router.py
@@ -62,13 +64,13 @@ ISubscriptionInitializer.create_pending(user_id)   → fila subscriptions status
         ▼
 POST /users/login → 200, subscription_status: "pending" en la respuesta
         ▼
-POST /subscriptions/checkout-session {"plan_type": "basic"}
+POST /subscriptions/checkout-session {"plan_type": "basic", "payment_mode": "recurring"}
         │  (RoleChecker: solo doctor)
         ▼
 CreateCheckoutSessionUseCase
    get-or-create pending (backfill si el doctor es previo a este feature)
         ▼
-StripeGatewayAdapter.create_checkout_session()
+StripeRecurringCheckoutStrategy.create_checkout_session()
    stripe.checkout.Session.create(mode="subscription", ...)
    client_reference_id=user_id, metadata={user_id, plan_type}, subscription_data.metadata=igual
         ▼
@@ -96,12 +98,13 @@ Endpoints gateados (ej. risk-evaluation) → 200 en vez de 402
 
 | Evento Stripe | `PaymentEventDTO.kind` | Transición |
 |---|---|---|
-| `checkout.session.completed` | `checkout_completed` | guarda `stripe_customer_id`, `stripe_subscription_id`, `plan_type` (de metadata); `status=active` |
+| `checkout.session.completed` (subscription) | `checkout_completed` | guarda `stripe_customer_id`, `stripe_subscription_id`, `plan_type`; `status=active` |
+| `checkout.session.completed` (payment) o `checkout.session.async_payment_succeeded` | `one_time_payment_succeeded` | guarda `stripe_customer_id`, `plan_type`; `status=active`, `current_period_end += 30 days` |
 | `invoice.paid` | `payment_succeeded` | `status=active`, actualiza `current_period_end` |
 | `invoice.payment_failed` | `payment_failed` | `status=past_due` |
-| `customer.subscription.updated` | `subscription_updated` | sincroniza `status` desde el status de Stripe (`active`/`trialing`→active, `past_due`/`unpaid`→past_due, `canceled`→canceled) |
+| `customer.subscription.updated` | `subscription_updated` | sincroniza `status` desde el status de Stripe |
 | `customer.subscription.deleted` | `subscription_canceled` | `status=canceled` |
-| cualquier otro | — | `parse_webhook_event` devuelve `None`; el use case no hace nada, responde 200 (Stripe deja de reintentar) |
+| cualquier otro | — | `parse_webhook_event` devuelve `None`; el use case no hace nada, responde 200 |
 
 Correlación: por `stripe_subscription_id`; si no hay fila con ese id, fallback por `user_id` (viene en `client_reference_id`/`metadata`). Todas las transiciones son idempotentes — reprocesar el mismo evento no rompe nada.
 
@@ -125,8 +128,10 @@ Todas se leen de forma lazy (dentro de los métodos del adapter, nunca a nivel d
 |---|---|
 | `STRIPE_PRIVATE_KEY` | Secret key de Stripe (`sk_test_...` / `sk_live_...`) — **no** la publicable (`pk_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Firma del endpoint de webhook (`whsec_...`), la da `stripe listen` en local o el dashboard en producción |
-| `STRIPE_PRICE_ID_BASIC` | Price ID (`price_...`) del plan básico |
-| `STRIPE_PRICE_ID_PREMIUM` | Price ID (`price_...`) del plan premium |
+| `STRIPE_PRICE_ID_BASIC` | Price ID (`price_...`) del plan básico recurrente |
+| `STRIPE_PRICE_ID_PREMIUM` | Price ID (`price_...`) del plan premium recurrente |
+| `STRIPE_PRICE_ID_BASIC_ONETIME` | Price ID (`price_...`) del plan básico pago único |
+| `STRIPE_PRICE_ID_PREMIUM_ONETIME` | Price ID (`price_...`) del plan premium pago único |
 | `FRONTEND_URL` | Base para `success_url`/`cancel_url` del Checkout |
 
 ## Migración de base de datos
@@ -150,3 +155,18 @@ ALTER TABLE subscriptions ADD COLUMN cancel_at_period_end BOOLEAN NOT NULL DEFAU
 - Stripe **nunca** se llama de verdad en tests — el SDK solo se ejercita indirectamente reconstruyendo objetos `stripe.Event`/`stripe.checkout.Session` con `construct_from`.
 
 Verificación manual end-to-end (modo test de Stripe) documentada en [integracion_frontend_suscripciones.md](integracion_frontend_suscripciones.md).
+
+## Ledger de transacciones (service_pagos)
+
+Cada evento de webhook aplicado se registra en la tabla `payment_transactions`
+(una fila por `stripe_event_id`, UNIQUE). Esto da:
+
+- **Idempotencia**: Stripe reintenta webhooks ante timeouts/5xx; si el evento ya
+  está en el ledger, `HandlePaymentEventUseCase` lo ignora. (Antes, cada reintento
+  de un pago one-time sumaba +30 días a `current_period_end`.)
+- **Historial**: `GET /api/v1/subscriptions/payments` (rol doctor) devuelve los
+  pagos del usuario autenticado: `kind`, `amount_cents`, `currency`, `created_at`.
+
+El ledger se escribe después de aplicar la transición a la suscripción; si el
+proceso muere entre ambos commits, el reintento de Stripe re-aplica el evento
+(trade-off documentado en el plan 2026-07-16-payment-transactions-ledger).

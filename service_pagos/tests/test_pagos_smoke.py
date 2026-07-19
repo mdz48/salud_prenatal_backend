@@ -52,3 +52,29 @@ def test_webhook_without_signature_is_rejected(client):
     # Sin firma válida de Stripe -> 400 (InvalidWebhookError). No requiere auth.
     r = client.post("/api/v1/subscriptions/webhook", content=b"{}")
     assert r.status_code == 400
+
+
+def test_payments_route_present(app):
+    assert "/api/v1/subscriptions/payments" in set(app.openapi()["paths"])
+
+
+def test_payments_requires_auth(client):
+    assert client.get("/api/v1/subscriptions/payments").status_code == 401
+
+
+def test_payments_forbidden_for_non_doctor(client):
+    r = client.get(
+        "/api/v1/subscriptions/payments",
+        headers=_headers(sub="p@e.com", user_id=1, role="paciente"),
+    )
+    assert r.status_code == 403
+
+
+def test_payments_doctor_without_history_gets_empty_list(client):
+    # user_id sin filas en el ledger -> lista vacía (ejercita DB + repo + use case).
+    r = client.get(
+        "/api/v1/subscriptions/payments",
+        headers=_headers(sub="d@e.com", user_id=54321, role="doctor"),
+    )
+    assert r.status_code == 200
+    assert r.json() == []

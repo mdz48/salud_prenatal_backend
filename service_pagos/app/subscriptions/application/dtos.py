@@ -25,6 +25,11 @@ class PaymentEventDTO:
     stripe_status: Optional[str] = None
     plan_type_from_items: Optional[str] = None
     cancel_at_period_end: Optional[bool] = None
+    # Identidad y monto del evento crudo — alimentan el ledger de payment_transactions.
+    # stripe_event_id es la clave de idempotencia (todo evento de Stripe trae `id`).
+    stripe_event_id: Optional[str] = None
+    amount_cents: Optional[int] = None
+    currency: Optional[str] = None
 
 
 @dataclass

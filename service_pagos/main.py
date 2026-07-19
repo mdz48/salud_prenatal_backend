@@ -12,8 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from salud_prenatal_shared_core.database import Base, get_engine
 from salud_prenatal_shared_core.error_handlers import register_exception_handlers
 
-# Importa el modelo para que quede registrado en Base.metadata antes de create_all.
+# Importa los modelos para que queden registrados en Base.metadata antes de create_all.
 from app.subscriptions.infrastructure.models import subscription_model  # noqa: F401
+from app.subscriptions.infrastructure.models import payment_transaction_model  # noqa: F401
 from app.subscriptions.infrastructure.routes.subscription_router import router as subscription_router
 from container import Container
 

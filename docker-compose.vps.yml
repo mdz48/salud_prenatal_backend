@@ -288,8 +288,9 @@ services:
     build:
       context: ./salud_prenatal_administrador_backend
     container_name: salud_prenatal_administrador_backend
-    ports:
-      - "8002:8002"
+    # SIN `ports` a proposito: admin_backend tiene su propia auth (HS256), ForwardAuth
+    # no aplica. Solo accesible por Traefik (edge: TLS + ratelimit) via app_network.
+    # Publicar 8002:8002 permitia pegarle directo saltandose el edge -> cerrado.
     restart: always
     env_file:
       - ./salud_prenatal_administrador_backend/.env

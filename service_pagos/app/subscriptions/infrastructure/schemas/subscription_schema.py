@@ -22,3 +22,10 @@ class SubscriptionResponse(BaseModel):
     current_period_end: Optional[datetime] = None
     cancel_at_period_end: bool = False
     auto_renewal: bool = False
+
+
+class PaymentTransactionResponse(BaseModel):
+    kind: str
+    amount_cents: Optional[int] = None
+    currency: Optional[str] = None
+    created_at: Optional[datetime] = None

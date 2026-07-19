@@ -6,6 +6,7 @@ from app.subscriptions.infrastructure.schemas.subscription_schema import (
     CheckoutSessionResponse,
     PortalSessionResponse,
     SubscriptionResponse,
+    PaymentTransactionResponse,
 )
 
 
@@ -16,11 +17,13 @@ class SubscriptionController:
         get_my_subscription_use_case,
         handle_payment_event_use_case,
         create_portal_session_use_case,
+        get_my_payments_use_case,
     ):
         self.create_checkout_session_use_case = create_checkout_session_use_case
         self.get_my_subscription_use_case = get_my_subscription_use_case
         self.handle_payment_event_use_case = handle_payment_event_use_case
         self.create_portal_session_use_case = create_portal_session_use_case
+        self.get_my_payments_use_case = get_my_payments_use_case
 
     def create_checkout_session(self, user_id: int, email: str, req: CheckoutSessionRequest) -> CheckoutSessionResponse:
         try:
@@ -59,6 +62,18 @@ class SubscriptionController:
             cancel_at_period_end=dto.cancel_at_period_end,
             auto_renewal=dto.auto_renewal,
         )
+
+    def get_my_payments(self, user_id: int) -> list[PaymentTransactionResponse]:
+        txs = self.get_my_payments_use_case.execute(user_id=user_id)
+        return [
+            PaymentTransactionResponse(
+                kind=t.kind,
+                amount_cents=t.amount_cents,
+                currency=t.currency,
+                created_at=t.created_at,
+            )
+            for t in txs
+        ]
 
     def handle_webhook(self, payload: bytes, signature: str) -> dict:
         try:

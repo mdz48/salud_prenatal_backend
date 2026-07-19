@@ -155,3 +155,18 @@ ALTER TABLE subscriptions ADD COLUMN cancel_at_period_end BOOLEAN NOT NULL DEFAU
 - Stripe **nunca** se llama de verdad en tests — el SDK solo se ejercita indirectamente reconstruyendo objetos `stripe.Event`/`stripe.checkout.Session` con `construct_from`.
 
 Verificación manual end-to-end (modo test de Stripe) documentada en [integracion_frontend_suscripciones.md](integracion_frontend_suscripciones.md).
+
+## Ledger de transacciones (service_pagos)
+
+Cada evento de webhook aplicado se registra en la tabla `payment_transactions`
+(una fila por `stripe_event_id`, UNIQUE). Esto da:
+
+- **Idempotencia**: Stripe reintenta webhooks ante timeouts/5xx; si el evento ya
+  está en el ledger, `HandlePaymentEventUseCase` lo ignora. (Antes, cada reintento
+  de un pago one-time sumaba +30 días a `current_period_end`.)
+- **Historial**: `GET /api/v1/subscriptions/payments` (rol doctor) devuelve los
+  pagos del usuario autenticado: `kind`, `amount_cents`, `currency`, `created_at`.
+
+El ledger se escribe después de aplicar la transición a la suscripción; si el
+proceso muere entre ambos commits, el reintento de Stripe re-aplica el evento
+(trade-off documentado en el plan 2026-07-16-payment-transactions-ledger).

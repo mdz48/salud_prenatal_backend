@@ -47,6 +47,14 @@ class StripeGatewayAdapter(IPaymentGateway):
         event_type = event["type"]
         obj = event["data"]["object"]
 
+        dto = self._parse_event(event_type, obj)
+        if dto is not None:
+            # Sello común a todo evento relevante: id (idempotencia) y monto si aplica.
+            dto.stripe_event_id = self._f(event, "id")
+            dto.amount_cents, dto.currency = self._amount_from(event_type, obj)
+        return dto
+
+    def _parse_event(self, event_type, obj) -> Optional[PaymentEventDTO]:
         if event_type == "checkout.session.completed":
             meta = self._f(obj, "metadata")
             mode = self._f(obj, "mode")
@@ -125,6 +133,15 @@ class StripeGatewayAdapter(IPaymentGateway):
         """Acceso seguro a campos de objetos Stripe (StripeObject usa atributos,
         no .get()) y tambien de dicts planos. Devuelve default si falta."""
         return getattr(obj, key, default)
+
+    def _amount_from(self, event_type, obj):
+        """Monto del evento en centavos, si el tipo lo trae. Checkout usa
+        amount_total; invoices usan amount_paid. El resto no trae monto."""
+        if event_type.startswith("checkout.session."):
+            return self._f(obj, "amount_total"), self._f(obj, "currency")
+        if event_type.startswith("invoice."):
+            return self._f(obj, "amount_paid"), self._f(obj, "currency")
+        return None, None
 
     def _user_id_from(self, client_reference_id, metadata) -> Optional[int]:
         raw = client_reference_id if client_reference_id is not None else self._f(metadata, "user_id")

@@ -8,6 +8,7 @@ from app.subscriptions.infrastructure.schemas.subscription_schema import (
     CheckoutSessionResponse,
     PortalSessionResponse,
     SubscriptionResponse,
+    PaymentTransactionResponse,
 )
 from app.subscriptions.infrastructure.controllers.subscription_controller import SubscriptionController
 
@@ -44,6 +45,16 @@ def get_my_subscription(
     controller: SubscriptionController = Depends(Provide[Container.subscription_controller]),
 ):
     return controller.get_my_subscription(user_id=current_user.user_id)
+
+
+@router.get("/payments", response_model=list[PaymentTransactionResponse], status_code=status.HTTP_200_OK)
+@inject
+def get_my_payments(
+    current_user: Principal = Depends(require_doctor),
+    controller: SubscriptionController = Depends(Provide[Container.subscription_controller]),
+):
+    """Historial de pagos del doctor autenticado (ledger de webhooks aplicados)."""
+    return controller.get_my_payments(user_id=current_user.user_id)
 
 
 @router.post("/webhook", status_code=status.HTTP_200_OK)

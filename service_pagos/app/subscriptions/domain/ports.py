@@ -2,6 +2,7 @@ from typing import Protocol, Optional
 from salud_prenatal_shared_core.enums import PlanTypeEnum
 from app.subscriptions.domain.subscription_entity import SubscriptionEntity
 from app.subscriptions.application.dtos import CheckoutSessionResult, PaymentEventDTO
+from app.subscriptions.domain.payment_transaction_entity import PaymentTransactionEntity
 
 
 class ISubscriptionRepository(Protocol):
@@ -29,3 +30,11 @@ class IPaymentGateway(Protocol):
         """Verifica la firma y normaliza el evento. Lanza InvalidWebhookError si la
         firma es invalida; devuelve None para tipos de evento irrelevantes."""
         ...
+
+
+class IPaymentTransactionRepository(Protocol):
+    """Ledger de eventos de pago: idempotencia de webhooks + historial por usuario."""
+
+    def exists_by_event_id(self, stripe_event_id: str) -> bool: ...
+    def create(self, tx: PaymentTransactionEntity) -> PaymentTransactionEntity: ...
+    def list_by_user_id(self, user_id: int) -> list[PaymentTransactionEntity]: ...

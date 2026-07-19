@@ -2,20 +2,33 @@ from typing import Optional
 from datetime import timedelta
 from salud_prenatal_shared_core.enums import PlanTypeEnum, SubscriptionStatusEnum
 from salud_prenatal_shared_core.time import now_cdmx
-from app.subscriptions.domain.ports import ISubscriptionRepository, IPaymentGateway
+from app.subscriptions.domain.ports import ISubscriptionRepository, IPaymentGateway, IPaymentTransactionRepository
 from app.subscriptions.domain.subscription_entity import SubscriptionEntity
+from app.subscriptions.domain.payment_transaction_entity import PaymentTransactionEntity
 from app.subscriptions.application.dtos import PaymentEventDTO
 
 
 class HandlePaymentEventUseCase:
-    def __init__(self, subscription_repository: ISubscriptionRepository, payment_gateway: IPaymentGateway):
+    def __init__(
+        self,
+        subscription_repository: ISubscriptionRepository,
+        payment_gateway: IPaymentGateway,
+        transaction_repository: IPaymentTransactionRepository,
+    ):
         self.subscription_repository = subscription_repository
         self.payment_gateway = payment_gateway
+        self.transaction_repository = transaction_repository
 
     def execute(self, payload: bytes, signature: str) -> None:
         event = self.payment_gateway.parse_webhook_event(payload, signature)
         if event is None:
             return  # tipo de evento irrelevante
+
+        # Idempotencia: Stripe reintenta webhooks ante timeouts/errores 5xx. Si el
+        # evento ya está en el ledger, ya fue aplicado — sin esta guarda, cada
+        # reintento de one_time_payment_succeeded sumaba +30 días al periodo.
+        if event.stripe_event_id and self.transaction_repository.exists_by_event_id(event.stripe_event_id):
+            return
 
         subscription = self._locate(event)
         if subscription is None:
@@ -25,6 +38,21 @@ class HandlePaymentEventUseCase:
             return  # evento no mapeado; no-op
 
         self.subscription_repository.update(subscription.subscription_id, subscription)
+
+        # El ledger se escribe DESPUÉS de aplicar el cambio: si el proceso muere
+        # entre ambos commits, el reintento de Stripe re-aplica (ventana mínima);
+        # el orden inverso perdería la activación si el update fallara.
+        if event.stripe_event_id:
+            self.transaction_repository.create(
+                PaymentTransactionEntity(
+                    stripe_event_id=event.stripe_event_id,
+                    user_id=subscription.user_id,
+                    subscription_id=subscription.subscription_id,
+                    kind=event.kind,
+                    amount_cents=event.amount_cents,
+                    currency=event.currency,
+                )
+            )
 
     def _locate(self, event: PaymentEventDTO) -> Optional[SubscriptionEntity]:
         if event.stripe_subscription_id:

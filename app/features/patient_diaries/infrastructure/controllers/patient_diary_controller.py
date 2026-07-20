@@ -32,10 +32,10 @@ class PatientDiaryController:
         self.get_diary_symptoms_use_case = get_diary_symptoms_use_case
         self.get_medical_record_symptom_history_use_case = get_medical_record_symptom_history_use_case
 
-    def create_patient_diary(self, data: PatientDiaryCreate):
+    def create_patient_diary(self, data: PatientDiaryCreate, background_tasks = None):
         try:
             entity = PatientDiaryEntity(**data.model_dump())
-            return self.create_patient_diary_use_case.execute(data=entity)
+            return self.create_patient_diary_use_case.execute(data=entity, background_tasks=background_tasks)
         except Exception as e:
             raise internal_error(e)
 

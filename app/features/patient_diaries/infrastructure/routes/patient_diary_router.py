@@ -1,6 +1,7 @@
 from dependency_injector.wiring import inject, Provide
 from app.core.containers import Container
-from fastapi import APIRouter, Depends, status
+from salud_prenatal_shared_core.db_cleanup import close_db_after
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from typing import List
 from app.features.patient_diaries.infrastructure.schemas.patient_diary_schema import PatientDiaryCreate, PatientDiaryUpdate, PatientDiaryResponse, ExtractedSymptomResponse, AggregatedSymptomResponse
 from app.features.patient_diaries.infrastructure.controllers.patient_diary_controller import PatientDiaryController
@@ -8,12 +9,13 @@ from app.features.patient_diaries.infrastructure.controllers.patient_diary_contr
 router = APIRouter(prefix="/patient-diaries", tags=["Patient Diaries"])
 
 @router.post("/", response_model=PatientDiaryResponse, status_code=status.HTTP_201_CREATED)
-@inject
+@close_db_after(Container)
 def create_patient_diary(
     data: PatientDiaryCreate, 
-    controller: PatientDiaryController = Depends(Provide[Container.patient_diary_controller])
+    background_tasks: BackgroundTasks,
 ):
-    return controller.create_patient_diary(data)
+    controller = Container.patient_diary_controller()
+    return controller.create_patient_diary(data, background_tasks=background_tasks)
 
 @router.get("/", response_model=List[PatientDiaryResponse])
 @inject

@@ -1,6 +1,6 @@
 from container import Container
 from salud_prenatal_shared_core.db_cleanup import close_db_after
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from typing import List
 from app.patient_diaries.infrastructure.schemas.patient_diary_schema import PatientDiaryCreate, PatientDiaryUpdate, PatientDiaryResponse, ExtractedSymptomResponse, AggregatedSymptomResponse
 from app.patient_diaries.infrastructure.controllers.patient_diary_controller import PatientDiaryController
@@ -12,9 +12,10 @@ router = APIRouter(prefix="/patient-diaries", tags=["Patient Diaries"])
 @close_db_after(Container)
 def create_patient_diary(
     data: PatientDiaryCreate, 
+    background_tasks: BackgroundTasks,
 ):
     controller = Container.patient_diary_controller()
-    return controller.create_patient_diary(data)
+    return controller.create_patient_diary(data, background_tasks=background_tasks)
 
 
 @router.get("/", response_model=List[PatientDiaryResponse])

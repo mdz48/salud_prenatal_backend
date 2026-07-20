@@ -5,6 +5,8 @@ from app.features.patient_diaries.domain.ports import IPatientDiaryRepository
 from app.features.patient_diaries.domain.patient_diary_entity import PatientDiaryEntity
 from typing import List
 
+from salud_prenatal_shared_core.time import now_cdmx
+
 class PatientDiaryRepository(IPatientDiaryRepository):
     def __init__(self, db: Session):
         self.db = db
@@ -34,6 +36,8 @@ class PatientDiaryRepository(IPatientDiaryRepository):
 
     def create(self, diary_data: PatientDiaryEntity) -> PatientDiaryEntity:
         db_diary = PatientDiary(**diary_data.model_dump(exclude_unset=True, exclude={"patient_diary_id", "created_at", "updated_at", "weight_gain"}))
+        db_diary.created_at = now_cdmx()
+        db_diary.updated_at = now_cdmx()
         self.db.add(db_diary)
         self.db.commit()
         self.db.refresh(db_diary)

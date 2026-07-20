@@ -27,9 +27,9 @@ class NlpSymptomAdapter(ISymptomExtractionPort):
 
         try:
             response = requests.post(
-                f"{ml_service_url}/nlp/extract-symptoms",
+                f"{ml_service_url}/nlp/extract-symptoms-llm",
                 json={"text": text},
-                timeout=float(os.getenv("NLP_TIMEOUT", "8.0")),
+                timeout=float(os.getenv("NLP_TIMEOUT", "60.0")),
             )
             if response.status_code == 200:
                 data = response.json()

@@ -21,6 +21,7 @@ from app.users.application.patient.register_patient_usecase import RegisterPatie
 from app.users.application.patient.get_patients_by_doctor_usecase import GetPatientsByDoctorUseCase
 from app.users.application.patient.search_patients_by_name_usecase import SearchPatientsByNameUseCase
 from app.users.application.patient.get_patient_dashboard_usecase import GetPatientDashboardUseCase
+from app.users.application.patient.unlink_patient_usecase import UnlinkPatientUseCase
 from app.users.application.doctor.register_doctor_usecase import RegisterDoctorUseCase
 from app.users.application.doctor.create_receptionist_usecase import CreateReceptionistUseCase
 from app.users.application.doctor.get_receptionists_by_doctor_usecase import GetReceptionistsByDoctorUseCase
@@ -70,6 +71,7 @@ class Container(containers.DeclarativeContainer):
     get_patients_by_doctor_use_case = providers.Factory(GetPatientsByDoctorUseCase, patient_repository=patient_repository, medical_record_lookup=medical_record_lookup_adapter)
     search_patients_by_name_use_case = providers.Factory(SearchPatientsByNameUseCase, patient_repository=patient_repository)
     get_patient_dashboard_use_case = providers.Factory(GetPatientDashboardUseCase, patient_repository=patient_repository, user_repository=user_repository, doctor_repository=doctor_repository, appointment_lookup=appointment_lookup_adapter, medical_record_lookup=medical_record_lookup_adapter)
+    unlink_patient_use_case = providers.Factory(UnlinkPatientUseCase, patient_repository=patient_repository, appointment_lookup=appointment_lookup_adapter)
 
     register_doctor_use_case = providers.Factory(RegisterDoctorUseCase, user_repository=user_repository, doctor_repository=doctor_repository)
     create_receptionist_use_case = providers.Factory(CreateReceptionistUseCase, user_repository=user_repository, doctor_repository=doctor_repository, receptionist_repository=receptionist_repository)
@@ -85,4 +87,4 @@ class Container(containers.DeclarativeContainer):
     # Controllers
     user_controller = providers.Factory(UserController, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case, create_user_use_case)
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)
-    doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case, get_doctor_by_id_use_case, get_doctor_dashboard_use_case, get_receptionist_by_id_use_case, get_receptionist_dashboard_use_case)
+    doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case, get_doctor_by_id_use_case, get_doctor_dashboard_use_case, get_receptionist_by_id_use_case, get_receptionist_dashboard_use_case, unlink_patient_use_case)

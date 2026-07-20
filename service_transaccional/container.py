@@ -19,6 +19,7 @@ from app.medical_record.infrastructure.repositories.risk_prediction_repository i
 from app.patient_diaries.infrastructure.repositories.patient_diary_repository import PatientDiaryRepository
 from app.patient_diaries.infrastructure.repositories.diary_symptom_extraction_repository import DiarySymptomExtractionRepository
 from app.forums.infrastructure.repositories.forums_repository import ForumsRepository
+from app.forums.infrastructure.adapters.supabase_storage_adapter import SupabaseStorageAdapter
 from app.notifications.infrastructure.repositories.device_token_repository import DeviceTokenRepository
 
 # Read-repo sobre la DB compartida (solo lectura de `users`)
@@ -141,6 +142,7 @@ class Container(containers.DeclarativeContainer):
     latest_diary_adapter = providers.Factory(LatestDiaryAdapter, patient_diary_repository=patient_diary_repository)
     diary_symptom_summary_adapter = providers.Factory(DiarySymptomSummaryAdapter, diary_symptom_repository=diary_symptom_repository)
     social_cluster_adapter = providers.Factory(SocialClusterAdapter, forums_repository=forums_repository)
+    supabase_storage_adapter = providers.Factory(SupabaseStorageAdapter)
     patient_cluster_adapter = providers.Factory(PatientClusterAdapter, db=db, medical_record_repository=medical_record_repository, risk_prediction_repository=risk_prediction_repository)
     ad_eligibility_adapter = providers.Factory(AdEligibilityAdapter, db=db)
     chat_user_lookup_adapter = providers.Factory(ChatUserLookupAdapter, db=db)
@@ -210,7 +212,7 @@ class Container(containers.DeclarativeContainer):
     patient_diary_controller = providers.Factory(PatientDiaryController, create_patient_diary_use_case, get_all_patient_diaries_use_case, get_diaries_by_medical_record_use_case, get_patient_diary_by_id_use_case, update_patient_diary_use_case, delete_patient_diary_use_case, get_diary_symptoms_use_case, get_medical_record_symptom_history_use_case)
     chat_controller = providers.Factory(ChatController, get_history_use_case, save_message_use_case, get_chat_inbox_use_case, get_chat_contacts_use_case, device_token_repository, users_read_repository)
     notification_controller = providers.Factory(NotificationController, register_device_token_use_case, unregister_device_token_use_case)
-    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case, update_profile_use_case, get_profile_timeline_use_case)
+    profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case, update_profile_use_case, get_profile_timeline_use_case, supabase_storage_adapter)
     groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case, get_recommended_groups_use_case)
-    posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case)
+    posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case, supabase_storage_adapter)
     reports_controller = providers.Factory(ReportsController, create_report_use_case)

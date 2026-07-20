@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from app.core.enums import BloodTypeEnum
 from app.core.database import Base
 from app.core.pregnancy_calculations import gestational_weeks
+from app.core.security import EncryptedString
 
 class MedicalRecord(Base):
     __tablename__ = "medical_records"
@@ -16,9 +17,9 @@ class MedicalRecord(Base):
     blood_type = Column(Enum(BloodTypeEnum), nullable=True) # Tipo de sangre
     weeks_at_registration = Column(Integer, nullable=True) # Semana de gestación al registrarse
     last_menstrual_period = Column(Date, nullable=True) # Fecha del ultimo periodo menstrual
-    residence = Column(String(100), nullable=True) # Residencia
-    education_level = Column(String(50), nullable=True) # Nivel educativo
-    marital_status = Column(String(50), nullable=True) # Estado civil
+    residence = Column(EncryptedString, nullable=True) # Residencia
+    education_level = Column(EncryptedString, nullable=True) # Nivel educativo
+    marital_status = Column(EncryptedString, nullable=True) # Estado civil
     height_cm = Column(Integer, nullable=True) # Altura en centimetros
     initial_weight = Column(Float, nullable=True) # Peso inicial en kilogramos
     initial_systolic = Column(Integer, nullable=True) # Presion sistolica de la primera visita

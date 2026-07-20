@@ -1,7 +1,7 @@
-from app.core.database import Base
+from salud_prenatal_shared_core.database import Base
+from salud_prenatal_shared_core.time import now_cdmx
 from sqlalchemy import Column, Integer, ForeignKey, Float, Text, DateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 class PatientDiary(Base):
     __tablename__ = "patient_diaries"
@@ -13,8 +13,8 @@ class PatientDiary(Base):
     diastolic = Column(Integer, nullable=True)
     symptoms = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=now_cdmx)
+    updated_at = Column(DateTime(timezone=True), default=now_cdmx, onupdate=now_cdmx)
 
     # Relationships
     medical_record = relationship("MedicalRecord", back_populates="patient_diaries")

@@ -8,6 +8,7 @@ from app.features.forums.application.posts.add_comment_usecase import AddComment
 from app.features.forums.application.posts.get_comments_usecase import GetCommentsUseCase
 from app.features.forums.domain.post_entity import PostEntity
 from app.features.forums.domain.comment_entity import CommentEntity
+from app.features.forums.domain.ports import IImageStoragePort
 from app.features.forums.domain.exceptions import AdPermissionError, AdRateLimitError
 from app.core.error_handlers import internal_error
 from app.features.forums.infrastructure.schemas.forums_schemas import (
@@ -22,7 +23,8 @@ class PostsController:
         get_group_feed_uc: GetGroupFeedUseCase,
         add_comment_uc: AddCommentUseCase,
         get_comments_uc: GetCommentsUseCase,
-        get_recommended_feed_uc: GetRecommendedFeedUseCase
+        get_recommended_feed_uc: GetRecommendedFeedUseCase,
+        image_storage: IImageStoragePort
     ):
         self.create_post_uc = create_post_uc
         self.get_global_feed_uc = get_global_feed_uc
@@ -30,6 +32,7 @@ class PostsController:
         self.add_comment_uc = add_comment_uc
         self.get_comments_uc = get_comments_uc
         self.get_recommended_feed_uc = get_recommended_feed_uc
+        self.image_storage = image_storage
 
     def create_post(self, data: PostCreate, author_id: int) -> PostResponse:
         try:
@@ -80,5 +83,13 @@ class PostsController:
         try:
             results = self.get_comments_uc.execute(post_id)
             return [CommentResponse.model_validate(r) for r in results]
+        except Exception as e:
+            raise internal_error(e)
+
+    def upload_post_image(self, file_bytes: bytes, filename: str) -> str:
+        try:
+            return self.image_storage.upload_ad_image(file_bytes, filename)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
             raise internal_error(e)

@@ -49,7 +49,7 @@ class PatientRepository(IPatientRepository):
         self.db.refresh(db_patient)
         return PatientEntity.model_validate(db_patient)
 
-    def update_doctor(self, patient_id: int, doctor_id: int) -> Optional[PatientEntity]:
+    def update_doctor(self, patient_id: int, doctor_id: Optional[int]) -> Optional[PatientEntity]:
         db_patient = self.db.query(Patient).filter(Patient.patient_id == patient_id).first()
         if db_patient:
             db_patient.doctor_id = doctor_id

@@ -8,6 +8,7 @@ from app.forums.application.profiles.get_profile_timeline_usecase import GetProf
 from app.forums.infrastructure.schemas.forums_schemas import (
     ProfileCreate, ProfileUpdate, ProfileResponse, ProfileTimelineResponse, PostResponse
 )
+from app.forums.domain.ports import IImageStoragePort
 from salud_prenatal_shared_core.error_handlers import internal_error
 
 class ProfilesController:
@@ -16,12 +17,14 @@ class ProfilesController:
         create_profile_uc: CreateProfileUseCase,
         get_profile_uc: GetProfileUseCase,
         update_profile_uc: UpdateProfileUseCase,
-        get_profile_timeline_uc: GetProfileTimelineUseCase
+        get_profile_timeline_uc: GetProfileTimelineUseCase,
+        image_storage: IImageStoragePort
     ):
         self.create_profile_uc = create_profile_uc
         self.get_profile_uc = get_profile_uc
         self.update_profile_uc = update_profile_uc
         self.get_profile_timeline_uc = get_profile_timeline_uc
+        self.image_storage = image_storage
 
     def create_profile(self, data: ProfileCreate, user_id: int) -> ProfileResponse:
         try:
@@ -65,5 +68,13 @@ class ProfilesController:
             )
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except Exception as e:
+            raise internal_error(e)
+
+    def upload_profile_avatar(self, file_bytes: bytes, filename: str) -> str:
+        try:
+            return self.image_storage.upload_profile_avatar(file_bytes, filename)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
             raise internal_error(e)

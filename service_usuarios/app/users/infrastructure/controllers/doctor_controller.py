@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Optional
+
 from fastapi import HTTPException, status
 from app.users.infrastructure.schemas.doctor_schema import DoctorRegistration
 from app.users.application.doctor.register_doctor_usecase import RegisterDoctorUseCase
@@ -9,7 +12,7 @@ from app.users.application.doctor.get_doctor_dashboard_usecase import GetDoctorD
 from app.users.application.doctor.get_receptionist_by_id_usecase import GetReceptionistByIdUseCase
 from app.users.application.doctor.get_receptionist_dashboard_usecase import GetReceptionistDashboardUseCase
 from app.users.infrastructure.schemas.receptionist_schema import ReceptionistCreate
-from app.users.infrastructure.schemas.patient_schema import PatientSearchResult
+from app.users.infrastructure.schemas.patient_schema import PatientSearchResult, PatientDirectoryEntry
 
 class DoctorController:
     def __init__(
@@ -24,7 +27,8 @@ class DoctorController:
         get_doctor_dashboard_use_case,
         get_receptionist_by_id_use_case,
         get_receptionist_dashboard_use_case,
-        unlink_patient_use_case
+        unlink_patient_use_case,
+        search_patient_directory_use_case
     ):
         self.create_receptionist_use_case = create_receptionist_use_case
         self.get_receptionists_by_doctor_use_case = get_receptionists_by_doctor_use_case
@@ -37,6 +41,7 @@ class DoctorController:
         self.get_receptionist_by_id_use_case = get_receptionist_by_id_use_case
         self.get_receptionist_dashboard_use_case = get_receptionist_dashboard_use_case
         self.unlink_patient_use_case = unlink_patient_use_case
+        self.search_patient_directory_use_case = search_patient_directory_use_case
 
     def create_receptionist(self, doctor_id: int, data: ReceptionistCreate):
         from app.users.application.dtos import ReceptionistCreateDTO
@@ -93,6 +98,25 @@ class DoctorController:
         except Exception as e:
             print(f"Error searching patients: {repr(e)}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while searching patients.")
+
+    def search_patient_directory(
+        self,
+        doctor_id: int,
+        risk_cluster: Optional[str] = None,
+        linked_after: Optional[datetime] = None,
+        linked_before: Optional[datetime] = None,
+    ):
+        try:
+            patients = self.search_patient_directory_use_case.execute(
+                doctor_id=doctor_id,
+                risk_cluster=risk_cluster,
+                linked_after=linked_after,
+                linked_before=linked_before,
+            )
+            return [PatientDirectoryEntry.model_validate(p) for p in patients]
+        except Exception as e:
+            print(f"Error searching patient directory: {repr(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while searching the patient directory.")
 
     def get_doctor_by_id(self, doctor_id: int):
         try:

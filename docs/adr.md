@@ -231,6 +231,10 @@ Implementar el patrón Gateway (Fowler) para encapsular la comunicación con el 
 
 - Añade latencia adicional al realizar llamadas a través de la red.
 
+## Nota de implementación (as-built, 2026-07-20)
+
+Además de `MlPredictionServiceAdapter` (RF-32/33, clasificación de riesgo), el patrón Gateway también cubre `NlpSymptomAdapter` ([`service_transaccional/app/patient_diaries/infrastructure/adapters/nlp_symptom_adapter.py`](../service_transaccional/app/patient_diaries/infrastructure/adapters/nlp_symptom_adapter.py)) — encapsula la llamada HTTP al endpoint `/nlp/extract-symptoms-llm` del microservicio ML (RF-29, RF-31). Se reclasificó de ADR-14/Strategy: hoy es una única implementación concreta detrás de `ISymptomExtractionPort`, arquitectónicamente un Gateway (aísla la red, maneja timeout/fallback), no un Strategy con algoritmos intercambiables. Ver nota as-built en ADR-14 para el detalle de esa reclasificación y el candidato de Strategy real (checkout de pagos).
+
 # ADR-07: Búsquedas Dinámicas en Directorio
 
 ## Fecha
@@ -267,15 +271,31 @@ Implementar el patrón Query Object (Fowler) para representar los filtros del di
 
 - Incrementa la cantidad de clases necesarias para dar soporte a búsquedas.
 
-## Nota de implementación (estado real)
+## Nota de implementación (estado real, actualizado post-split a microservicios)
 
 Estado: **parcialmente aplicable**. La búsqueda por nombre (RF-14) está implementada en `SearchPatientsByNameUseCase` y `SearchMedicalRecordsByPatientNameUseCase`, pero el filtrado ocurre **en memoria (Python)**, no como Query Object traducido a SQL.
 
 Motivo: los campos `name`/`last_name` están cifrados con `EncryptedString` (Fernet, ADR-01), que es **no determinista** — el mismo texto produce ciphertext distinto en cada fila. Por eso es imposible filtrar por nombre con `WHERE ... LIKE` sobre la columna cifrada; hay que descifrar y comparar en memoria. Se acota primero a los pacientes del médico (`get_patients_by_doctor`) para limitar el conjunto. Es exactamente la contra documentada del ADR-01.
 
-Dónde sí aplicaría Query Object: los filtros de RF-15 sobre columnas en **texto plano** (residencia, nivel de riesgo/cluster, fecha de vinculación). Esos aún no se implementan.
+**Corrección (2026-07-20):** de los 3 filtros que pide RF-15, solo **uno** sigue siendo viable para Query Object hoy:
 
-Alternativa futura para habilitar búsqueda por nombre en SQL: **índice ciego (blind index)** — una columna hash determinista (HMAC del nombre normalizado) poblada al escribir y consultada por SQL, sin exponer el texto plano.
+- **Residencia** — `medical_records.residence` es ahora **también `EncryptedString`** (`service_transaccional/app/medical_record/infrastructure/models/medical_record_model.py`). Mismo problema que el nombre: no se puede traducir a `WHERE ... LIKE` en SQL. Antes de este corte se documentó como "texto plano" — eso ya no es cierto tras el split, hay que descifrar y comparar en memoria igual que el nombre.
+- **Nivel de riesgo / cluster** — `social_profiles.cluster_profile` (`String(50)`, `service_transaccional/app/forums/infrastructure/models/social_profile_model.py`) sigue **en texto plano**. Es el único candidato real hoy para Query Object — de hecho la técnica SQL ya se usa ahí mismo (`get_groups_by_cluster`, `get_feed_by_cluster` en `forums_repository.py`), solo falta exponerla como filtro del directorio de pacientes.
+- **Fecha de vinculación** — no existe columna en `Patient` (`service_usuarios/app/users/infrastructure/models/patient_model.py`) que registre cuándo se vinculó al doctor; solo hay `doctor_id` (FK plano, filtrable, pero sin fecha). Requiere agregar la columna antes de poder filtrar por este criterio.
+
+Alternativa futura para habilitar búsqueda por nombre/residencia en SQL: **índice ciego (blind index)** — una columna hash determinista (HMAC del valor normalizado) poblada al escribir y consultada por SQL, sin exponer el texto plano. Con el cifrado ahora cubriendo también residencia, esta alternativa gana relevancia si se quiere Query Object real sobre esos dos campos.
+
+## Implementación (as-built, 2026-07-20) — filtro por nivel de riesgo + fecha de vinculación
+
+Se implementó el Query Object real para los dos criterios que sí son SQL-puro hoy (cluster y `linked_at`); residencia queda pendiente (requiere blind index, fuera de este alcance):
+
+- `PatientDirectoryQuery` (dataclass, `doctor_id` + `patient_ids_filter` opcional + `linked_after`/`linked_before`): [`service_usuarios/app/users/domain/patient_directory_query.py`](../service_usuarios/app/users/domain/patient_directory_query.py).
+- `PatientRepository.search_directory(query)`: [`service_usuarios/app/users/infrastructure/repositories/patient_repository.py`](../service_usuarios/app/users/infrastructure/repositories/patient_repository.py) — el Query Object SQL de verdad (`WHERE doctor_id = ? AND patient_id IN (...) AND linked_at BETWEEN ?`).
+- `Patient.linked_at` (columna nueva, se fija en `update_doctor` al vincular y se limpia al desvincular).
+- `IPatientClinicalFilterPort.get_patient_ids_by_risk_cluster(doctor_id, risk_cluster)` + `RiskClusterFilterAdapter`: [`.../infrastructure/adapters/risk_cluster_filter_adapter.py`](../service_usuarios/app/users/infrastructure/adapters/risk_cluster_filter_adapter.py) — lee `social_profiles.cluster_profile` (read-model `SocialProfileRead`) por ser la única fuente plana; **no** `risk_predictions.prediction` (JSON, requeriría parseo en memoria). Caveat: un paciente sin perfil social (nunca entró al foro) no tiene fila en `social_profiles` y por tanto nunca aparece en este filtro, aunque sí tenga una predicción de riesgo vigente.
+- `SearchPatientDirectoryUseCase` orquesta: si viene `risk_cluster`, resuelve `patient_ids` vía el port (corta temprano devolviendo `[]` si no hay coincidencias, sin tocar el repositorio) y arma el `PatientDirectoryQuery`.
+- Ruta: `GET /api/v1/doctors/{doctor_id}/patients/directory?risk_cluster=&linked_after=&linked_before=`.
+- Tests: `service_usuarios/tests/{test_patient_directory_query.py, test_risk_cluster_filter_adapter.py, test_search_patient_directory_usecase.py, test_patient_repository_linked_at.py, test_patient_directory_e2e.py}`.
 
 # ADR-08: Gestión de Agenda Citas
 
@@ -544,3 +564,21 @@ Implementar el patrón Strategy (GoF) para definir e intercambiar dinámicamente
 - El backend debe manejar múltiples estrategias aumentando la complejidad del mantenimiento de algoritmos.
 
 - Requiere mapear diferentes formatos de salida de los distintos proveedores de análisis de texto.
+
+## Nota de implementación (as-built, 2026-07-20)
+
+**Implementación canónica — `service_pagos` (checkout de suscripciones):**
+
+- `ICheckoutStrategy` (puerto): [`domain/ports.py`](../service_pagos/app/subscriptions/domain/ports.py) — `create_checkout_session(user_id, email, plan_type, stripe_customer_id)`.
+- **2 estrategias concretas** en [`infrastructure/adapters/stripe_checkout_strategies.py`](../service_pagos/app/subscriptions/infrastructure/adapters/stripe_checkout_strategies.py):
+  - `StripeRecurringCheckoutStrategy` — modo `subscription`, precios recurrentes.
+  - `StripeOneTimeCheckoutStrategy` — modo `payment`, acepta `card`/`oxxo`/`customer_balance` (SPEI), crea customer explícito.
+- **Selección en runtime por parámetro de negocio**: `CreateCheckoutSessionUseCase` ([`application/create_checkout_session_usecase.py`](../service_pagos/app/subscriptions/application/create_checkout_session_usecase.py)) recibe `checkout_strategies: Dict[PaymentModeEnum, ICheckoutStrategy]` y elige con `self.checkout_strategies.get(payment_mode)`.
+- Wiring en `service_pagos/container.py`: `providers.Dict({PaymentModeEnum.recurring: ..., PaymentModeEnum.one_time: ...})`.
+- Trazabilidad: RF-42.
+
+Este es el ejemplo fiel del patrón: mismo contrato, algoritmos intercambiables, elegidos dinámicamente por un parámetro de negocio — no hardcodeado.
+
+**Implementación previa — NLP (`service_transaccional`), estado: parcial.**
+
+`ISymptomExtractionPort` ([`patient_diaries/domain/ports.py`](../service_transaccional/app/patient_diaries/domain/ports.py)) tiene **una sola implementación concreta** (`NlpSymptomAdapter`, HTTP al microservicio ML `/nlp/extract-symptoms-llm`). Sin una segunda estrategia intercambiable, esto es arquitectónicamente un **Gateway** (mismo rol que ADR-06), no un Strategy realizado — el propio código se autodocumenta así ("patron Gateway - ADR-06/14"). Queda como candidato futuro: si se conserva una implementación alterna (p. ej. un motor ONNX local además del LLM actual), seleccionable por config (`NLP_ENGINE=onnx|llm`), ahí sí se completaría un segundo caso real de Strategy.

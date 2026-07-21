@@ -12,6 +12,7 @@ from app.users.infrastructure.repositories.invitation_code_repository import Inv
 from app.users.infrastructure.adapters.medical_record_lookup_adapter import MedicalRecordLookupAdapter
 from app.users.infrastructure.adapters.appointment_lookup_adapter import AppointmentLookupAdapter
 from app.users.infrastructure.adapters.patient_linked_notifier_adapter import PatientLinkedNotifierAdapter
+from app.users.infrastructure.adapters.risk_cluster_filter_adapter import RiskClusterFilterAdapter
 
 from app.users.application.user.create_user_usecase import CreateUserUseCase
 from app.users.application.user.get_users_usecase import GetUsersUseCase
@@ -21,6 +22,7 @@ from app.users.application.user.delete_user_usecase import DeleteUserUseCase
 from app.users.application.patient.register_patient_usecase import RegisterPatientUseCase
 from app.users.application.patient.get_patients_by_doctor_usecase import GetPatientsByDoctorUseCase
 from app.users.application.patient.search_patients_by_name_usecase import SearchPatientsByNameUseCase
+from app.users.application.patient.search_patient_directory_usecase import SearchPatientDirectoryUseCase
 from app.users.application.patient.get_patient_dashboard_usecase import GetPatientDashboardUseCase
 from app.users.application.patient.unlink_patient_usecase import UnlinkPatientUseCase
 from app.users.application.doctor.register_doctor_usecase import RegisterDoctorUseCase
@@ -61,6 +63,7 @@ class Container(containers.DeclarativeContainer):
     medical_record_lookup_adapter = providers.Factory(MedicalRecordLookupAdapter, db=db)
     appointment_lookup_adapter = providers.Factory(AppointmentLookupAdapter, db=db)
     patient_linked_notifier_adapter = providers.Factory(PatientLinkedNotifierAdapter)
+    risk_cluster_filter_adapter = providers.Factory(RiskClusterFilterAdapter, db=db)
 
     # Use cases
     create_user_use_case = providers.Factory(CreateUserUseCase, user_repository=user_repository)
@@ -72,6 +75,7 @@ class Container(containers.DeclarativeContainer):
     register_patient_use_case = providers.Factory(RegisterPatientUseCase, user_repository=user_repository, patient_repository=patient_repository)
     get_patients_by_doctor_use_case = providers.Factory(GetPatientsByDoctorUseCase, patient_repository=patient_repository, medical_record_lookup=medical_record_lookup_adapter)
     search_patients_by_name_use_case = providers.Factory(SearchPatientsByNameUseCase, patient_repository=patient_repository)
+    search_patient_directory_use_case = providers.Factory(SearchPatientDirectoryUseCase, patient_repository=patient_repository, clinical_filter_port=risk_cluster_filter_adapter)
     get_patient_dashboard_use_case = providers.Factory(GetPatientDashboardUseCase, patient_repository=patient_repository, user_repository=user_repository, doctor_repository=doctor_repository, appointment_lookup=appointment_lookup_adapter, medical_record_lookup=medical_record_lookup_adapter)
     unlink_patient_use_case = providers.Factory(UnlinkPatientUseCase, patient_repository=patient_repository, appointment_lookup=appointment_lookup_adapter)
 
@@ -89,5 +93,5 @@ class Container(containers.DeclarativeContainer):
     # Controllers
     user_controller = providers.Factory(UserController, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case, create_user_use_case)
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)
-    doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case, get_doctor_by_id_use_case, get_doctor_dashboard_use_case, get_receptionist_by_id_use_case, get_receptionist_dashboard_use_case, unlink_patient_use_case)
+    doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case, get_doctor_by_id_use_case, get_doctor_dashboard_use_case, get_receptionist_by_id_use_case, get_receptionist_dashboard_use_case, unlink_patient_use_case, search_patient_directory_use_case)
 

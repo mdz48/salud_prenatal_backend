@@ -7,3 +7,7 @@ class DeviceTokenCreate(BaseModel):
 
 class DeviceTokenUnregister(BaseModel):
     token: str
+
+class PatientLinkedEventRequest(BaseModel):
+    patient_id: int
+    doctor_id: int

@@ -124,9 +124,13 @@ Maximiliano Diaz
 
 El negocio requiere enviar notificaciones automáticas ante diversos eventos: cambios de vinculación, citas agendadas y nuevos mensajes de chat. Acoplar el envío de notificaciones dentro de los servicios principales dificulta añadir nuevos canales de entrega.
 
+Tras la migración a microservicios (ADR de split de servicios), `AppointmentCreatedEvent` y `MessageSentEvent` se publican y consumen dentro del mismo proceso (`service_transaccional`), donde viven todos los observers reales (log en tabla, WebSocket de chat, push Firebase). `PatientLinkedEvent`, en cambio, nace en `service_usuarios` (al redimir un código de invitación) — un proceso distinto, con su propio `InMemoryEventDispatcher` en memoria, aislado del de transaccional.
+
 ## Decisión
 
 Implementar el patrón Observer (GoF) para tratar los servicios principales como sujetos observables y notificar eventos de estado a los despachadores de notificaciones.
+
+Cada servicio mantiene su propio `InMemoryEventDispatcher` in-process (no hay bus de eventos compartido entre procesos). Para `PatientLinkedEvent`, cuyo origen (`service_usuarios`) no coincide con dónde viven los observers reales (`service_transaccional`), `service_usuarios` notifica el evento vía una llamada HTTP server-to-server a un endpoint interno de transaccional (`POST /notifications/internal/patient-linked`), que ahí sí lo publica en su propio dispatcher y llega a `NotificationLogObserver` y `FirebasePushObserver`. Ese endpoint está protegido por un secreto compartido (`INTERNAL_SERVICE_TOKEN`) — no basta con "vive en la red del compose", porque el catch-all de Traefik para transaccional expone `/api/v1` completo con `jwt-auth` (anónimo permitido), así que cualquier ruta nueva bajo ese prefijo es alcanzable públicamente si no se protege explícitamente. Se descartó definir el `NotificationModel`/observer de notificaciones en `shared_core` para que ambos servicios "compartieran" el dispatcher: eso duplicaba el modelo ORM de una tabla que no es dueño de `service_usuarios`, violando la regla de ownership de tablas del proyecto (dueño único vía `create_all`, los demás leen por read-model).
 
 ## Consecuencias
 
@@ -136,11 +140,15 @@ Implementar el patrón Observer (GoF) para tratar los servicios principales como
 
 - Permite añadir nuevos canales de notificación sin modificar los servicios existentes.
 
+- El flujo de vinculación de paciente ahora dispara notificación en tabla y push Firebase igual que citas/chat (antes del fix, el push de vinculación era código muerto: estaba suscrito en transaccional pero el evento nunca llegaba desde otro proceso).
+
 ### Contras
 
 - El flujo reactivo dificulta el seguimiento de errores si falla la entrega.
 
 - Requiere un despachador de eventos que incrementa la complejidad del sistema.
+
+- Cruzar de `service_usuarios` a `service_transaccional` para `PatientLinkedEvent` exige una llamada HTTP adicional (best-effort, con timeout corto) en vez de una publicación in-process; si transaccional está caído, la notificación de vinculación se pierde silenciosamente (no bloquea la vinculación, que es la operación de negocio real).
 
 # ADR-05: Validación de Datos Entrada
 
@@ -403,6 +411,14 @@ Implementar el patrón Remote Facade (Fowler) para centralizar la autenticación
 - Introduce una dependencia obligatoria en la cabecera de todas las peticiones.
 
 - Puede convertirse en un cuello de botella para el rendimiento general.
+
+## Nota de implementación (estado real en Microservicios)
+
+Estado: **Implementado y evolucionado a ForwardAuth Edge**. 
+En la arquitectura de vertical slicing (`service_auth`, `service_gateway`, `service_usuarios`, `service_pagos`, `service_transaccional`), el patrón evoluciona a un esquema donde **Traefik (edge proxy)** consulta al **API Gateway (`service_gateway`)** mediante **ForwardAuth** (`/validate` y `/validate/strict`).
+
+El API Gateway es el único componente que decodifica el JWT (usando `IJwtKeyProvider` de `shared_core`, respaldado por Vault o variables de entorno). Una vez validada la firma, Traefik inyecta las cabeceras `X-User-Id`, `X-User-Email`, `X-User-Role`, `X-Subscription-Status` en la petición entrante hacia los microservicios de dominio. Ningún microservicio de dominio valida JWTs directamente.
+
 
 # ADR-12: Generación Código de Vinculación
 

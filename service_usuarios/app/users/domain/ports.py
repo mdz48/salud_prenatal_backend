@@ -54,3 +54,9 @@ class IAppointmentLookup(Protocol):
 # Nota: la inicialización/estado de suscripción (antes ISubscriptionInitializer/
 # ISubscriptionStatusLookup) ya no vive en usuarios: la fila la crea el servicio
 # pagos on-demand y el estado viaja como claim del JWT (ver servicio auth).
+
+class IPatientLinkedNotifier(Protocol):
+    """Avisa la vinculación paciente-doctor a quien de verdad dispara las
+    notificaciones (transaccional). Best-effort: una falla de red no debe
+    tumbar la vinculación en sí."""
+    def notify(self, patient_id: int, doctor_id: int) -> None: ...

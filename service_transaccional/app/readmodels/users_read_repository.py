@@ -6,7 +6,7 @@ servicio usuarios.
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
-from app.readmodels.users_readmodels import UserRead
+from app.readmodels.users_readmodels import UserRead, DoctorRead, PatientRead
 
 
 class UsersReadRepository:
@@ -18,3 +18,12 @@ class UsersReadRepository:
 
     def get_by_ids(self, user_ids: List[int]) -> List[UserRead]:
         return self.db.query(UserRead).filter(UserRead.user_id.in_(user_ids)).all()
+
+    def get_user_id_by_doctor_id(self, doctor_id: int) -> Optional[int]:
+        doc = self.db.query(DoctorRead).filter(DoctorRead.doctor_id == doctor_id).first()
+        return doc.user_id if doc else None
+
+    def get_user_id_by_patient_id(self, patient_id: int) -> Optional[int]:
+        pat = self.db.query(PatientRead).filter(PatientRead.patient_id == patient_id).first()
+        return pat.user_id if pat else None
+

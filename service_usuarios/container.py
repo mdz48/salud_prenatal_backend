@@ -11,6 +11,7 @@ from app.users.infrastructure.repositories.invitation_code_repository import Inv
 
 from app.users.infrastructure.adapters.medical_record_lookup_adapter import MedicalRecordLookupAdapter
 from app.users.infrastructure.adapters.appointment_lookup_adapter import AppointmentLookupAdapter
+from app.users.infrastructure.adapters.patient_linked_notifier_adapter import PatientLinkedNotifierAdapter
 
 from app.users.application.user.create_user_usecase import CreateUserUseCase
 from app.users.application.user.get_users_usecase import GetUsersUseCase
@@ -59,6 +60,7 @@ class Container(containers.DeclarativeContainer):
     # Lookups cross-servicio: leen la DB compartida vía read-models (no HTTP).
     medical_record_lookup_adapter = providers.Factory(MedicalRecordLookupAdapter, db=db)
     appointment_lookup_adapter = providers.Factory(AppointmentLookupAdapter, db=db)
+    patient_linked_notifier_adapter = providers.Factory(PatientLinkedNotifierAdapter)
 
     # Use cases
     create_user_use_case = providers.Factory(CreateUserUseCase, user_repository=user_repository)
@@ -82,9 +84,10 @@ class Container(containers.DeclarativeContainer):
     get_receptionist_by_id_use_case = providers.Factory(GetReceptionistByIdUseCase, receptionist_repository=receptionist_repository, user_repository=user_repository)
     get_receptionist_dashboard_use_case = providers.Factory(GetReceptionistDashboardUseCase, receptionist_repository=receptionist_repository, user_repository=user_repository, patient_repository=patient_repository, appointment_lookup=appointment_lookup_adapter)
 
-    redeem_invitation_code_use_case = providers.Factory(RedeemInvitationCodeUseCase, patient_repository=patient_repository, invitation_code_repository=invitation_code_repository)
+    redeem_invitation_code_use_case = providers.Factory(RedeemInvitationCodeUseCase, patient_repository=patient_repository, invitation_code_repository=invitation_code_repository, patient_linked_notifier=patient_linked_notifier_adapter)
 
     # Controllers
     user_controller = providers.Factory(UserController, get_users_use_case, get_user_use_case, update_user_use_case, delete_user_use_case, create_user_use_case)
     patient_controller = providers.Factory(PatientController, get_patient_dashboard_use_case, register_patient_use_case, redeem_invitation_code_use_case)
     doctor_controller = providers.Factory(DoctorController, create_receptionist_use_case, get_receptionists_by_doctor_use_case, register_doctor_use_case, get_patients_by_doctor_use_case, generate_invitation_code_use_case, search_patients_by_name_use_case, get_doctor_by_id_use_case, get_doctor_dashboard_use_case, get_receptionist_by_id_use_case, get_receptionist_dashboard_use_case, unlink_patient_use_case)
+

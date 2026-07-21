@@ -160,6 +160,7 @@ services:
     environment:
       AUTH_LOGIN_URL: http://localhost:8000/api/v1/users/login
       FORWARDED_ALLOW_IPS: "*"
+      TRANSACCIONAL_URL: http://transaccional:8004
     labels:
       - "traefik.enable=true"
       # Registro y lecturas públicas conviven aquí -> jwt-auth (prioridad 300:

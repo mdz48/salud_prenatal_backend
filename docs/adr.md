@@ -186,6 +186,15 @@ Implementar el patrón Notification (Fowler) para acumular todos los errores de 
 
 - Requiere estructurar un objeto de notificación adicional en toda la API.
 
+## Nota de implementación (as-built, 2026-07-20)
+
+Implementado en `service_transaccional/app/patient_diaries`:
+- `Notification` (patrón genérico, acumula errores sin abortar en el primero): [`domain/notification.py`](../service_transaccional/app/patient_diaries/domain/notification.py).
+- `validate_diary_measurements(entity)` (reglas físicas: peso 20–300 kg, sistólica 40–300 mmHg, diastólica 20–200 mmHg, sistólica > diastólica) + excepción `PatientDiaryValidationError`: [`domain/diary_validation.py`](../service_transaccional/app/patient_diaries/domain/diary_validation.py). Campos `None` se saltan (soporta updates parciales).
+- Enganchado en `CreatePatientDiaryUseCase` y `UpdatePatientDiaryUseCase` antes de persistir.
+- `PatientDiaryController` mapea `PatientDiaryValidationError` → `HTTPException 422` con la lista completa de errores (antes cualquier excepción caía en el 500 genérico de `internal_error`).
+- Tests: `test_patient_diary_notification.py`, `test_patient_diary_measurement_validation.py`, `test_create_patient_diary_usecase_validation.py`, `test_update_patient_diary_usecase_validation.py`, `test_patient_diary_controller_validation.py`.
+
 # ADR-06: Integración del Servicio Inferencia
 
 ## Fecha
@@ -303,6 +312,14 @@ Implementar el patrón Specification (Fowler) para encapsular las políticas de 
 - Añade indirección y complejidad al separar la validación del flujo principal.
 
 - Requiere definir clases adicionales para cada regla o combinación lógica.
+
+## Nota de implementación (as-built, 2026-07-20)
+
+Implementado en `service_transaccional`:
+- `IAppointmentSpecification` + `DoctorAvailabilitySpecification` + `ActivePatientLinkSpecification`: [`app/appointments/domain/specifications.py`](../service_transaccional/app/appointments/domain/specifications.py).
+- `CreateAppointmentUseCase` recibe `specifications: List[IAppointmentSpecification]` (opcional, default `[]`) y acumula todos los `error_message()` de las specs no satisfechas en un único `ValueError` antes de persistir.
+- Wiring en `service_transaccional/container.py`: `providers.List(doctor_availability_specification, active_patient_link_specification)` inyectado en `create_appointment_use_case`.
+- Tests: `service_transaccional/tests/test_appointment_specifications.py` (specs aisladas) y `test_create_appointment_usecase_specifications.py` (enforcement en el caso de uso).
 
 # ADR-09: Ruteo del Chat WebSocket
 

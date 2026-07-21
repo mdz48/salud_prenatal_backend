@@ -37,6 +37,7 @@ from app.forums.infrastructure.adapters.ad_eligibility_adapter import AdEligibil
 from app.chat.infrastructure.adapters.chat_contacts_lookup_adapter import ChatContactsLookupAdapter
 from app.chat.infrastructure.adapters.chat_user_lookup_adapter import ChatUserLookupAdapter
 from app.appointments.infrastructure.adapters.patient_doctor_lookup_adapter import PatientLookupAdapter, DoctorLookupAdapter
+from app.appointments.domain.specifications import DoctorAvailabilitySpecification, ActivePatientLinkSpecification
 
 # Use cases — appointments
 from app.appointments.application.create_appointment_usecase import CreateAppointmentUseCase
@@ -186,8 +187,13 @@ class Container(containers.DeclarativeContainer):
     appointment_patient_lookup = providers.Factory(PatientLookupAdapter, db=db)
     appointment_doctor_lookup = providers.Factory(DoctorLookupAdapter, db=db)
 
+    # Specifications — reglas de agenda (ADR-08)
+    doctor_availability_specification = providers.Factory(DoctorAvailabilitySpecification, appointment_repo=appointment_repository)
+    active_patient_link_specification = providers.Factory(ActivePatientLinkSpecification, patient_lookup=appointment_patient_lookup)
+    appointment_specifications = providers.List(doctor_availability_specification, active_patient_link_specification)
+
     # Use cases — appointments
-    create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=appointment_patient_lookup, doctor_repo=appointment_doctor_lookup, event_dispatcher=event_dispatcher)
+    create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=appointment_patient_lookup, doctor_repo=appointment_doctor_lookup, event_dispatcher=event_dispatcher, specifications=appointment_specifications)
     delete_appointment_use_case = providers.Factory(DeleteAppointmentUseCase, appointment_repo=appointment_repository)
     get_appointments_by_doctor_use_case = providers.Factory(GetAppointmentsByDoctorUseCase, appointment_repo=appointment_repository)
     get_appointments_by_patient_use_case = providers.Factory(GetAppointmentsByPatientUseCase, appointment_repo=appointment_repository)

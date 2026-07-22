@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Date, ForeignKey
+from sqlalchemy import Column, Integer, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from salud_prenatal_shared_core.database import Base
 from salud_prenatal_shared_core.pregnancy_calculations import age_years
@@ -11,6 +11,8 @@ class Patient(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"), unique=True, nullable=False)
     doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=True, index=True)
     birthdate = Column(Date, nullable=False)
+    # Fecha de vinculación con el doctor actual (ADR-07, RF-15: filtro de directorio).
+    linked_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships (solo dentro del servicio usuarios).
     # appointments/medical_records viven en el servicio transaccional: se leen por

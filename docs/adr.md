@@ -124,9 +124,13 @@ Maximiliano Diaz
 
 El negocio requiere enviar notificaciones automáticas ante diversos eventos: cambios de vinculación, citas agendadas y nuevos mensajes de chat. Acoplar el envío de notificaciones dentro de los servicios principales dificulta añadir nuevos canales de entrega.
 
+Tras la migración a microservicios (ADR de split de servicios), `AppointmentCreatedEvent` y `MessageSentEvent` se publican y consumen dentro del mismo proceso (`service_transaccional`), donde viven todos los observers reales (log en tabla, WebSocket de chat, push Firebase). `PatientLinkedEvent`, en cambio, nace en `service_usuarios` (al redimir un código de invitación) — un proceso distinto, con su propio `InMemoryEventDispatcher` en memoria, aislado del de transaccional.
+
 ## Decisión
 
 Implementar el patrón Observer (GoF) para tratar los servicios principales como sujetos observables y notificar eventos de estado a los despachadores de notificaciones.
+
+Cada servicio mantiene su propio `InMemoryEventDispatcher` in-process (no hay bus de eventos compartido entre procesos). Para `PatientLinkedEvent`, cuyo origen (`service_usuarios`) no coincide con dónde viven los observers reales (`service_transaccional`), `service_usuarios` notifica el evento vía una llamada HTTP server-to-server a un endpoint interno de transaccional (`POST /notifications/internal/patient-linked`), que ahí sí lo publica en su propio dispatcher y llega a `NotificationLogObserver` y `FirebasePushObserver`. Ese endpoint está protegido por un secreto compartido (`INTERNAL_SERVICE_TOKEN`) — no basta con "vive en la red del compose", porque el catch-all de Traefik para transaccional expone `/api/v1` completo con `jwt-auth` (anónimo permitido), así que cualquier ruta nueva bajo ese prefijo es alcanzable públicamente si no se protege explícitamente. Se descartó definir el `NotificationModel`/observer de notificaciones en `shared_core` para que ambos servicios "compartieran" el dispatcher: eso duplicaba el modelo ORM de una tabla que no es dueño de `service_usuarios`, violando la regla de ownership de tablas del proyecto (dueño único vía `create_all`, los demás leen por read-model).
 
 ## Consecuencias
 
@@ -136,11 +140,15 @@ Implementar el patrón Observer (GoF) para tratar los servicios principales como
 
 - Permite añadir nuevos canales de notificación sin modificar los servicios existentes.
 
+- El flujo de vinculación de paciente ahora dispara notificación en tabla y push Firebase igual que citas/chat (antes del fix, el push de vinculación era código muerto: estaba suscrito en transaccional pero el evento nunca llegaba desde otro proceso).
+
 ### Contras
 
 - El flujo reactivo dificulta el seguimiento de errores si falla la entrega.
 
 - Requiere un despachador de eventos que incrementa la complejidad del sistema.
+
+- Cruzar de `service_usuarios` a `service_transaccional` para `PatientLinkedEvent` exige una llamada HTTP adicional (best-effort, con timeout corto) en vez de una publicación in-process; si transaccional está caído, la notificación de vinculación se pierde silenciosamente (no bloquea la vinculación, que es la operación de negocio real).
 
 # ADR-05: Validación de Datos Entrada
 
@@ -178,6 +186,15 @@ Implementar el patrón Notification (Fowler) para acumular todos los errores de 
 
 - Requiere estructurar un objeto de notificación adicional en toda la API.
 
+## Nota de implementación (as-built, 2026-07-20)
+
+Implementado en `service_transaccional/app/patient_diaries`:
+- `Notification` (patrón genérico, acumula errores sin abortar en el primero): [`domain/notification.py`](../service_transaccional/app/patient_diaries/domain/notification.py).
+- `validate_diary_measurements(entity)` (reglas físicas: peso 20–300 kg, sistólica 40–300 mmHg, diastólica 20–200 mmHg, sistólica > diastólica) + excepción `PatientDiaryValidationError`: [`domain/diary_validation.py`](../service_transaccional/app/patient_diaries/domain/diary_validation.py). Campos `None` se saltan (soporta updates parciales).
+- Enganchado en `CreatePatientDiaryUseCase` y `UpdatePatientDiaryUseCase` antes de persistir.
+- `PatientDiaryController` mapea `PatientDiaryValidationError` → `HTTPException 422` con la lista completa de errores (antes cualquier excepción caía en el 500 genérico de `internal_error`).
+- Tests: `test_patient_diary_notification.py`, `test_patient_diary_measurement_validation.py`, `test_create_patient_diary_usecase_validation.py`, `test_update_patient_diary_usecase_validation.py`, `test_patient_diary_controller_validation.py`.
+
 # ADR-06: Integración del Servicio Inferencia
 
 ## Fecha
@@ -213,6 +230,10 @@ Implementar el patrón Gateway (Fowler) para encapsular la comunicación con el 
 - Requiere mantener una interfaz intermedia acoplada al contrato del servicio externo.
 
 - Añade latencia adicional al realizar llamadas a través de la red.
+
+## Nota de implementación (as-built, 2026-07-20)
+
+Además de `MlPredictionServiceAdapter` (RF-32/33, clasificación de riesgo), el patrón Gateway también cubre `NlpSymptomAdapter` ([`service_transaccional/app/patient_diaries/infrastructure/adapters/nlp_symptom_adapter.py`](../service_transaccional/app/patient_diaries/infrastructure/adapters/nlp_symptom_adapter.py)) — encapsula la llamada HTTP al endpoint `/nlp/extract-symptoms-llm` del microservicio ML (RF-29, RF-31). Se reclasificó de ADR-14/Strategy: hoy es una única implementación concreta detrás de `ISymptomExtractionPort`, arquitectónicamente un Gateway (aísla la red, maneja timeout/fallback), no un Strategy con algoritmos intercambiables. Ver nota as-built en ADR-14 para el detalle de esa reclasificación y el candidato de Strategy real (checkout de pagos).
 
 # ADR-07: Búsquedas Dinámicas en Directorio
 
@@ -250,15 +271,31 @@ Implementar el patrón Query Object (Fowler) para representar los filtros del di
 
 - Incrementa la cantidad de clases necesarias para dar soporte a búsquedas.
 
-## Nota de implementación (estado real)
+## Nota de implementación (estado real, actualizado post-split a microservicios)
 
 Estado: **parcialmente aplicable**. La búsqueda por nombre (RF-14) está implementada en `SearchPatientsByNameUseCase` y `SearchMedicalRecordsByPatientNameUseCase`, pero el filtrado ocurre **en memoria (Python)**, no como Query Object traducido a SQL.
 
 Motivo: los campos `name`/`last_name` están cifrados con `EncryptedString` (Fernet, ADR-01), que es **no determinista** — el mismo texto produce ciphertext distinto en cada fila. Por eso es imposible filtrar por nombre con `WHERE ... LIKE` sobre la columna cifrada; hay que descifrar y comparar en memoria. Se acota primero a los pacientes del médico (`get_patients_by_doctor`) para limitar el conjunto. Es exactamente la contra documentada del ADR-01.
 
-Dónde sí aplicaría Query Object: los filtros de RF-15 sobre columnas en **texto plano** (residencia, nivel de riesgo/cluster, fecha de vinculación). Esos aún no se implementan.
+**Corrección (2026-07-20):** de los 3 filtros que pide RF-15, solo **uno** sigue siendo viable para Query Object hoy:
 
-Alternativa futura para habilitar búsqueda por nombre en SQL: **índice ciego (blind index)** — una columna hash determinista (HMAC del nombre normalizado) poblada al escribir y consultada por SQL, sin exponer el texto plano.
+- **Residencia** — `medical_records.residence` es ahora **también `EncryptedString`** (`service_transaccional/app/medical_record/infrastructure/models/medical_record_model.py`). Mismo problema que el nombre: no se puede traducir a `WHERE ... LIKE` en SQL. Antes de este corte se documentó como "texto plano" — eso ya no es cierto tras el split, hay que descifrar y comparar en memoria igual que el nombre.
+- **Nivel de riesgo / cluster** — `social_profiles.cluster_profile` (`String(50)`, `service_transaccional/app/forums/infrastructure/models/social_profile_model.py`) sigue **en texto plano**. Es el único candidato real hoy para Query Object — de hecho la técnica SQL ya se usa ahí mismo (`get_groups_by_cluster`, `get_feed_by_cluster` en `forums_repository.py`), solo falta exponerla como filtro del directorio de pacientes.
+- **Fecha de vinculación** — no existe columna en `Patient` (`service_usuarios/app/users/infrastructure/models/patient_model.py`) que registre cuándo se vinculó al doctor; solo hay `doctor_id` (FK plano, filtrable, pero sin fecha). Requiere agregar la columna antes de poder filtrar por este criterio.
+
+Alternativa futura para habilitar búsqueda por nombre/residencia en SQL: **índice ciego (blind index)** — una columna hash determinista (HMAC del valor normalizado) poblada al escribir y consultada por SQL, sin exponer el texto plano. Con el cifrado ahora cubriendo también residencia, esta alternativa gana relevancia si se quiere Query Object real sobre esos dos campos.
+
+## Implementación (as-built, 2026-07-20) — filtro por nivel de riesgo + fecha de vinculación
+
+Se implementó el Query Object real para los dos criterios que sí son SQL-puro hoy (cluster y `linked_at`); residencia queda pendiente (requiere blind index, fuera de este alcance):
+
+- `PatientDirectoryQuery` (dataclass, `doctor_id` + `patient_ids_filter` opcional + `linked_after`/`linked_before`): [`service_usuarios/app/users/domain/patient_directory_query.py`](../service_usuarios/app/users/domain/patient_directory_query.py).
+- `PatientRepository.search_directory(query)`: [`service_usuarios/app/users/infrastructure/repositories/patient_repository.py`](../service_usuarios/app/users/infrastructure/repositories/patient_repository.py) — el Query Object SQL de verdad (`WHERE doctor_id = ? AND patient_id IN (...) AND linked_at BETWEEN ?`).
+- `Patient.linked_at` (columna nueva, se fija en `update_doctor` al vincular y se limpia al desvincular).
+- `IPatientClinicalFilterPort.get_patient_ids_by_risk_cluster(doctor_id, risk_cluster)` + `RiskClusterFilterAdapter`: [`.../infrastructure/adapters/risk_cluster_filter_adapter.py`](../service_usuarios/app/users/infrastructure/adapters/risk_cluster_filter_adapter.py) — lee `social_profiles.cluster_profile` (read-model `SocialProfileRead`) por ser la única fuente plana; **no** `risk_predictions.prediction` (JSON, requeriría parseo en memoria). Caveat: un paciente sin perfil social (nunca entró al foro) no tiene fila en `social_profiles` y por tanto nunca aparece en este filtro, aunque sí tenga una predicción de riesgo vigente.
+- `SearchPatientDirectoryUseCase` orquesta: si viene `risk_cluster`, resuelve `patient_ids` vía el port (corta temprano devolviendo `[]` si no hay coincidencias, sin tocar el repositorio) y arma el `PatientDirectoryQuery`.
+- Ruta: `GET /api/v1/doctors/{doctor_id}/patients/directory?risk_cluster=&linked_after=&linked_before=`.
+- Tests: `service_usuarios/tests/{test_patient_directory_query.py, test_risk_cluster_filter_adapter.py, test_search_patient_directory_usecase.py, test_patient_repository_linked_at.py, test_patient_directory_e2e.py}`.
 
 # ADR-08: Gestión de Agenda Citas
 
@@ -295,6 +332,14 @@ Implementar el patrón Specification (Fowler) para encapsular las políticas de 
 - Añade indirección y complejidad al separar la validación del flujo principal.
 
 - Requiere definir clases adicionales para cada regla o combinación lógica.
+
+## Nota de implementación (as-built, 2026-07-20)
+
+Implementado en `service_transaccional`:
+- `IAppointmentSpecification` + `DoctorAvailabilitySpecification` + `ActivePatientLinkSpecification`: [`app/appointments/domain/specifications.py`](../service_transaccional/app/appointments/domain/specifications.py).
+- `CreateAppointmentUseCase` recibe `specifications: List[IAppointmentSpecification]` (opcional, default `[]`) y acumula todos los `error_message()` de las specs no satisfechas en un único `ValueError` antes de persistir.
+- Wiring en `service_transaccional/container.py`: `providers.List(doctor_availability_specification, active_patient_link_specification)` inyectado en `create_appointment_use_case`.
+- Tests: `service_transaccional/tests/test_appointment_specifications.py` (specs aisladas) y `test_create_appointment_usecase_specifications.py` (enforcement en el caso de uso).
 
 # ADR-09: Ruteo del Chat WebSocket
 
@@ -404,6 +449,14 @@ Implementar el patrón Remote Facade (Fowler) para centralizar la autenticación
 
 - Puede convertirse en un cuello de botella para el rendimiento general.
 
+## Nota de implementación (estado real en Microservicios)
+
+Estado: **Implementado y evolucionado a ForwardAuth Edge**. 
+En la arquitectura de vertical slicing (`service_auth`, `service_gateway`, `service_usuarios`, `service_pagos`, `service_transaccional`), el patrón evoluciona a un esquema donde **Traefik (edge proxy)** consulta al **API Gateway (`service_gateway`)** mediante **ForwardAuth** (`/validate` y `/validate/strict`).
+
+El API Gateway es el único componente que decodifica el JWT (usando `IJwtKeyProvider` de `shared_core`, respaldado por Vault o variables de entorno). Una vez validada la firma, Traefik inyecta las cabeceras `X-User-Id`, `X-User-Email`, `X-User-Role`, `X-Subscription-Status` en la petición entrante hacia los microservicios de dominio. Ningún microservicio de dominio valida JWTs directamente.
+
+
 # ADR-12: Generación Código de Vinculación
 
 ## Fecha
@@ -511,3 +564,21 @@ Implementar el patrón Strategy (GoF) para definir e intercambiar dinámicamente
 - El backend debe manejar múltiples estrategias aumentando la complejidad del mantenimiento de algoritmos.
 
 - Requiere mapear diferentes formatos de salida de los distintos proveedores de análisis de texto.
+
+## Nota de implementación (as-built, 2026-07-20)
+
+**Implementación canónica — `service_pagos` (checkout de suscripciones):**
+
+- `ICheckoutStrategy` (puerto): [`domain/ports.py`](../service_pagos/app/subscriptions/domain/ports.py) — `create_checkout_session(user_id, email, plan_type, stripe_customer_id)`.
+- **2 estrategias concretas** en [`infrastructure/adapters/stripe_checkout_strategies.py`](../service_pagos/app/subscriptions/infrastructure/adapters/stripe_checkout_strategies.py):
+  - `StripeRecurringCheckoutStrategy` — modo `subscription`, precios recurrentes.
+  - `StripeOneTimeCheckoutStrategy` — modo `payment`, acepta `card`/`oxxo`/`customer_balance` (SPEI), crea customer explícito.
+- **Selección en runtime por parámetro de negocio**: `CreateCheckoutSessionUseCase` ([`application/create_checkout_session_usecase.py`](../service_pagos/app/subscriptions/application/create_checkout_session_usecase.py)) recibe `checkout_strategies: Dict[PaymentModeEnum, ICheckoutStrategy]` y elige con `self.checkout_strategies.get(payment_mode)`.
+- Wiring en `service_pagos/container.py`: `providers.Dict({PaymentModeEnum.recurring: ..., PaymentModeEnum.one_time: ...})`.
+- Trazabilidad: RF-42.
+
+Este es el ejemplo fiel del patrón: mismo contrato, algoritmos intercambiables, elegidos dinámicamente por un parámetro de negocio — no hardcodeado.
+
+**Implementación previa — NLP (`service_transaccional`), estado: parcial.**
+
+`ISymptomExtractionPort` ([`patient_diaries/domain/ports.py`](../service_transaccional/app/patient_diaries/domain/ports.py)) tiene **una sola implementación concreta** (`NlpSymptomAdapter`, HTTP al microservicio ML `/nlp/extract-symptoms-llm`). Sin una segunda estrategia intercambiable, esto es arquitectónicamente un **Gateway** (mismo rol que ADR-06), no un Strategy realizado — el propio código se autodocumenta así ("patron Gateway - ADR-06/14"). Queda como candidato futuro: si se conserva una implementación alterna (p. ej. un motor ONNX local además del LLM actual), seleccionable por config (`NLP_ENGINE=onnx|llm`), ahí sí se completaría un segundo caso real de Strategy.

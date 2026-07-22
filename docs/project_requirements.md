@@ -6,7 +6,7 @@ Este documento detalla y estructura los requerimientos del software **Salud Pren
 
 ## 1. Matriz de Requerimientos Funcionales (RF)
 
-A continuación se presentan los cuarenta (40) requerimientos funcionales del sistema (activos y planeados para el futuro), habiendo eliminado los requerimientos descartados u obsoletos.
+A continuación se presentan los cuarenta y cinco (45) requerimientos funcionales del sistema (activos y planeados para el futuro), habiendo eliminado los requerimientos descartados u obsoletos. Los RF-41 a RF-45 (Suscripciones y Pagos) se agregaron post-split a microservicios (`service_pagos`), no formaban parte del catálogo original de 40.
 
 | ID REQ | Descripción del Requerimiento | Módulo | Estado de Implementación |
 |--------|-------------------------------|--------|--------------------------|
@@ -24,7 +24,7 @@ A continuación se presentan los cuarenta (40) requerimientos funcionales del si
 | **RF-12** | El sistema debe impedir que un paciente transfiera su expediente a otro médico (debe iniciar desde cero). | Vinculación | **`[Activo - Pendiente]`** |
 | **RF-13** | El sistema debe mostrar al médico el directorio completo de todos sus pacientes vinculados. | Directorio | **`[Activo - Implementado]`** |
 | **RF-14** | El sistema debe permitir al médico buscar pacientes por nombre o identificador dentro de su directorio. | Directorio | **`[Activo - Pendiente]`** |
-| **RF-15** | El sistema debe permitir al médico filtrar pacientes según criterios disponibles (fecha de vinculación, nivel de riesgo, etc.). | Directorio | **`[Activo - Pendiente]`** |
+| **RF-15** | El sistema debe permitir al médico filtrar pacientes según criterios disponibles (fecha de vinculación, nivel de riesgo, etc.). | Directorio | **`[Activo - Implementado]`** |
 | **RF-16** | El sistema debe permitir al médico acceder al perfil individual completo de una paciente. | Directorio | **`[Activo - Implementado]`** |
 | **RF-17** | El sistema debe permitir al paciente registrar su presión arterial de forma diaria. | Automonitoreo | **`[Activo - Implementado]`** |
 | **RF-18** | El sistema debe permitir al paciente registrar su peso corporal de forma diaria. | Automonitoreo | **`[Activo - Implementado]`** |
@@ -38,9 +38,9 @@ A continuación se presentan los cuarenta (40) requerimientos funcionales del si
 | **RF-26** | El sistema debe notificar a los médicos sobre citas pendientes o próximas. | Citas y Agenda | **`[Activo - Pendiente]`** |
 | **RF-27** | El sistema debe permitir al paciente consultar sus próximas citas programadas. | Citas y Agenda | **`[Activo - Implementado]`** |
 | **RF-28** | El sistema debe permitir al paciente y al médico consultar el historial de citas. | Citas y Agenda | **`[Activo - Implementado]`** |
-| **RF-29** | El sistema debe procesar los síntomas registrados por las pacientes en texto libre mediante técnicas de NLP (Procesamiento de Lenguaje Natural). | Análisis (NLP) | **`[Futuro - Planeado]`** |
+| **RF-29** | El sistema debe procesar los síntomas registrados por las pacientes en texto libre mediante técnicas de NLP (Procesamiento de Lenguaje Natural). | Análisis (NLP) | **`[Activo - Implementado]`** |
 | **RF-30** | El sistema debe generar un resumen clínico automatizado del estado reciente de cada paciente utilizando NLP. | Análisis (NLP) | **`[Futuro - Planeado]`** |
-| **RF-31** | El sistema debe identificar síntomas recurrentes y extraer entidades clínicas relevantes del texto libre de la paciente. | Análisis (NLP) | **`[Futuro - Planeado]`** |
+| **RF-31** | El sistema debe identificar síntomas recurrentes y extraer entidades clínicas relevantes del texto libre de la paciente. | Análisis (NLP) | **`[Activo - Implementado]`** |
 | **RF-32** | El sistema debe clasificar a la paciente en uno de cuatro perfiles de riesgo (Primigestas Sanas, Alto Riesgo Hipertensivo, Multíparas Sanas, Riesgo Metabólico/Obesidad) utilizando un modelo de Machine Learning de clustering (KNN y PCA). | Análisis (ML) | **`[Activo - Implementado]`** |
 | **RF-33** | El sistema debe mostrar al médico la clasificación de riesgo obtenida como apoyo para la toma de decisiones clínicas. | Análisis (ML) | **`[Activo - Implementado]`** |
 | **RF-34** | El sistema debe permitir el envío y recepción de mensajes entre pacientes y recepcionistas. | Mensajería | **`[Activo - Implementado]`** |
@@ -50,6 +50,11 @@ A continuación se presentan los cuarenta (40) requerimientos funcionales del si
 | **RF-38** | El sistema debe permitir la creación y gestión de grupos de apoyo temáticos dentro del foro de la comunidad. | Comunidad (Foros) | **`[Futuro - Planeado]`** |
 | **RF-39** | El sistema debe permitir a las pacientes comentar e interactuar en las publicaciones de otras usuarias del foro. | Comunidad (Foros) | **`[Futuro - Planeado]`** |
 | **RF-40** | El sistema debe permitir a los médicos publicar artículos y consejos de salud en la sección de comunidad. | Comunidad (Foros) | **`[Futuro - Planeado]`** |
+| **RF-41** | El sistema debe permitir al médico elegir e iniciar una suscripción a un plan (básico o premium) para acceder a las funcionalidades clínicas de la plataforma. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
+| **RF-42** | El sistema debe ofrecer múltiples métodos de pago para la suscripción: pago recurrente con tarjeta, o pago único mediante tarjeta, OXXO o transferencia SPEI. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
+| **RF-43** | El sistema debe permitir al médico gestionar su método de pago y consultar su historial de pagos a través de un portal de facturación. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
+| **RF-44** | El sistema debe restringir el acceso a las funcionalidades clínicas de los médicos que no cuenten con una suscripción activa. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
+| **RF-45** | El sistema debe procesar eventos de pago (webhooks) del proveedor externo para mantener actualizado el estado de la suscripción. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
 
 ---
 

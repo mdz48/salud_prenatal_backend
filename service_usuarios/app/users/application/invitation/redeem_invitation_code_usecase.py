@@ -1,10 +1,18 @@
 from datetime import datetime, timezone
-from app.users.domain.ports import IPatientRepository, IInvitationCodeRepository
+from typing import Optional
+from app.users.domain.ports import IPatientRepository, IInvitationCodeRepository, IPatientLinkedNotifier
+
 
 class RedeemInvitationCodeUseCase:
-    def __init__(self, patient_repository: IPatientRepository, invitation_code_repository: IInvitationCodeRepository):
+    def __init__(
+        self,
+        patient_repository: IPatientRepository,
+        invitation_code_repository: IInvitationCodeRepository,
+        patient_linked_notifier: Optional[IPatientLinkedNotifier] = None,
+    ):
         self.patient_repository = patient_repository
         self.invitation_code_repository = invitation_code_repository
+        self.patient_linked_notifier = patient_linked_notifier
 
     def execute(self, patient_id: int, code: str):
         code_obj = self.invitation_code_repository.get_by_code(code)
@@ -14,10 +22,14 @@ class RedeemInvitationCodeUseCase:
             raise ValueError("Invitation code already used")
         if code_obj.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
             raise ValueError("Invitation code expired")
-        
+
         patient = self.patient_repository.update_doctor(patient_id, code_obj.doctor_id)
         if not patient:
             raise ValueError("Patient not found")
-            
+
         self.invitation_code_repository.mark_used(code_obj.invitation_code_id, patient_id)
+
+        if self.patient_linked_notifier:
+            self.patient_linked_notifier.notify(patient_id=patient_id, doctor_id=code_obj.doctor_id)
+
         return patient

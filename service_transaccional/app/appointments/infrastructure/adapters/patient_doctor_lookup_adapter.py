@@ -1,6 +1,7 @@
 """Implementan IPatientLookup / IDoctorLookup de appointments leyendo `patients` y
-`doctors` de la DB compartida (read-models). appointments solo verifica EXISTENCIA
-(truth-test), por eso basta devolver la fila o None.
+`doctors` de la DB compartida (read-models). Devuelven la fila completa (o None):
+la mayoría de los llamadores solo hacen truth-test de existencia, pero
+ActivePatientLinkSpecification (ADR-08) también lee `patient.doctor_id`.
 """
 from typing import Optional
 from sqlalchemy.orm import Session

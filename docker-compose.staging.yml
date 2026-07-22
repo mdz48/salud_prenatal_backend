@@ -146,6 +146,7 @@ services:
       DATABASE_URL: postgresql://postgres:staging@postgres:5432/salud_prenatal_staging
       AUTH_LOGIN_URL: http://localhost:8081/api/v1/users/login
       FORWARDED_ALLOW_IPS: "*"
+      TRANSACCIONAL_URL: http://transaccional:8004
     labels:
       - "sp.stack=staging"
       - "traefik.enable=true"

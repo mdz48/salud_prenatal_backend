@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from salud_prenatal_shared_core.pregnancy_calculations import age_years
 from .user_entity import UserEntity
@@ -9,6 +9,7 @@ class PatientEntity(BaseModel):
     user_id: int
     doctor_id: Optional[int] = None
     birthdate: date
+    linked_at: Optional[datetime] = None
     user: Optional[UserEntity] = None
 
     @property

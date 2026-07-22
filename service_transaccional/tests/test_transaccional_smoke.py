@@ -76,8 +76,8 @@ def test_appointment_patient_doctor_lookup(db_session):
         DoctorLookupAdapter,
     )
 
-    db_session.add(PatientRead(user_id=1, doctor_id=1, birthdate=datetime.date(1990, 1, 1)))
-    db_session.add(DoctorRead(user_id=2))
+    db_session.add(PatientRead(patient_id=1, user_id=1, doctor_id=1, birthdate=datetime.date(1990, 1, 1)))
+    db_session.add(DoctorRead(doctor_id=1, user_id=2))
     db_session.commit()
 
     assert PatientLookupAdapter(db_session).get_by_id(1) is not None

@@ -1,8 +1,10 @@
+from datetime import datetime
+
 from container import Container
 from salud_prenatal_shared_core.db_cleanup import close_db_after
 from fastapi import APIRouter, Depends, status
 from app.users.infrastructure.schemas.doctor_schema import DoctorRegistration, DoctorResponse, DoctorDetailResponse, DoctorDashboardResponse
-from app.users.infrastructure.schemas.patient_schema import PatientResponse, PatientSearchResult
+from app.users.infrastructure.schemas.patient_schema import PatientResponse, PatientSearchResult, PatientDirectoryEntry
 from app.users.infrastructure.schemas.invitation_code_schema import InvitationCodeResponse
 from app.users.infrastructure.schemas.receptionist_schema import ReceptionistCreate, ReceptionistResponse, ReceptionistDetailResponse, ReceptionistDashboardResponse
 from typing import List, Optional
@@ -66,6 +68,23 @@ def register_doctor(data: DoctorRegistration):
 def search_patients(doctor_id: int, name: Optional[str] = None, last_name: Optional[str] = None):
     controller = Container.doctor_controller()
     return controller.search_patients(doctor_id=doctor_id, name=name, last_name=last_name)
+
+
+@router.get("/{doctor_id}/patients/directory", response_model=List[PatientDirectoryEntry], status_code=status.HTTP_200_OK)
+@close_db_after(Container)
+def search_patient_directory(
+    doctor_id: int,
+    risk_cluster: Optional[str] = None,
+    linked_after: Optional[datetime] = None,
+    linked_before: Optional[datetime] = None,
+):
+    controller = Container.doctor_controller()
+    return controller.search_patient_directory(
+        doctor_id=doctor_id,
+        risk_cluster=risk_cluster,
+        linked_after=linked_after,
+        linked_before=linked_before,
+    )
 
 
 @router.get("/{doctor_id}/patients", response_model=List[PatientResponse], status_code=status.HTTP_200_OK)

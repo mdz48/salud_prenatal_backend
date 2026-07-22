@@ -37,6 +37,7 @@ from app.forums.infrastructure.adapters.ad_eligibility_adapter import AdEligibil
 from app.chat.infrastructure.adapters.chat_contacts_lookup_adapter import ChatContactsLookupAdapter
 from app.chat.infrastructure.adapters.chat_user_lookup_adapter import ChatUserLookupAdapter
 from app.appointments.infrastructure.adapters.patient_doctor_lookup_adapter import PatientLookupAdapter, DoctorLookupAdapter
+from app.appointments.domain.specifications import DoctorAvailabilitySpecification, ActivePatientLinkSpecification
 
 # Use cases — appointments
 from app.appointments.application.create_appointment_usecase import CreateAppointmentUseCase
@@ -100,6 +101,38 @@ from app.forums.infrastructure.controllers.posts_controller import PostsControll
 from app.forums.infrastructure.controllers.reports_controller import ReportsController
 
 
+from app.notifications.infrastructure.repositories.notification_repository import NotificationRepository
+from app.notifications.application.get_user_notifications_usecase import GetUserNotificationsUseCase
+from app.notifications.application.mark_notification_read_usecase import MarkNotificationReadUseCase
+from app.notifications.application.publish_patient_linked_event_usecase import PublishPatientLinkedEventUseCase
+from app.core.events.event_dispatcher import InMemoryEventDispatcher
+from app.core.events.domain_event import AppointmentCreatedEvent, MessageSentEvent, PatientLinkedEvent
+from app.notifications.infrastructure.observers.notification_observers import (
+    NotificationLogObserver,
+    ChatWebSocketObserver,
+    FirebasePushObserver,
+)
+
+
+def setup_event_dispatcher() -> InMemoryEventDispatcher:
+    dispatcher = InMemoryEventDispatcher()
+    log_obs = NotificationLogObserver()
+    ws_obs = ChatWebSocketObserver()
+    push_obs = FirebasePushObserver()
+
+    dispatcher.subscribe(AppointmentCreatedEvent, log_obs)
+    dispatcher.subscribe(AppointmentCreatedEvent, push_obs)
+
+    dispatcher.subscribe(MessageSentEvent, log_obs)
+    dispatcher.subscribe(MessageSentEvent, ws_obs)
+    dispatcher.subscribe(MessageSentEvent, push_obs)
+
+    dispatcher.subscribe(PatientLinkedEvent, log_obs)
+    dispatcher.subscribe(PatientLinkedEvent, push_obs)
+
+    return dispatcher
+
+
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         modules=[
@@ -119,6 +152,9 @@ class Container(containers.DeclarativeContainer):
 
     db = providers.ContextLocalSingleton(lambda: get_session_factory()())
 
+    # Event Dispatcher (Singleton con Observers suscritos)
+    event_dispatcher = providers.Singleton(setup_event_dispatcher)
+
     # Adapters externos (HTTP a ML/NLP) — sin cambios
     ml_prediction_service = providers.Factory(MlPredictionServiceAdapter)
     symptom_extraction_port = providers.Factory(NlpSymptomAdapter)
@@ -133,6 +169,7 @@ class Container(containers.DeclarativeContainer):
     diary_symptom_repository = providers.Factory(DiarySymptomExtractionRepository, db=db)
     forums_repository = providers.Factory(ForumsRepository, db=db)
     device_token_repository = providers.Factory(DeviceTokenRepository, db=db)
+    notification_repository = providers.Factory(NotificationRepository, db=db)
 
     # Lectura de `users` en la DB compartida (read-model)
     users_read_repository = providers.Factory(UsersReadRepository, db=db)
@@ -150,8 +187,13 @@ class Container(containers.DeclarativeContainer):
     appointment_patient_lookup = providers.Factory(PatientLookupAdapter, db=db)
     appointment_doctor_lookup = providers.Factory(DoctorLookupAdapter, db=db)
 
+    # Specifications — reglas de agenda (ADR-08)
+    doctor_availability_specification = providers.Factory(DoctorAvailabilitySpecification, appointment_repo=appointment_repository)
+    active_patient_link_specification = providers.Factory(ActivePatientLinkSpecification, patient_lookup=appointment_patient_lookup)
+    appointment_specifications = providers.List(doctor_availability_specification, active_patient_link_specification)
+
     # Use cases — appointments
-    create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=appointment_patient_lookup, doctor_repo=appointment_doctor_lookup)
+    create_appointment_use_case = providers.Factory(CreateAppointmentUseCase, appointment_repo=appointment_repository, patient_repo=appointment_patient_lookup, doctor_repo=appointment_doctor_lookup, event_dispatcher=event_dispatcher, specifications=appointment_specifications)
     delete_appointment_use_case = providers.Factory(DeleteAppointmentUseCase, appointment_repo=appointment_repository)
     get_appointments_by_doctor_use_case = providers.Factory(GetAppointmentsByDoctorUseCase, appointment_repo=appointment_repository)
     get_appointments_by_patient_use_case = providers.Factory(GetAppointmentsByPatientUseCase, appointment_repo=appointment_repository)
@@ -160,7 +202,7 @@ class Container(containers.DeclarativeContainer):
 
     # Use cases — chat
     get_history_use_case = providers.Factory(GetHistoryUseCase, chat_repository=chat_repository)
-    save_message_use_case = providers.Factory(SaveMessageUseCase, chat_repository=chat_repository)
+    save_message_use_case = providers.Factory(SaveMessageUseCase, chat_repository=chat_repository, event_dispatcher=event_dispatcher)
     get_chat_inbox_use_case = providers.Factory(GetChatInboxUseCase, chat_repository=chat_repository, user_lookup=chat_user_lookup_adapter)
     get_chat_contacts_use_case = providers.Factory(GetChatContactsUseCase, contacts_lookup=chat_contacts_lookup_adapter)
 
@@ -204,15 +246,19 @@ class Container(containers.DeclarativeContainer):
     # Use cases — notifications
     register_device_token_use_case = providers.Factory(RegisterDeviceTokenUseCase, device_token_repository=device_token_repository)
     unregister_device_token_use_case = providers.Factory(UnregisterDeviceTokenUseCase, device_token_repository=device_token_repository)
+    get_user_notifications_use_case = providers.Factory(GetUserNotificationsUseCase, notification_repository=notification_repository)
+    mark_notification_read_use_case = providers.Factory(MarkNotificationReadUseCase, notification_repository=notification_repository)
+    publish_patient_linked_event_use_case = providers.Factory(PublishPatientLinkedEventUseCase, event_dispatcher=event_dispatcher)
 
     # Controllers
     appointment_controller = providers.Factory(AppointmentController, create_appointment_use_case, get_appointment_use_case, get_appointments_by_patient_use_case, get_appointments_by_doctor_use_case, update_appointment_use_case, delete_appointment_use_case)
     consultation_controller = providers.Factory(ConsultationController, create_consultation_use_case, get_consultations_by_medical_record_use_case)
     medical_record_controller = providers.Factory(MedicalRecordController, create_medical_record_use_case, get_patient_medical_record_use_case, update_medical_record_use_case, search_medical_records_by_patient_name_use_case, evaluate_patient_risk_use_case)
     patient_diary_controller = providers.Factory(PatientDiaryController, create_patient_diary_use_case, get_all_patient_diaries_use_case, get_diaries_by_medical_record_use_case, get_patient_diary_by_id_use_case, update_patient_diary_use_case, delete_patient_diary_use_case, get_diary_symptoms_use_case, get_medical_record_symptom_history_use_case)
-    chat_controller = providers.Factory(ChatController, get_history_use_case, save_message_use_case, get_chat_inbox_use_case, get_chat_contacts_use_case, device_token_repository, users_read_repository)
-    notification_controller = providers.Factory(NotificationController, register_device_token_use_case, unregister_device_token_use_case)
+    chat_controller = providers.Factory(ChatController, get_history_use_case, save_message_use_case, get_chat_inbox_use_case, get_chat_contacts_use_case)
+    notification_controller = providers.Factory(NotificationController, register_device_token_use_case, unregister_device_token_use_case, get_user_notifications_use_case, mark_notification_read_use_case, publish_patient_linked_event_use_case)
     profiles_controller = providers.Factory(ProfilesController, create_profile_use_case, get_profile_use_case, update_profile_use_case, get_profile_timeline_use_case, supabase_storage_adapter)
     groups_controller = providers.Factory(GroupsController, create_group_use_case, get_groups_use_case, get_recommended_groups_use_case)
     posts_controller = providers.Factory(PostsController, create_post_use_case, get_global_feed_use_case, get_group_feed_use_case, add_comment_use_case, get_comments_use_case, get_recommended_feed_use_case, supabase_storage_adapter)
     reports_controller = providers.Factory(ReportsController, create_report_use_case)
+

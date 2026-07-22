@@ -8,6 +8,7 @@ from app.patient_diaries.domain.ports import (
     IDiarySymptomRepository,
 )
 from app.patient_diaries.domain.patient_diary_entity import PatientDiaryEntity
+from app.patient_diaries.domain.diary_validation import validate_diary_measurements, PatientDiaryValidationError
 from app.patient_diaries.infrastructure.repositories.diary_symptom_extraction_repository import DiarySymptomExtractionRepository
 
 
@@ -29,6 +30,10 @@ class CreatePatientDiaryUseCase:
         data: PatientDiaryEntity,
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> PatientDiaryEntity:
+        notification = validate_diary_measurements(data)
+        if notification.has_errors():
+            raise PatientDiaryValidationError(notification.errors)
+
         created = self.repository.create(data)
         if background_tasks:
             background_tasks.add_task(self._extract_symptoms_bg, created)

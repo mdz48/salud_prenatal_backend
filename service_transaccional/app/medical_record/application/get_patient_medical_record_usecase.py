@@ -43,10 +43,9 @@ class GetPatientMedicalRecordUseCase:
         latest_eval = self.risk_prediction_repository.get_latest_for_medical_record(medical_record.medical_record_id)
         if latest_eval:
             # stale: hay bitacoras nuevas desde la ultima evaluacion
-            stale = bool(
-                latest_diary and latest_eval.predicted_at
-                and latest_diary.created_at and latest_diary.created_at > latest_eval.predicted_at
-            )
+            d_time = latest_diary.created_at.replace(tzinfo=None) if (latest_diary and latest_diary.created_at and latest_diary.created_at.tzinfo) else (latest_diary.created_at if latest_diary else None)
+            e_time = latest_eval.predicted_at.replace(tzinfo=None) if (latest_eval and latest_eval.predicted_at and latest_eval.predicted_at.tzinfo) else (latest_eval.predicted_at if latest_eval else None)
+            stale = bool(d_time and e_time and d_time > e_time)
             risk_prediction = {
                 "status": latest_eval.status,
                 "prediction": latest_eval.prediction,

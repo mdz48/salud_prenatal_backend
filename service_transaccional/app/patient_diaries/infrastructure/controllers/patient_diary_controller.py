@@ -9,6 +9,7 @@ from app.patient_diaries.application.delete_patient_diary_usecase import DeleteP
 from app.patient_diaries.application.get_diary_symptoms_usecase import GetDiarySymptomsUseCase
 from app.patient_diaries.application.get_medical_record_symptom_history_usecase import GetMedicalRecordSymptomHistoryUseCase
 from app.patient_diaries.domain.patient_diary_entity import PatientDiaryEntity
+from app.patient_diaries.domain.diary_validation import PatientDiaryValidationError
 from salud_prenatal_shared_core.error_handlers import internal_error
 
 class PatientDiaryController:
@@ -36,6 +37,8 @@ class PatientDiaryController:
         try:
             entity = PatientDiaryEntity(**data.model_dump())
             return self.create_patient_diary_use_case.execute(data=entity, background_tasks=background_tasks)
+        except PatientDiaryValidationError as e:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=e.errors)
         except Exception as e:
             raise internal_error(e)
 
@@ -61,6 +64,8 @@ class PatientDiaryController:
         try:
             entity = PatientDiaryEntity(**data.model_dump(exclude_unset=True))
             return self.update_patient_diary_use_case.execute(patient_diary_id=patient_diary_id, data=entity)
+        except PatientDiaryValidationError as e:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=e.errors)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:

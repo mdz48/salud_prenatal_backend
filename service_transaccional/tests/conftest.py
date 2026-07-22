@@ -12,6 +12,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault(
     "ENCRYPTION_KEY", base64.urlsafe_b64encode(b"0" * 32).decode()
 )
+os.environ.setdefault("INTERNAL_SERVICE_TOKEN", "test-internal-token")
 
 import pytest
 

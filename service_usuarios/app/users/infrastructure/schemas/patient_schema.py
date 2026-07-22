@@ -35,6 +35,15 @@ class PatientSearchResult(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class PatientDirectoryEntry(BaseModel):
+    patient_id: int
+    user_id: int
+    doctor_id: Optional[int] = None
+    linked_at: Optional[datetime] = None
+    age: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 class AppointmentDashboardResponse(BaseModel):
     appointment_id: int
     appointment_date: datetime

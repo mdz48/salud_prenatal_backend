@@ -7,6 +7,7 @@ from app.users.infrastructure.schemas.doctor_schema import DoctorRegistration, D
 from app.users.infrastructure.schemas.patient_schema import PatientResponse, PatientSearchResult, PatientDirectoryEntry
 from app.users.infrastructure.schemas.invitation_code_schema import InvitationCodeResponse
 from app.users.infrastructure.schemas.receptionist_schema import ReceptionistCreate, ReceptionistResponse, ReceptionistDetailResponse, ReceptionistDashboardResponse
+from app.users.infrastructure.schemas.unlink_request_schema import ResolveUnlinkRequest, UnlinkRequestResponse
 from typing import List, Optional
 
 from app.users.infrastructure.controllers.doctor_controller import DoctorController
@@ -101,8 +102,15 @@ def generate_invitation_code(doctor_id: int):
     return controller.generate_invitation_code(doctor_id=doctor_id)
 
 
-@router.delete("/{doctor_id}/patients/{patient_id}", response_model=PatientResponse, status_code=status.HTTP_200_OK)
+@router.get("/{doctor_id}/unlink-requests", response_model=List[UnlinkRequestResponse], status_code=status.HTTP_200_OK)
 @close_db_after(Container)
-def unlink_patient(doctor_id: int, patient_id: int):
+def list_unlink_requests(doctor_id: int, status: Optional[str] = None):
     controller = Container.doctor_controller()
-    return controller.unlink_patient(doctor_id=doctor_id, patient_id=patient_id)
+    return controller.list_unlink_requests(doctor_id=doctor_id, status_filter=status)
+
+
+@router.patch("/{doctor_id}/unlink-requests/{request_id}", response_model=UnlinkRequestResponse, status_code=status.HTTP_200_OK)
+@close_db_after(Container)
+def resolve_unlink_request(doctor_id: int, request_id: int, data: ResolveUnlinkRequest):
+    controller = Container.doctor_controller()
+    return controller.resolve_unlink_request(doctor_id=doctor_id, request_id=request_id, data=data)

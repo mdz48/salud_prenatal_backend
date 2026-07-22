@@ -13,6 +13,7 @@ from app.users.application.doctor.get_receptionist_by_id_usecase import GetRecep
 from app.users.application.doctor.get_receptionist_dashboard_usecase import GetReceptionistDashboardUseCase
 from app.users.infrastructure.schemas.receptionist_schema import ReceptionistCreate
 from app.users.infrastructure.schemas.patient_schema import PatientSearchResult, PatientDirectoryEntry
+from app.users.infrastructure.schemas.unlink_request_schema import ResolveUnlinkRequest
 
 class DoctorController:
     def __init__(
@@ -27,8 +28,9 @@ class DoctorController:
         get_doctor_dashboard_use_case,
         get_receptionist_by_id_use_case,
         get_receptionist_dashboard_use_case,
-        unlink_patient_use_case,
-        search_patient_directory_use_case
+        search_patient_directory_use_case,
+        list_unlink_requests_use_case,
+        resolve_unlink_request_use_case,
     ):
         self.create_receptionist_use_case = create_receptionist_use_case
         self.get_receptionists_by_doctor_use_case = get_receptionists_by_doctor_use_case
@@ -40,8 +42,9 @@ class DoctorController:
         self.get_doctor_dashboard_use_case = get_doctor_dashboard_use_case
         self.get_receptionist_by_id_use_case = get_receptionist_by_id_use_case
         self.get_receptionist_dashboard_use_case = get_receptionist_dashboard_use_case
-        self.unlink_patient_use_case = unlink_patient_use_case
         self.search_patient_directory_use_case = search_patient_directory_use_case
+        self.list_unlink_requests_use_case = list_unlink_requests_use_case
+        self.resolve_unlink_request_use_case = resolve_unlink_request_use_case
 
     def create_receptionist(self, doctor_id: int, data: ReceptionistCreate):
         from app.users.application.dtos import ReceptionistCreateDTO
@@ -168,15 +171,25 @@ class DoctorController:
         except Exception:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while generating the invitation code.")
 
-    def unlink_patient(self, doctor_id: int, patient_id: int):
+    def list_unlink_requests(self, doctor_id: int, status_filter=None):
         try:
-            return self.unlink_patient_use_case.execute(doctor_id=doctor_id, patient_id=patient_id)
+            return self.list_unlink_requests_use_case.execute(doctor_id=doctor_id, status=status_filter)
+        except Exception as e:
+            print(f"Error listing unlink requests: {repr(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while fetching unlink requests.")
+
+    def resolve_unlink_request(self, doctor_id: int, request_id: int, data: ResolveUnlinkRequest):
+        try:
+            return self.resolve_unlink_request_use_case.execute(
+                doctor_id=doctor_id, request_id=request_id, new_status=data.status
+            )
         except ValueError as e:
             error_str = str(e)
             if "not found" in error_str:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_str)
-            else:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_str)
+            if "already" in error_str:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error_str)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_str)
         except Exception as e:
-            print(f"Error unlinking patient: {repr(e)}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while unlinking the patient.")
+            print(f"Error resolving unlink request: {repr(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while resolving the unlink request.")

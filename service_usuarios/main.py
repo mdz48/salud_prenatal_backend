@@ -18,6 +18,7 @@ from app.users.infrastructure.models import (  # noqa: F401
     doctor_model,
     receptionist_model,
     invitation_code_model,
+    unlink_request_model,
 )
 from app.users.infrastructure.readmodels import (  # noqa: F401
     appointment_readmodel,

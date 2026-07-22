@@ -13,7 +13,11 @@ def test_routes_present_and_login_absent(app):
     assert "/api/v1/users/" in paths
     assert "/api/v1/doctors/register" in paths
     assert "/api/v1/patients/register" in paths
-    assert "/api/v1/doctors/{doctor_id}/patients/{patient_id}" in paths
+    # La desvinculación directa del doctor se retiró: ahora todo pasa por el
+    # flujo de solicitud paciente -> doctor.
+    assert "/api/v1/doctors/{doctor_id}/patients/{patient_id}" not in paths
+    assert "/api/v1/patients/{patient_id}/unlink-requests" in paths
+    assert "/api/v1/doctors/{doctor_id}/unlink-requests/{request_id}" in paths
     # El login se movió al servicio auth: NO debe existir aquí.
     assert "/api/v1/users/login" not in paths
 

@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from salud_prenatal_shared_core.cors import get_cors_origins
 from salud_prenatal_shared_core.database import Base, get_engine
 from salud_prenatal_shared_core.error_handlers import register_exception_handlers
 
@@ -46,7 +47,7 @@ app.container = container
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

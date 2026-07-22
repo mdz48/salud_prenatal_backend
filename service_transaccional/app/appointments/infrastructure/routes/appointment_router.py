@@ -7,7 +7,7 @@ from app.appointments.infrastructure.schemas.appointment_schema import Appointme
 from app.appointments.infrastructure.controllers.appointment_controller import AppointmentController
 
 from salud_prenatal_shared_core.enums import RoleEnum
-from salud_prenatal_shared_core.auth_dependencies import RoleChecker, require_active_subscription
+from salud_prenatal_shared_core.auth_dependencies import RoleChecker, require_active_subscription, get_current_user
 from salud_prenatal_shared_core.auth_dependencies import Principal as UserEntity
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
@@ -29,7 +29,8 @@ def create_appointment(
 @router.get("/{appointment_id}", response_model=AppointmentResponse)
 @close_db_after(Container)
 def get_appointment(
-    appointment_id: int, 
+    appointment_id: int,
+    current_user: UserEntity = Depends(get_current_user),
 ):
     controller = Container.appointment_controller()
     return controller.get_appointment(appointment_id)
@@ -38,7 +39,8 @@ def get_appointment(
 @router.get("/patient/{patient_id}", response_model=List[AppointmentResponse])
 @close_db_after(Container)
 def get_appointments_by_patient(
-    patient_id: int, 
+    patient_id: int,
+    current_user: UserEntity = Depends(get_current_user),
 ):
     controller = Container.appointment_controller()
     return controller.get_appointments_by_patient(patient_id)
@@ -47,7 +49,8 @@ def get_appointments_by_patient(
 @router.get("/doctor/{doctor_id}", response_model=List[AppointmentResponse])
 @close_db_after(Container)
 def get_appointments_by_doctor(
-    doctor_id: int, 
+    doctor_id: int,
+    current_user: UserEntity = Depends(get_current_user),
 ):
     controller = Container.appointment_controller()
     return controller.get_appointments_by_doctor(doctor_id)

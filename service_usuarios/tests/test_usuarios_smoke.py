@@ -33,9 +33,11 @@ def test_register_doctor_and_dashboard(client):
     assert r.status_code == 201, r.text
     doctor_id = r.json()["doctor_id"]
 
+    doc_headers = {"X-User-Email": "ana.doc@example.com", "X-User-Role": "doctor"}
+
     # Dashboard del doctor: sin citas -> 0. Ejercita el read-model de appointments
     # (tabla vacía en la DB compartida de test) a través del lookup adapter.
-    r2 = client.get(f"/api/v1/doctors/{doctor_id}/dashboard")
+    r2 = client.get(f"/api/v1/doctors/{doctor_id}/dashboard", headers=doc_headers)
     assert r2.status_code == 200, r2.text
     body = r2.json()
     assert body["today_appointments_count"] == 0

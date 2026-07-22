@@ -10,6 +10,7 @@ schema — deja ese trabajo a los servicios dueños (usuarios/pagos/transacciona
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from salud_prenatal_shared_core.cors import get_cors_origins
 from salud_prenatal_shared_core.error_handlers import register_exception_handlers
 
 # Importa los read-models para que queden mapeados en Base.metadata (no create_all).
@@ -24,7 +25,7 @@ app.container = container
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

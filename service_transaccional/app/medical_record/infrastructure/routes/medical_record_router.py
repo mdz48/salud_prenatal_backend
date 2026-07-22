@@ -1,7 +1,7 @@
 from container import Container
 from salud_prenatal_shared_core.db_cleanup import close_db_after
 from fastapi import APIRouter, Depends, status
-from salud_prenatal_shared_core.auth_dependencies import RoleChecker, require_active_subscription
+from salud_prenatal_shared_core.auth_dependencies import RoleChecker, require_active_subscription, get_current_user, Principal
 from salud_prenatal_shared_core.enums import RoleEnum
 from typing import List, Optional
 from app.medical_record.infrastructure.schemas.medical_record_schema import (
@@ -18,6 +18,7 @@ require_doctor = RoleChecker([RoleEnum.doctor])
 @close_db_after(Container)
 def create_medical_record(
     data: MedicalRecordCreate,
+    current_user: Principal = Depends(get_current_user),
 ):
     controller = Container.medical_record_controller()
     return controller.create_medical_record(data)
@@ -29,6 +30,7 @@ def search_medical_records(
     doctor_id: int,
     name: Optional[str] = None,
     last_name: Optional[str] = None,
+    current_user: Principal = Depends(get_current_user),
 ):
     controller = Container.medical_record_controller()
     return controller.search_medical_records(doctor_id=doctor_id, name=name, last_name=last_name)
@@ -37,8 +39,9 @@ def search_medical_records(
 @router.get("/patient/{patient_id}", response_model=PatientMedicalRecordResponse, status_code=status.HTTP_200_OK)
 @close_db_after(Container)
 def get_patient_medical_record(
-    patient_id: int, 
-    doctor_id: int, 
+    patient_id: int,
+    doctor_id: int,
+    current_user: Principal = Depends(get_current_user),
 ):
     controller = Container.medical_record_controller()
     return controller.get_patient_medical_record(patient_id, doctor_id)

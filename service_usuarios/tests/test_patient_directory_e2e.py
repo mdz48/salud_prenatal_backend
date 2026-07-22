@@ -38,14 +38,17 @@ def test_directory_reflects_linked_at_after_redeeming_invitation(client):
     doctor_id = _register_doctor(client, "directory.doc@example.com")
     patient_id = _register_patient(client, "directory.pat@example.com")
 
-    r = client.post(f"/api/v1/doctors/{doctor_id}/invitation-code")
+    doc_headers = {"X-User-Email": "directory.doc@example.com", "X-User-Role": "doctor"}
+    pat_headers = {"X-User-Email": "directory.pat@example.com", "X-User-Role": "paciente"}
+
+    r = client.post(f"/api/v1/doctors/{doctor_id}/invitation-code", headers=doc_headers)
     assert r.status_code == 201, r.text
     code = r.json()["code"]
 
-    r = client.post(f"/api/v1/patients/{patient_id}/redeem-code", json={"code": code})
+    r = client.post(f"/api/v1/patients/{patient_id}/redeem-code", json={"code": code}, headers=pat_headers)
     assert r.status_code == 200, r.text
 
-    r = client.get(f"/api/v1/doctors/{doctor_id}/patients/directory")
+    r = client.get(f"/api/v1/doctors/{doctor_id}/patients/directory", headers=doc_headers)
     assert r.status_code == 200, r.text
     entries = r.json()
     assert len(entries) == 1
@@ -53,6 +56,6 @@ def test_directory_reflects_linked_at_after_redeeming_invitation(client):
     assert entries[0]["linked_at"] is not None
 
     future = (datetime.utcnow() + timedelta(days=1)).isoformat()
-    r = client.get(f"/api/v1/doctors/{doctor_id}/patients/directory", params={"linked_after": future})
+    r = client.get(f"/api/v1/doctors/{doctor_id}/patients/directory", params={"linked_after": future}, headers=doc_headers)
     assert r.status_code == 200, r.text
     assert r.json() == []

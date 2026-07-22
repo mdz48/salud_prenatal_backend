@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
+from salud_prenatal_shared_core.cors import get_cors_origins
 from features.jwt_validation.router import router as jwt_validation_router
 from features.docs_aggregation.router import router as docs_router
 
@@ -25,7 +26,7 @@ app = FastAPI(title="salud-prenatal · API Gateway (ForwardAuth)", docs_url=None
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

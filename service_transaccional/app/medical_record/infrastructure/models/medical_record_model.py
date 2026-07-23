@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Boolean, Enum, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Boolean, Enum, UniqueConstraint, Text
 from sqlalchemy.orm import relationship
 from salud_prenatal_shared_core.enums import BloodTypeEnum
 from salud_prenatal_shared_core.database import Base
@@ -49,6 +49,9 @@ class MedicalRecord(Base):
 
     # Lifestyle
     active_smoking = Column(Boolean, nullable=True) # Tabaquismo activo
+
+    # Plan general del expediente (distinto del plan por consulta)
+    general_plan = Column(Text, nullable=True)
 
     # Relationships
     consultations = relationship("Consultation", back_populates="medical_record")

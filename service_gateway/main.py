@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 from salud_prenatal_shared_core.cors import get_cors_origins
+from salud_prenatal_shared_core.security_headers import register_security_headers
 from features.jwt_validation.router import router as jwt_validation_router
 from features.docs_aggregation.router import router as docs_router
 
@@ -31,6 +32,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+register_security_headers(app)
 
 app.include_router(jwt_validation_router)
 app.include_router(docs_router)

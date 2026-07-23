@@ -10,20 +10,22 @@ from app.users.infrastructure.controllers.user_controller import UserController
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-@close_db_after(Container)
-def create_user(
-    data: UserCreate,
-):
-    controller = Container.user_controller()
-    return controller.create_user(data)
-
-
-@router.get("/", response_model=List[UserResponse])
-@close_db_after(Container)
-def get_users(skip: int = 0, limit: int = 100):
-    controller = Container.user_controller()
-    return controller.get_users(skip=skip, limit=limit)
+# Deshabilitado: ruta sin ningún control de auth/rol (creaba y listaba usuarios
+# arbitrarios sin token). Solo se usaba para seed/dev, ya no debe estar expuesta.
+# @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+# @close_db_after(Container)
+# def create_user(
+#     data: UserCreate,
+# ):
+#     controller = Container.user_controller()
+#     return controller.create_user(data)
+#
+#
+# @router.get("/", response_model=List[UserResponse])
+# @close_db_after(Container)
+# def get_users(skip: int = 0, limit: int = 100):
+#     controller = Container.user_controller()
+#     return controller.get_users(skip=skip, limit=limit)
 
 
 @router.get("/{user_id}", response_model=UserResponse)

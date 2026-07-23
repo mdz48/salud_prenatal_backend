@@ -49,6 +49,9 @@ class MedicalRecordEntity(BaseModel):
     # Lifestyle
     active_smoking: Optional[bool] = None
 
+    # Plan general del expediente (distinto del plan por consulta)
+    general_plan: Optional[str] = None
+
     consultations: Optional[List[ConsultationEntity]] = []
     patient_diaries: Optional[List[PatientDiaryEntity]] = []
 

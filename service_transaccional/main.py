@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from salud_prenatal_shared_core.cors import get_cors_origins
 from salud_prenatal_shared_core.database import Base, get_engine
 from salud_prenatal_shared_core.error_handlers import register_exception_handlers
+from salud_prenatal_shared_core.security_headers import register_security_headers
 from app.notifications.application.tasks import (
     notify_upcoming_appointments_job,
     send_daily_bitacora_reminder_job,
@@ -87,6 +88,7 @@ app.add_middleware(
 )
 
 register_exception_handlers(app)
+register_security_headers(app)
 
 # Mismos prefijos que el monolito: /api/v1/...
 for r in (

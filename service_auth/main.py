@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from salud_prenatal_shared_core.cors import get_cors_origins
 from salud_prenatal_shared_core.error_handlers import register_exception_handlers
+from salud_prenatal_shared_core.security_headers import register_security_headers
 
 # Importa los read-models para que queden mapeados en Base.metadata (no create_all).
 from app.auth.infrastructure.models import auth_readmodels  # noqa: F401
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 register_exception_handlers(app)
+register_security_headers(app)
 
 # Mismo path que el monolito: /api/v1/users/login (no cambia el frontend).
 app.include_router(auth_router, prefix="/api/v1")

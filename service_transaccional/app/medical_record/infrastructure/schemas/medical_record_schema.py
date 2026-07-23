@@ -33,6 +33,7 @@ class MedicalRecordBase(BaseModel):
     fetal_growth_restriction: Optional[bool] = None
     family_history_heart_disease: Optional[bool] = None
     active_smoking: Optional[bool] = None
+    general_plan: Optional[str] = None
 
 class MedicalRecordCreate(MedicalRecordBase):
     patient_id: int

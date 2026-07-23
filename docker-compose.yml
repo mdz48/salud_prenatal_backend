@@ -91,12 +91,14 @@ services:
       - "traefik.http.middlewares.jwt-auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
       - "traefik.http.middlewares.jwt-strict.forwardauth.address=http://gateway:8000/validate/strict"
       - "traefik.http.middlewares.jwt-strict.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
+      - "traefik.http.middlewares.hide-server.headers.customResponseHeaders.Server="
       # --- Router del propio gateway: docs + specs + health. SIN middleware (público).
       #     /validate y /validate/strict NO se rutean: solo los llama Traefik por red interna.
       #     Prioridad 500 para ganarle al catch-all de transaccional en los openapi.json.
       - "traefik.http.routers.gateway.rule=Path(`/`) || Path(`/health`) || Path(`/docs`) || Path(`/openapi.json`) || Path(`/api/v1/auth/openapi.json`) || Path(`/api/v1/usuarios/openapi.json`) || Path(`/api/v1/pagos/openapi.json`) || Path(`/api/v1/transaccional/openapi.json`)"
       - "traefik.http.routers.gateway.priority=500"
       - "traefik.http.routers.gateway.entrypoints=web"
+      - "traefik.http.routers.gateway.middlewares=hide-server@docker"
       - "traefik.http.routers.gateway.service=gateway"
       - "traefik.http.services.gateway.loadbalancer.server.port=8000"
     depends_on:
@@ -134,13 +136,13 @@ services:
       - "traefik.http.routers.auth-login.rule=Path(`/api/v1/users/login`)"
       - "traefik.http.routers.auth-login.priority=400"
       - "traefik.http.routers.auth-login.entrypoints=web"
-      - "traefik.http.routers.auth-login.middlewares=jwt-auth@docker"
+      - "traefik.http.routers.auth-login.middlewares=jwt-auth@docker,hide-server@docker"
       - "traefik.http.routers.auth-login.service=auth"
       # refresh exige token válido -> jwt-strict (fail-closed en el edge).
       - "traefik.http.routers.auth-refresh.rule=Path(`/api/v1/users/refresh`)"
       - "traefik.http.routers.auth-refresh.priority=400"
       - "traefik.http.routers.auth-refresh.entrypoints=web"
-      - "traefik.http.routers.auth-refresh.middlewares=jwt-strict@docker"
+      - "traefik.http.routers.auth-refresh.middlewares=jwt-strict@docker,hide-server@docker"
       - "traefik.http.routers.auth-refresh.service=auth"
       # .service explícito en cada router: cuando el nombre del router no coincide
       # con el del service, Traefik solo lo adivina por fallback. Declararlo evita
@@ -168,7 +170,7 @@ services:
       - "traefik.http.routers.usuarios.rule=PathPrefix(`/api/v1/users`) || PathPrefix(`/api/v1/doctors`) || PathPrefix(`/api/v1/patients`)"
       - "traefik.http.routers.usuarios.priority=300"
       - "traefik.http.routers.usuarios.entrypoints=web"
-      - "traefik.http.routers.usuarios.middlewares=jwt-auth@docker"
+      - "traefik.http.routers.usuarios.middlewares=jwt-auth@docker,hide-server@docker"
       - "traefik.http.routers.usuarios.service=usuarios"
       - "traefik.http.services.usuarios.loadbalancer.server.port=8002"
     depends_on:
@@ -193,13 +195,13 @@ services:
       - "traefik.http.routers.pagos-webhook.rule=Path(`/api/v1/subscriptions/webhook`)"
       - "traefik.http.routers.pagos-webhook.priority=350"
       - "traefik.http.routers.pagos-webhook.entrypoints=web"
-      - "traefik.http.routers.pagos-webhook.middlewares=jwt-auth@docker"
+      - "traefik.http.routers.pagos-webhook.middlewares=jwt-auth@docker,hide-server@docker"
       - "traefik.http.routers.pagos-webhook.service=pagos"
       # El resto de /subscriptions es 100% require_doctor -> jwt-strict.
       - "traefik.http.routers.pagos.rule=PathPrefix(`/api/v1/subscriptions`)"
       - "traefik.http.routers.pagos.priority=300"
       - "traefik.http.routers.pagos.entrypoints=web"
-      - "traefik.http.routers.pagos.middlewares=jwt-strict@docker"
+      - "traefik.http.routers.pagos.middlewares=jwt-strict@docker,hide-server@docker"
       - "traefik.http.routers.pagos.service=pagos"
       - "traefik.http.services.pagos.loadbalancer.server.port=8003"
     depends_on:
@@ -225,7 +227,7 @@ services:
       - "traefik.http.routers.transaccional-chat.rule=PathPrefix(`/api/v1/chat`)"
       - "traefik.http.routers.transaccional-chat.priority=300"
       - "traefik.http.routers.transaccional-chat.entrypoints=web"
-      - "traefik.http.routers.transaccional-chat.middlewares=jwt-strict@docker"
+      - "traefik.http.routers.transaccional-chat.middlewares=jwt-strict@docker,hide-server@docker"
       - "traefik.http.routers.transaccional-chat.service=transaccional"
       # OJO: forums NO lleva jwt-strict y por eso no tiene router propio — cae al
       # catch-all. Tiene 6 endpoints públicos hoy (GET /forums/groups,
@@ -238,7 +240,7 @@ services:
       - "traefik.http.routers.transaccional.rule=PathPrefix(`/api/v1`)"
       - "traefik.http.routers.transaccional.priority=1"
       - "traefik.http.routers.transaccional.entrypoints=web"
-      - "traefik.http.routers.transaccional.middlewares=jwt-auth@docker"
+      - "traefik.http.routers.transaccional.middlewares=jwt-auth@docker,hide-server@docker"
       - "traefik.http.routers.transaccional.service=transaccional"
       - "traefik.http.services.transaccional.loadbalancer.server.port=8004"
     depends_on:

@@ -10,12 +10,13 @@ def test_health(client):
 
 def test_routes_present_and_login_absent(app):
     paths = set(app.openapi()["paths"])
-    assert "/api/v1/users/" in paths
     assert "/api/v1/doctors/register" in paths
     assert "/api/v1/patients/register" in paths
     assert "/api/v1/doctors/{doctor_id}/patients/{patient_id}" in paths
     # El login se movió al servicio auth: NO debe existir aquí.
     assert "/api/v1/users/login" not in paths
+    # POST/GET /api/v1/users/ deshabilitada: sin auth, solo era para dev.
+    assert "/api/v1/users/" not in paths
 
 
 def test_register_doctor_and_dashboard(client):

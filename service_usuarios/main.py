@@ -11,16 +11,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from salud_prenatal_shared_core.cors import get_cors_origins
 from salud_prenatal_shared_core.database import Base, get_engine
 from salud_prenatal_shared_core.error_handlers import register_exception_handlers
+from salud_prenatal_shared_core.security_headers import register_security_headers
 
-# Registrar los modelos (y read-models) en Base.metadata antes de create_all.
-from app.users.infrastructure.models import (  # noqa: F401
+from app.users.infrastructure.models import ( 
     user_model,
     patient_model,
     doctor_model,
     receptionist_model,
     invitation_code_model,
 )
-from app.users.infrastructure.readmodels import (  # noqa: F401
+from app.users.infrastructure.readmodels import ( 
     appointment_readmodel,
     medical_record_readmodel,
 )
@@ -33,9 +33,6 @@ from container import Container
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # DB compartida: create_all con checkfirst solo crea las tablas de usuarios si
-    # faltan. Las tablas appointments/medical_records las owned el servicio
-    # transaccional; aquí solo se leen por read-model.
     Base.metadata.create_all(bind=get_engine())
     yield
 
@@ -54,6 +51,7 @@ app.add_middleware(
 )
 
 register_exception_handlers(app)
+register_security_headers(app)
 
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(doctor_router, prefix="/api/v1")

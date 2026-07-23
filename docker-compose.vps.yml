@@ -118,11 +118,15 @@ services:
       #     router para no gastar el validador con tráfico que se va a rechazar. ---
       - "traefik.http.middlewares.ratelimit.ratelimit.average=10"
       - "traefik.http.middlewares.ratelimit.ratelimit.burst=20"
+      # --- Oculta la cabecera Server (ZAP: "Cabeceras de seguridad faltantes").
+      #     customResponseHeaders con valor vacío = Traefik la borra de la respuesta. ---
+      - "traefik.http.middlewares.hide-server.headers.customResponseHeaders.Server="
       # --- Docs agregadas + health (público). /validate NO se rutea: es interno. ---
       - "traefik.http.routers.gateway.rule=Host(`saludprenatal.sytes.net`) && (Path(`/`) || Path(`/health`) || Path(`/docs`) || Path(`/openapi.json`) || Path(`/api/v1/auth/openapi.json`) || Path(`/api/v1/usuarios/openapi.json`) || Path(`/api/v1/pagos/openapi.json`) || Path(`/api/v1/transaccional/openapi.json`))"
       - "traefik.http.routers.gateway.priority=500"
       - "traefik.http.routers.gateway.entrypoints=websecure"
       - "traefik.http.routers.gateway.tls=true"
+      - "traefik.http.routers.gateway.middlewares=hide-server@docker"
       - "traefik.http.routers.gateway.service=gateway"
       - "traefik.http.services.gateway.loadbalancer.server.port=8000"
     networks: [app_network]
@@ -152,14 +156,14 @@ services:
       - "traefik.http.routers.auth-login.priority=400"
       - "traefik.http.routers.auth-login.entrypoints=websecure"
       - "traefik.http.routers.auth-login.tls=true"
-      - "traefik.http.routers.auth-login.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.auth-login.middlewares=ratelimit@docker,jwt-auth@docker,hide-server@docker"
       - "traefik.http.routers.auth-login.service=auth"
       # refresh exige token válido -> fail-closed.
       - "traefik.http.routers.auth-refresh.rule=Host(`saludprenatal.sytes.net`) && Path(`/api/v1/users/refresh`)"
       - "traefik.http.routers.auth-refresh.priority=400"
       - "traefik.http.routers.auth-refresh.entrypoints=websecure"
       - "traefik.http.routers.auth-refresh.tls=true"
-      - "traefik.http.routers.auth-refresh.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.auth-refresh.middlewares=ratelimit@docker,jwt-strict@docker,hide-server@docker"
       - "traefik.http.routers.auth-refresh.service=auth"
       - "traefik.http.services.auth.loadbalancer.server.port=8001"
     networks: [app_network]
@@ -182,7 +186,7 @@ services:
       - "traefik.http.routers.usuarios.priority=300"
       - "traefik.http.routers.usuarios.entrypoints=websecure"
       - "traefik.http.routers.usuarios.tls=true"
-      - "traefik.http.routers.usuarios.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.usuarios.middlewares=ratelimit@docker,jwt-auth@docker,hide-server@docker"
       - "traefik.http.routers.usuarios.service=usuarios"
       - "traefik.http.services.usuarios.loadbalancer.server.port=8002"
     networks: [app_network]
@@ -205,14 +209,14 @@ services:
       - "traefik.http.routers.pagos-webhook.priority=350"
       - "traefik.http.routers.pagos-webhook.entrypoints=websecure"
       - "traefik.http.routers.pagos-webhook.tls=true"
-      - "traefik.http.routers.pagos-webhook.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.pagos-webhook.middlewares=ratelimit@docker,jwt-auth@docker,hide-server@docker"
       - "traefik.http.routers.pagos-webhook.service=pagos"
       # El resto de /subscriptions es 100% require_doctor -> fail-closed.
       - "traefik.http.routers.pagos.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1/subscriptions`)"
       - "traefik.http.routers.pagos.priority=300"
       - "traefik.http.routers.pagos.entrypoints=websecure"
       - "traefik.http.routers.pagos.tls=true"
-      - "traefik.http.routers.pagos.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.pagos.middlewares=ratelimit@docker,jwt-strict@docker,hide-server@docker"
       - "traefik.http.routers.pagos.service=pagos"
       - "traefik.http.services.pagos.loadbalancer.server.port=8003"
     networks: [app_network]
@@ -240,7 +244,7 @@ services:
       - "traefik.http.routers.transaccional-chat.priority=300"
       - "traefik.http.routers.transaccional-chat.entrypoints=websecure"
       - "traefik.http.routers.transaccional-chat.tls=true"
-      - "traefik.http.routers.transaccional-chat.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.transaccional-chat.middlewares=ratelimit@docker,jwt-strict@docker,hide-server@docker"
       - "traefik.http.routers.transaccional-chat.service=transaccional"
       # OJO: forums NO lleva jwt-strict y por eso no tiene router propio — cae al
       # catch-all. Tiene 6 endpoints públicos hoy (GET /forums/groups,
@@ -253,7 +257,7 @@ services:
       - "traefik.http.routers.transaccional.priority=1"
       - "traefik.http.routers.transaccional.entrypoints=websecure"
       - "traefik.http.routers.transaccional.tls=true"
-      - "traefik.http.routers.transaccional.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.transaccional.middlewares=ratelimit@docker,jwt-auth@docker,hide-server@docker"
       - "traefik.http.routers.transaccional.service=transaccional"
       - "traefik.http.services.transaccional.loadbalancer.server.port=8004"
     networks: [app_network]

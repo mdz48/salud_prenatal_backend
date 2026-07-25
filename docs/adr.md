@@ -501,7 +501,7 @@ Implementar el patrón Factory Method (GoF) para delegar la creación y formato 
 
 ## Estado
 
-Suggested
+**Diferido** (2026-07-25) — ver Nota de diferimiento al final de este ADR.
 
 ## Responsables
 
@@ -528,6 +528,24 @@ Implementar el patrón de diseño Composite (GoF) para tratar de forma uniforme 
 - Dificulta restringir operaciones específicas en ciertos nodos del árbol sin añadir lógica adicional.
 
 - Complica el diseño del esquema de base de datos para mapear jerarquías recursivas.
+
+## Nota de diferimiento (2026-07-25)
+
+**El módulo de comunidad está implementado y en producción, pero sin el patrón Composite.** Los requerimientos RF-37 a RF-40 (publicaciones, grupos de apoyo, comentarios y artículos de médicos) se cubren hoy con un **modelo relacional plano** en `service_transaccional/app/forums`: `CommentModel` referencia un `post_id` directamente ([`infrastructure/models/comment_model.py`](../service_transaccional/app/forums/infrastructure/models/comment_model.py)), sin columna de auto-referencia (`parent_comment_id`) ni recursión de ningún tipo. Las rutas activas son `posts_router.py`, `groups_router.py`, `profiles_router.py` y `reports_router.py`.
+
+### Motivo del diferimiento
+
+1. **No existe el requerimiento que justifica el patrón.** Composite resuelve el tratamiento uniforme de nodos hoja y nodos compuestos en una jerarquía recursiva. Ninguno de los RF-37 a RF-40 pide hilos de discusión anidados: el foro es publicación → comentarios en un solo nivel. Sin árbol real, el patrón no tiene una estructura que unificar.
+2. **El costo es concreto y el beneficio hipotético.** Adoptarlo implicaría auto-referencia en el esquema, consultas recursivas (`WITH RECURSIVE` o carga por niveles con N+1), serialización recursiva en Pydantic y lógica extra para restringir qué operaciones aplican a qué nodos — precisamente la contra ya documentada en este ADR. Todo ello sin un caso de uso que lo consuma.
+3. **Aplica YAGNI sobre una decisión reversible.** Pasar de comentarios planos a anidados es una migración aditiva (agregar `parent_comment_id` nullable, sin romper filas existentes). El costo de posponer es bajo; el de adoptar prematuramente, permanente.
+
+### Condición de reactivación
+
+Este ADR se reabre si el negocio formaliza un requerimiento de **respuestas a comentarios (hilos anidados multinivel)** dentro del foro. En ese escenario Composite recupera su justificación original y esta decisión debe revisarse antes de implementar la anidación con lógica ad-hoc.
+
+### Trazabilidad
+
+La asignación RF-37 a RF-40 → ADR-13 se conserva en [`traceability_matrix.md`](./traceability_matrix.md) marcada como *diferida*: el ADR sigue siendo la decisión de referencia para esos requerimientos, aunque su patrón no esté materializado en el código actual.
 
 # ADR-14: Procesamiento de Lenguaje Natural
 

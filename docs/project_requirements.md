@@ -19,23 +19,23 @@ A continuación se presentan los cuarenta y cinco (45) requerimientos funcionale
 | **RF-07** | El sistema debe generar un código único de vinculación (QR o alfanumérico) por cada paciente vinculado a un médico. | Vinculación | **`[Activo - Implementado]`** |
 | **RF-08** | El sistema debe permitir al paciente escanear o ingresar el código para vincularse a su médico tratante. | Vinculación | **`[Activo - Implementado]`** |
 | **RF-09** | El sistema debe confirmar la vinculación exitosa entre la cuenta del paciente y la del médico. | Vinculación | **`[Activo - Implementado]`** |
-| **RF-10** | El sistema debe notificar al médico y al paciente sobre el estado de la vinculación. | Vinculación | **`[Activo - Pendiente]`** |
+| **RF-10** | El sistema debe notificar al médico y al paciente sobre el estado de la vinculación. | Vinculación | **`[Activo - Implementado]`** |
 | **RF-11** | El sistema debe gestionar la expiración y reutilización de códigos de vinculación. | Vinculación | **`[Activo - Implementado]`** |
 | **RF-12** | El sistema debe impedir que un paciente transfiera su expediente a otro médico (debe iniciar desde cero). | Vinculación | **`[Activo - Pendiente]`** |
 | **RF-13** | El sistema debe mostrar al médico el directorio completo de todos sus pacientes vinculados. | Directorio | **`[Activo - Implementado]`** |
-| **RF-14** | El sistema debe permitir al médico buscar pacientes por nombre o identificador dentro de su directorio. | Directorio | **`[Activo - Pendiente]`** |
+| **RF-14** | El sistema debe permitir al médico buscar pacientes por nombre o identificador dentro de su directorio. | Directorio | **`[Activo - Implementado]`** |
 | **RF-15** | El sistema debe permitir al médico filtrar pacientes según criterios disponibles (fecha de vinculación, nivel de riesgo, etc.). | Directorio | **`[Activo - Implementado]`** |
 | **RF-16** | El sistema debe permitir al médico acceder al perfil individual completo de una paciente. | Directorio | **`[Activo - Implementado]`** |
 | **RF-17** | El sistema debe permitir al paciente registrar su presión arterial de forma diaria. | Automonitoreo | **`[Activo - Implementado]`** |
 | **RF-18** | El sistema debe permitir al paciente registrar su peso corporal de forma diaria. | Automonitoreo | **`[Activo - Implementado]`** |
 | **RF-19** | El sistema debe permitir al paciente registrar síntomas e inquietudes en texto libre. | Automonitoreo | **`[Activo - Implementado]`** |
-| **RF-20** | El sistema debe validar que los datos capturados (presión arterial y peso) estén en rangos y formatos correctos. | Automonitoreo | **`[Activo - Pendiente]`** |
+| **RF-20** | El sistema debe validar que los datos capturados (presión arterial y peso) estén en rangos y formatos correctos. | Automonitoreo | **`[Activo - Implementado]`** |
 | **RF-21** | El sistema debe almacenar el historial completo de automonitoreo de cada paciente. | Automonitoreo | **`[Activo - Implementado]`** |
 | **RF-22** | El sistema debe permitir al médico consultar los registros históricos de presión y peso de una paciente. | Automonitoreo | **`[Activo - Implementado]`** |
 | **RF-23** | El sistema debe permitir al recepcionista crear citas entre pacientes y médicos según elección previa de la paciente. | Citas y Agenda | **`[Activo - Implementado]`** |
-| **RF-24** | El sistema debe verificar la disponibilidad del médico en la fecha y hora seleccionadas para la cita. | Citas y Agenda | **`[Activo - Pendiente]`** |
+| **RF-24** | El sistema debe verificar la disponibilidad del médico en la fecha y hora seleccionadas para la cita. | Citas y Agenda | **`[Activo - Implementado]`** |
 | **RF-25** | El sistema debe permitir al recepcionista cancelar citas programadas. | Citas y Agenda | **`[Activo - Implementado]`** |
-| **RF-26** | El sistema debe notificar a los médicos sobre citas pendientes o próximas. | Citas y Agenda | **`[Activo - Pendiente]`** |
+| **RF-26** | El sistema debe notificar a los médicos sobre citas pendientes o próximas. | Citas y Agenda | **`[Activo - Implementado]`** |
 | **RF-27** | El sistema debe permitir al paciente consultar sus próximas citas programadas. | Citas y Agenda | **`[Activo - Implementado]`** |
 | **RF-28** | El sistema debe permitir al paciente y al médico consultar el historial de citas. | Citas y Agenda | **`[Activo - Implementado]`** |
 | **RF-29** | El sistema debe procesar los síntomas registrados por las pacientes en texto libre mediante técnicas de NLP (Procesamiento de Lenguaje Natural). | Análisis (NLP) | **`[Activo - Implementado]`** |
@@ -45,16 +45,27 @@ A continuación se presentan los cuarenta y cinco (45) requerimientos funcionale
 | **RF-33** | El sistema debe mostrar al médico la clasificación de riesgo obtenida como apoyo para la toma de decisiones clínicas. | Análisis (ML) | **`[Activo - Implementado]`** |
 | **RF-34** | El sistema debe permitir el envío y recepción de mensajes entre pacientes y recepcionistas. | Mensajería | **`[Activo - Implementado]`** |
 | **RF-35** | El sistema debe mostrar el historial completo de conversaciones entre un paciente y el recepcionista. | Mensajería | **`[Activo - Implementado]`** |
-| **RF-36** | El sistema debe generar notificaciones para nuevos mensajes no leídos. | Mensajería | **`[Activo - Pendiente]`** |
-| **RF-37** | El sistema debe permitir a las pacientes publicar experiencias e inquietudes en un foro comunitario. | Comunidad (Foros) | **`[Futuro - Planeado]`** |
-| **RF-38** | El sistema debe permitir la creación y gestión de grupos de apoyo temáticos dentro del foro de la comunidad. | Comunidad (Foros) | **`[Futuro - Planeado]`** |
-| **RF-39** | El sistema debe permitir a las pacientes comentar e interactuar en las publicaciones de otras usuarias del foro. | Comunidad (Foros) | **`[Futuro - Planeado]`** |
-| **RF-40** | El sistema debe permitir a los médicos publicar artículos y consejos de salud en la sección de comunidad. | Comunidad (Foros) | **`[Futuro - Planeado]`** |
+| **RF-36** | El sistema debe generar notificaciones para nuevos mensajes no leídos. | Mensajería | **`[Activo - Implementado]`** |
+| **RF-37** | El sistema debe permitir a las pacientes publicar experiencias e inquietudes en un foro comunitario. | Comunidad (Foros) | **`[Activo - Implementado]`** |
+| **RF-38** | El sistema debe permitir la creación y gestión de grupos de apoyo temáticos dentro del foro de la comunidad. | Comunidad (Foros) | **`[Activo - Implementado]`** |
+| **RF-39** | El sistema debe permitir a las pacientes comentar e interactuar en las publicaciones de otras usuarias del foro. | Comunidad (Foros) | **`[Activo - Implementado]`** |
+| **RF-40** | El sistema debe permitir a los médicos publicar artículos y consejos de salud en la sección de comunidad. | Comunidad (Foros) | **`[Activo - Implementado]`** |
 | **RF-41** | El sistema debe permitir al médico elegir e iniciar una suscripción a un plan (básico o premium) para acceder a las funcionalidades clínicas de la plataforma. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
 | **RF-42** | El sistema debe ofrecer múltiples métodos de pago para la suscripción: pago recurrente con tarjeta, o pago único mediante tarjeta, OXXO o transferencia SPEI. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
 | **RF-43** | El sistema debe permitir al médico gestionar su método de pago y consultar su historial de pagos a través de un portal de facturación. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
 | **RF-44** | El sistema debe restringir el acceso a las funcionalidades clínicas de los médicos que no cuenten con una suscripción activa. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
 | **RF-45** | El sistema debe procesar eventos de pago (webhooks) del proveedor externo para mantener actualizado el estado de la suscripción. | Suscripciones y Pagos | **`[Activo - Implementado]`** |
+
+### Notas de estado (actualización 2026-07-25)
+
+Los siguientes requerimientos cambiaron de `Pendiente`/`Planeado` a `Implementado` tras el cierre de los ADR pendientes. Se detallan los que tienen matices:
+
+- **RF-14 (búsqueda por nombre)** — implementado en `SearchPatientsByNameUseCase`, pero el filtrado ocurre **en memoria (Python)**, no como consulta SQL: `name`/`last_name` usan `EncryptedString` (Fernet, no determinista), lo que impide un `WHERE ... LIKE` sobre la columna cifrada. Ver [`adr.md`](./adr.md) § ADR-07.
+- **RF-15 (filtros de directorio)** — implementado para **nivel de riesgo** (cluster) y **fecha de vinculación** (`linked_at`) vía Query Object SQL real. El filtro por **residencia** queda pendiente por la misma razón que RF-14 (`medical_records.residence` también está cifrado); habilitarlo requiere un índice ciego (blind index). Ver [`adr.md`](./adr.md) § ADR-07.
+- **RF-10, RF-26, RF-36 (notificaciones)** — cerrados por el patrón Observer (ADR-04). RF-10 requirió además un puente HTTP server-to-server entre `service_usuarios` y `service_transaccional`, porque cada proceso tiene su propio despachador de eventos en memoria. Ver [`adr.md`](./adr.md) § ADR-04.
+- **RF-20 (validación de rangos)** — cerrado por el patrón Notification (ADR-05): acumula todos los errores del formulario y responde `422` con la lista completa, en vez de abortar en el primer campo inválido.
+- **RF-24 (disponibilidad del médico)** — cerrado por el patrón Specification (ADR-08), junto con RT-7 (vinculación activa) y RT-8 (no duplicidad de horario).
+- **RF-37 a RF-40 (foros)** — el módulo de comunidad está implementado y en producción (publicaciones, grupos de apoyo, comentarios, perfiles sociales y reportes). Se implementó con un **modelo relacional plano** (comentarios asociados a un `post_id`), **sin** el patrón Composite previsto en el ADR-13, que quedó **diferido** por no existir requerimiento de hilos anidados. Ver [`adr.md`](./adr.md) § ADR-13.
 
 ---
 

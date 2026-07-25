@@ -51,7 +51,9 @@ services:
     image: hashicorp/vault:1.15
     container_name: vault
     restart: always
-    command: ["server", "-config=/vault/config/config.hcl"]
+    # Sin -config: el entrypoint ya apunta a /vault/config. Pasarlo duplica el
+    # listener en :8200 -> crash-loop.
+    command: ["server"]
     environment:
       # Para el CLI dentro del contenedor; la imagen trae https:// y sin TLS falla.
       VAULT_ADDR: http://127.0.0.1:8200

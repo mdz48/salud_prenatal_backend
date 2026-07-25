@@ -68,7 +68,8 @@ fi
 
 echo "==> [2/4] Actualizando $ENV_FILE (backup automático)"
 cp "$ENV_FILE" "$ENV_FILE.bak-$(date +%s)" 2>/dev/null || true
-grep -vE '^(JWT_KEY_BACKEND|VAULT_ROLE_ID_|VAULT_SECRET_ID_)=' "$ENV_FILE" 2>/dev/null > "$ENV_FILE.tmp" || true
+# Sin '=' tras los prefijos: no casaba con VAULT_ROLE_ID_GATEWAY= y dejaba creds duplicadas.
+grep -vE '^(JWT_KEY_BACKEND=|VAULT_ROLE_ID_|VAULT_SECRET_ID_)' "$ENV_FILE" 2>/dev/null > "$ENV_FILE.tmp" || true
 { echo "JWT_KEY_BACKEND=vault"; printf '%s\n' "$CREDS"; } >> "$ENV_FILE.tmp"
 mv "$ENV_FILE.tmp" "$ENV_FILE"
 echo "    .env actualizado ✓"

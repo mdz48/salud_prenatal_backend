@@ -9,6 +9,7 @@ from app.features.forums.application.posts.get_group_feed_usecase import GetGrou
 from app.features.forums.application.posts.get_recommended_feed_usecase import GetRecommendedFeedUseCase
 from app.features.forums.application.posts.add_comment_usecase import AddCommentUseCase
 from app.features.forums.application.posts.get_comments_usecase import GetCommentsUseCase
+from app.features.forums.application.posts.delete_post_usecase import DeletePostUseCase
 
 @pytest.fixture
 def mock_image_storage():
@@ -23,6 +24,7 @@ def controller(mock_image_storage):
         add_comment_uc=MagicMock(spec=AddCommentUseCase),
         get_comments_uc=MagicMock(spec=GetCommentsUseCase),
         get_recommended_feed_uc=MagicMock(spec=GetRecommendedFeedUseCase),
+        delete_post_uc=MagicMock(spec=DeletePostUseCase),
         image_storage=mock_image_storage
     )
 

@@ -1,0 +1,14 @@
+# service_pagos — dependencias.
+# shared_core se instala aparte (editable): en local `pip install -e ../shared_core`,
+# en Docker `pip install -e /shared_core` (ver Dockerfile / Sesión 7).
+fastapi[standard]
+uvicorn
+dependency-injector
+stripe
+SQLAlchemy
+psycopg2-binary
+python-dotenv
+pydantic
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1

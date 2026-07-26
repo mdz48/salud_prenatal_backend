@@ -1,0 +1,323 @@
+# docker-compose.vps.yml — espejo de /home/mdz/proyectos/docker-compose.yml.
+#
+# Edge = Traefik (reemplazó a nginx). Traefik consulta al gateway (/validate) por
+# cada request; el gateway solo VALIDA el JWT y devuelve los headers X-User-*.
+# DB = Supabase vía ./salud_prenatal_backend/.env (no hay postgres local).
+# Red real en el VPS: proyectos_app_network.
+#
+# Firma JWT: Vault / RS256, con Vault PERSISTENTE (no dev-mode). Arranca sellado ->
+# lo desella el sidecar vault_unsealer, que necesita ~/proyectos/.vault-init.
+# Runbook completo: docs/deploy-produccion-traefik-vault.md.
+#
+# AL ACTIVAR VAULT: RS256 invalida todos los tokens HS256 vivos (duran 30 días) ->
+# deslogueo masivo. Elegir ventana de bajo tráfico.
+#
+# ANTES DE APLICAR: deshabilitar certbot.timer para que no pelee por el :80.
+# Los certs no se tocan — son el rollback.
+
+services:
+  traefik:
+    image: traefik:v3.7
+    container_name: traefik
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # Ignorar el stack de staging: comparte el socket y usa los MISMOS nombres de
+      # router, así que Traefik los ve "defined multiple times" y descarta ambos ->
+      # 404 en toda la API. Pasó en el corte 2026-07-18.
+      - "--providers.docker.constraints=!Label(`sp.stack`,`staging`)"
+      - "--providers.docker.network=proyectos_app_network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      # TLS por file provider reusando los certs de certbot, NO ACME: el corte no
+      # depende de una emisión Let's Encrypt en vivo y el rollback es trivial.
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      # Todo /etc/letsencrypt, no solo live/: fullchain y privkey son symlinks a archive/.
+      - "/etc/letsencrypt:/certs:ro"
+      - "./salud_prenatal_backend/traefik-dynamic.yml:/etc/traefik/dynamic.yml:ro"
+    networks: [app_network]
+    depends_on: [gateway, auth, usuarios, pagos, transaccional, vault]
+
+  # Sin puertos publicados: solo lo alcanzan auth/gateway/unsealer en app_network.
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: vault
+    restart: always
+    # Sin -config: el entrypoint ya apunta a /vault/config. Pasarlo duplica el
+    # listener en :8200 -> crash-loop.
+    command: ["server"]
+    environment:
+      # Para el CLI dentro del contenedor; la imagen trae https:// y sin TLS falla.
+      VAULT_ADDR: http://127.0.0.1:8200
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./salud_prenatal_backend/vault/config.hcl:/vault/config/config.hcl:ro
+      - vault_data:/vault/file
+    networks: [app_network]
+
+  # .vault-init DEBE existir como archivo antes del primer `up`: si no, Docker crea
+  # un directorio con ese nombre y el sidecar entra en crash-loop.
+  vault_unsealer:
+    image: hashicorp/vault:1.15
+    container_name: vault_unsealer
+    restart: always
+    entrypoint: ["/bin/sh", "/unseal_loop.sh"]
+    environment:
+      VAULT_ADDR: http://vault:8200
+    volumes:
+      - ./salud_prenatal_backend/scripts/vault_unseal_loop.sh:/unseal_loop.sh:ro
+      - ./.vault-init:/vault-init:ro
+    depends_on: [vault]
+    networks: [app_network]
+
+  gateway:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_gateway/Dockerfile
+    container_name: salud_prenatal_gateway
+    restart: always
+    env_file:
+      - ./salud_prenatal_backend/.env
+    environment:
+      AUTH_URL: http://auth:8001
+      USUARIOS_URL: http://usuarios:8002
+      PAGOS_URL: http://pagos:8003
+      TRANSACCIONAL_URL: http://transaccional:8004
+      # Rollback a HS256 = poner JWT_KEY_BACKEND= (vacío) en ~/proyectos/.env.
+      JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-vault}
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID_GATEWAY:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID_GATEWAY:-}
+    labels:
+      - "traefik.enable=true"
+      # jwt-auth = anónimo pasa con identidad vacía, token inválido 401.
+      # jwt-strict = fail-closed, anónimo 401 en el edge.
+      # authResponseHeaders es el candado anti-spoofing: Traefik borra esos headers
+      # del request entrante y solo copia los que emite el validador.
+      - "traefik.http.middlewares.jwt-auth.forwardauth.address=http://gateway:8000/validate"
+      - "traefik.http.middlewares.jwt-auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
+      - "traefik.http.middlewares.jwt-strict.forwardauth.address=http://gateway:8000/validate/strict"
+      - "traefik.http.middlewares.jwt-strict.forwardauth.authResponseHeaders=X-User-Id,X-User-Email,X-User-Role,X-Subscription-Status,X-Subscription-Period-End"
+      # Réplica del limit_req de nginx. Va ANTES de jwt-* en cada router para no
+      # gastar el validador con tráfico que se va a rechazar.
+      - "traefik.http.middlewares.ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.ratelimit.ratelimit.burst=20"
+      # /validate NO se rutea aquí: es interno, solo lo llama Traefik.
+      - "traefik.http.routers.gateway.rule=Host(`saludprenatal.sytes.net`) && (Path(`/`) || Path(`/health`) || Path(`/docs`) || Path(`/openapi.json`) || Path(`/api/v1/auth/openapi.json`) || Path(`/api/v1/usuarios/openapi.json`) || Path(`/api/v1/pagos/openapi.json`) || Path(`/api/v1/transaccional/openapi.json`))"
+      - "traefik.http.routers.gateway.priority=500"
+      - "traefik.http.routers.gateway.entrypoints=websecure"
+      - "traefik.http.routers.gateway.tls=true"
+      - "traefik.http.routers.gateway.service=gateway"
+      - "traefik.http.services.gateway.loadbalancer.server.port=8000"
+    networks: [app_network]
+    depends_on: [auth, usuarios, pagos, transaccional, vault]
+
+  # Los 4 de dominio van SIN `ports`: solo alcanzables por Traefik en app_network.
+  # FORWARDED_ALLOW_IPS: sin esto uvicorn solo confía en 127.0.0.1 y los redirects
+  # 307 (trailing slash) saldrían con http:// en vez de https://.
+  auth:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_auth/Dockerfile
+    container_name: sp_auth
+    restart: always
+    env_file: [./salud_prenatal_backend/.env]
+    environment:
+      AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+      JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-vault}
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID_AUTH:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID_AUTH:-}
+    labels:
+      - "traefik.enable=true"
+      # login público (nadie tiene token antes de loguearse); refresh fail-closed.
+      - "traefik.http.routers.auth-login.rule=Host(`saludprenatal.sytes.net`) && Path(`/api/v1/users/login`)"
+      - "traefik.http.routers.auth-login.priority=400"
+      - "traefik.http.routers.auth-login.entrypoints=websecure"
+      - "traefik.http.routers.auth-login.tls=true"
+      - "traefik.http.routers.auth-login.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.auth-login.service=auth"
+      - "traefik.http.routers.auth-refresh.rule=Host(`saludprenatal.sytes.net`) && Path(`/api/v1/users/refresh`)"
+      - "traefik.http.routers.auth-refresh.priority=400"
+      - "traefik.http.routers.auth-refresh.entrypoints=websecure"
+      - "traefik.http.routers.auth-refresh.tls=true"
+      - "traefik.http.routers.auth-refresh.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.auth-refresh.service=auth"
+      - "traefik.http.services.auth.loadbalancer.server.port=8001"
+    networks: [app_network]
+    depends_on: [vault]
+
+  usuarios:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_usuarios/Dockerfile
+    container_name: sp_usuarios
+    restart: always
+    env_file: [./salud_prenatal_backend/.env]
+    environment:
+      AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+      TRANSACCIONAL_URL: http://transaccional:8004
+    labels:
+      - "traefik.enable=true"
+      # Registro y lecturas públicas conviven con rutas con sesión -> jwt-auth.
+      - "traefik.http.routers.usuarios.rule=Host(`saludprenatal.sytes.net`) && (PathPrefix(`/api/v1/users`) || PathPrefix(`/api/v1/doctors`) || PathPrefix(`/api/v1/patients`))"
+      - "traefik.http.routers.usuarios.priority=300"
+      - "traefik.http.routers.usuarios.entrypoints=websecure"
+      - "traefik.http.routers.usuarios.tls=true"
+      - "traefik.http.routers.usuarios.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.usuarios.service=usuarios"
+      - "traefik.http.services.usuarios.loadbalancer.server.port=8002"
+    networks: [app_network]
+
+  pagos:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_pagos/Dockerfile
+    container_name: sp_pagos
+    restart: always
+    env_file: [./salud_prenatal_backend/.env]
+    environment:
+      AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+    labels:
+      - "traefik.enable=true"
+      # Stripe no manda nuestro JWT: el webhook DEBE pasar anónimo (lo protege su
+      # propia firma, que ForwardAuth no toca porque solo inspecciona headers).
+      - "traefik.http.routers.pagos-webhook.rule=Host(`saludprenatal.sytes.net`) && Path(`/api/v1/subscriptions/webhook`)"
+      - "traefik.http.routers.pagos-webhook.priority=350"
+      - "traefik.http.routers.pagos-webhook.entrypoints=websecure"
+      - "traefik.http.routers.pagos-webhook.tls=true"
+      - "traefik.http.routers.pagos-webhook.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.pagos-webhook.service=pagos"
+      # El resto de /subscriptions es 100% require_doctor -> fail-closed.
+      - "traefik.http.routers.pagos.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1/subscriptions`)"
+      - "traefik.http.routers.pagos.priority=300"
+      - "traefik.http.routers.pagos.entrypoints=websecure"
+      - "traefik.http.routers.pagos.tls=true"
+      - "traefik.http.routers.pagos.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.pagos.service=pagos"
+      - "traefik.http.services.pagos.loadbalancer.server.port=8003"
+    networks: [app_network]
+
+  transaccional:
+    build:
+      context: ./salud_prenatal_backend
+      dockerfile: service_transaccional/Dockerfile
+    container_name: sp_transaccional
+    restart: always
+    env_file: [./salud_prenatal_backend/.env]
+    environment:
+      AUTH_LOGIN_URL: https://saludprenatal.sytes.net/api/v1/users/login
+      FORWARDED_ALLOW_IPS: "*"
+      ML_SERVICE_URL: http://ml_service:8001
+    volumes:
+      - ./salud_prenatal_backend/firebasecredencials.json:/app/firebasecredencials.json
+    labels:
+      - "traefik.enable=true"
+      # chat es el único prefijo 100% protegido -> fail-closed. El WS lo proxea
+      # Traefik nativo; el ForwardAuth valida el upgrade leyendo ?token= de
+      # X-Forwarded-Uri.
+      - "traefik.http.routers.transaccional-chat.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1/chat`)"
+      - "traefik.http.routers.transaccional-chat.priority=300"
+      - "traefik.http.routers.transaccional-chat.entrypoints=websecure"
+      - "traefik.http.routers.transaccional-chat.tls=true"
+      - "traefik.http.routers.transaccional-chat.middlewares=ratelimit@docker,jwt-strict@docker"
+      - "traefik.http.routers.transaccional-chat.service=transaccional"
+      # Catch-all (forums, appointments, medical-records, patient-diaries,
+      # consultations, notifications): mezclan público y protegido en el mismo
+      # prefijo, así que la decisión vive en cada router (RoleChecker) -> jwt-auth.
+      # forums no puede llevar jwt-strict: tiene 6 endpoints públicos que darían 401.
+      - "traefik.http.routers.transaccional.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.transaccional.priority=1"
+      - "traefik.http.routers.transaccional.entrypoints=websecure"
+      - "traefik.http.routers.transaccional.tls=true"
+      - "traefik.http.routers.transaccional.middlewares=ratelimit@docker,jwt-auth@docker"
+      - "traefik.http.routers.transaccional.service=transaccional"
+      - "traefik.http.services.transaccional.loadbalancer.server.port=8004"
+    networks: [app_network]
+
+  # ml/admin: SIN middleware de auth — tienen la suya y nuestro validador daría 401
+  # a sus tokens. Los `ports` publicados se conservan como rollback inmediato.
+  ml_service:
+    build:
+      context: ./machine_learning_service
+    container_name: machine_learning_service
+    ports:
+      - "8001:8001"
+    restart: always
+    env_file:
+      - ./machine_learning_service/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ml.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/ml`)"
+      - "traefik.http.routers.ml.priority=350"
+      - "traefik.http.routers.ml.entrypoints=websecure"
+      - "traefik.http.routers.ml.tls=true"
+      - "traefik.http.routers.ml.service=ml"
+      - "traefik.http.routers.ml.middlewares=ratelimit@docker"
+      # VERIFICADO en nginx: `proxy_pass http://localhost:8001;` sin barra final ->
+      # no recortaba. Por eso SIN stripprefix.
+      - "traefik.http.services.ml.loadbalancer.server.port=8001"
+    networks: [app_network]
+
+  admin_backend:
+    build:
+      context: ./salud_prenatal_administrador_backend
+    container_name: salud_prenatal_administrador_backend
+    # SIN `ports` a propósito: publicar 8002 permitía pegarle directo saltándose
+    # el edge (TLS + ratelimit).
+    restart: always
+    env_file:
+      - ./salud_prenatal_administrador_backend/.env
+    labels:
+      - "traefik.enable=true"
+      # priority 350 > catch-all de transaccional (1): /api/v1/admin es suyo.
+      - "traefik.http.routers.adminapi.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/api/v1/admin`)"
+      - "traefik.http.routers.adminapi.priority=350"
+      - "traefik.http.routers.adminapi.entrypoints=websecure"
+      - "traefik.http.routers.adminapi.tls=true"
+      - "traefik.http.routers.adminapi.service=adminapi"
+      - "traefik.http.routers.adminapi.middlewares=ratelimit@docker"
+      # VERIFICADO en nginx: proxy_pass sin barra -> no recortaba. SIN stripprefix.
+      - "traefik.http.services.adminapi.loadbalancer.server.port=8002"
+    networks: [app_network]
+
+  admin_frontend:
+    build:
+      context: ./admin_salud_prenatal
+    container_name: admin_salud_prenatal
+    ports:
+      - "8003:80"
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminfront.rule=Host(`saludprenatal.sytes.net`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.adminfront.priority=340"
+      - "traefik.http.routers.adminfront.entrypoints=websecure"
+      - "traefik.http.routers.adminfront.tls=true"
+      - "traefik.http.routers.adminfront.service=adminfront"
+      # VERIFICADO en nginx: proxy_pass CON barra final -> SÍ recortaba /admin.
+      # Sin este stripprefix el frontend carga roto.
+      - "traefik.http.middlewares.adminfront-strip.stripprefix.prefixes=/admin"
+      - "traefik.http.routers.adminfront.middlewares=adminfront-strip@docker"
+      - "traefik.http.services.adminfront.loadbalancer.server.port=80"
+    networks: [app_network]
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  # Borrar este volumen destruye el par RSA de firma. Nunca `down -v` en este stack.
+  vault_data:

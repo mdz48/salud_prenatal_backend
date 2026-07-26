@@ -1,0 +1,4 @@
+# Estos archivos se ejecutan en Linux. Con CRLF (checkout desde Windows) /bin/sh
+# falla con "bad interpreter".
+*.sh text eol=lf
+*.hcl text eol=lf

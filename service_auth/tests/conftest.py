@@ -10,6 +10,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Env de test ANTES de importar main / shared_core.
 _TEST_DB_DIR = tempfile.mkdtemp(prefix="auth_test_")
 os.environ["DATABASE_URL"] = f"sqlite:///{Path(_TEST_DB_DIR) / 'test.db'}"
+# Asignación directa, NO setdefault: auth es el único servicio que FIRMA tokens, así
+# que es el único al que le pega JWT_KEY_BACKEND. Si el .env del repo lo trae en
+# "vault" (config de despliegue), get_jwt_key_provider() intenta hablarle a Vault y
+# toda prueba que emita un JWT muere con RuntimeError. En test siempre HS256 local.
+os.environ["JWT_KEY_BACKEND"] = ""
 os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault(
     "ENCRYPTION_KEY", base64.urlsafe_b64encode(b"0" * 32).decode()

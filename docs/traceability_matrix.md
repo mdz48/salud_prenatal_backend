@@ -33,19 +33,29 @@ Esta tabla vincula cada uno de los cuarenta (40) requerimientos funcionales del 
 | **RF-27** | El sistema debe permitir al paciente consultar sus próximas citas programadas. | **ADR-08** | Specification (Fowler) |
 | **RF-28** | El sistema debe permitir al paciente y al médico consultar el historial de citas. | **ADR-08** | Specification (Fowler) |
 | **RF-29** | El sistema debe procesar los síntomas registrados por las pacientes en texto libre mediante técnicas de NLP (Procesamiento de Lenguaje Natural). | **ADR-06** | Gateway (Fowler) |
-| **RF-30** | El sistema debe generar un resumen clínico automatizado del estado reciente de cada paciente utilizando NLP. | **ADR-14** | Strategy (GoF) |
+| **RF-30** | El sistema debe generar un resumen clínico automatizado del estado reciente de cada paciente utilizando NLP. | **ADR-06** | Gateway (Fowler) |
 | **RF-31** | El sistema debe identificar síntomas recurrentes y extraer entidades clínicas relevantes del texto libre de la paciente. | **ADR-06** | Gateway (Fowler) |
 | **RF-32** | El sistema debe clasificar a la paciente en uno de cuatro perfiles de riesgo (Primigestas Sanas, Alto Riesgo Hipertensivo, Multíparas Sanas, Riesgo Metabólico/Obesidad) utilizando un modelo de Machine Learning de clustering (KNN y PCA). | **ADR-06** | Gateway (Fowler) |
 | **RF-33** | El sistema debe mostrar al médico la clasificación de riesgo obtenida como apoyo para la toma de decisiones clínicas. | **ADR-06** | Gateway (Fowler) |
 | **RF-34** | El sistema debe permitir el envío y recepción de mensajes entre pacientes y recepcionistas. | **ADR-09** | Mediator (GoF) |
 | **RF-35** | El sistema debe mostrar el historial completo de conversaciones entre un paciente y el recepcionista. | **ADR-09** | Mediator (GoF) |
 | **RF-36** | El sistema debe generar notificaciones para nuevos mensajes no leídos. | **ADR-04** | Observer (GoF) |
-| **RF-37** | El sistema debe permitir a las pacientes publicar experiencias e inquietudes en un foro comunitario. | **ADR-13** | Composite (GoF) |
-| **RF-38** | El sistema debe permitir la creación y gestión de grupos de apoyo temáticos dentro del foro de la comunidad. | **ADR-13** | Composite (GoF) |
-| **RF-39** | El sistema debe permitir a las pacientes comentar e interactuar en las publicaciones de otras usuarias del foro. | **ADR-13** | Composite (GoF) |
-| **RF-40** | El sistema debe permitir a los médicos publicar artículos y consejos de salud en la sección de comunidad. | **ADR-13** | Composite (GoF) |
+| **RF-37** | El sistema debe permitir a las pacientes publicar experiencias e inquietudes en un foro comunitario. | **ADR-13** *(diferido)* | Composite (GoF) |
+| **RF-38** | El sistema debe permitir la creación y gestión de grupos de apoyo temáticos dentro del foro de la comunidad. | **ADR-13** *(diferido)* | Composite (GoF) |
+| **RF-39** | El sistema debe permitir a las pacientes comentar e interactuar en las publicaciones de otras usuarias del foro. | **ADR-13** *(diferido)* | Composite (GoF) |
+| **RF-40** | El sistema debe permitir a los médicos publicar artículos y consejos de salud en la sección de comunidad. | **ADR-13** *(diferido)* | Composite (GoF) |
 | **RF-41** | El sistema debe permitir al médico elegir e iniciar una suscripción a un plan (básico o premium) para acceder a las funcionalidades clínicas de la plataforma. | **ADR-10** | Service Layer (Fowler) |
 | **RF-42** | El sistema debe ofrecer múltiples métodos de pago para la suscripción: pago recurrente con tarjeta, o pago único mediante tarjeta, OXXO o transferencia SPEI. | **ADR-14** | Strategy (GoF) |
 | **RF-43** | El sistema debe permitir al médico gestionar su método de pago y consultar su historial de pagos a través de un portal de facturación. | **ADR-06** | Gateway (Fowler) |
 | **RF-44** | El sistema debe restringir el acceso a las funcionalidades clínicas de los médicos que no cuenten con una suscripción activa. | **ADR-11** | Remote Facade (Fowler) |
 | **RF-45** | El sistema debe procesar eventos de pago (webhooks) del proveedor externo para mantener actualizado el estado de la suscripción. | **ADR-06** | Gateway (Fowler) |
+
+---
+
+## Notas de reasignación (actualización 2026-07-25)
+
+Durante el cierre de los ADR pendientes, tres asignaciones de esta matriz cambiaron respecto a la versión original. Se documentan aquí para preservar la trazabilidad de la decisión:
+
+- **RF-29, RF-30 y RF-31 (NLP): ADR-14 Strategy → ADR-06 Gateway.** El puerto `ISymptomExtractionPort` tiene una sola implementación concreta (`NlpSymptomAdapter`, llamada HTTP al microservicio de Machine Learning). Sin una segunda estrategia intercambiable no hay Strategy realizado: arquitectónicamente es un Gateway, con el mismo rol que la inferencia de riesgo (RF-32/33). Ver [`adr.md`](./adr.md) § ADR-06 y § ADR-14.
+- **RF-42 (métodos de pago): asignado a ADR-14 Strategy.** Es la implementación fiel del patrón: `ICheckoutStrategy` con dos algoritmos intercambiables (`StripeRecurringCheckoutStrategy` y `StripeOneTimeCheckoutStrategy`), seleccionados en tiempo de ejecución por un parámetro de negocio (`PaymentModeEnum`), no hardcodeados. El ADR-14 conserva su patrón, cambia el módulo donde se materializa.
+- **RF-37 a RF-40 (foros): ADR-13 marcado como diferido.** El módulo de comunidad está implementado con un modelo relacional plano (comentarios asociados a un `post_id`), sin el patrón Composite. La asignación se conserva en la matriz porque el ADR sigue siendo la decisión de referencia para estos requerimientos si en el futuro se exigen hilos de discusión anidados. Ver [`adr.md`](./adr.md) § ADR-13.

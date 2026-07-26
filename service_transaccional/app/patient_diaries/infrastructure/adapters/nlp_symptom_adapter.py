@@ -12,10 +12,10 @@ load_dotenv()
 
 
 class NlpSymptomAdapter(ISymptomExtractionPort):
-    """Gateway HTTP al endpoint /nlp/extract-symptoms del microservicio ML (ADR-14,
-    Strategy: hoy la estrategia es el pipeline transformer remoto). Falla en silencio
-    devolviendo un SymptomExtractionResult vacio para que la bitacora nunca se
-    bloquee si el NLP esta caido o lento."""
+    """Gateway HTTP (ADR-06) al endpoint /nlp/extract-symptoms-llm del microservicio ML:
+    unica implementacion concreta de ISymptomExtractionPort, aisla la red del dominio.
+    Falla en silencio devolviendo un SymptomExtractionResult vacio para que la bitacora
+    nunca se bloquee si el NLP esta caido o lento."""
 
     def extract(self, text: str) -> SymptomExtractionResult:
         if not text or not text.strip():

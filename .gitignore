@@ -10,7 +10,6 @@ IAContext/
 .agents
 .claude
 firebasecredencials.json
-diagramas
 scripts
 firebasecredencials
 superpowers
@@ -23,3 +22,7 @@ integration
 # Binario de Vault (herramienta local, no del proyecto)
 vault.zip
 vault_bin/
+
+# Unseal key + root token del Vault de produccion. Viven SOLO en el VPS.
+.vault-init
+.vault-approles

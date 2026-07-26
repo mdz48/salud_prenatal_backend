@@ -21,6 +21,70 @@ Traefik como edge, con validación JWT única (ForwardAuth) y firma RS256 desde 
 > sesión. No hay forma de evitarlo cambiando de algoritmo de firma — elegir ventana
 > de bajo tráfico y avisar.
 
+---
+
+## EJECUTADO EN PRODUCCIÓN — 2026-07-25
+
+El corte está **hecho**. Producción firma en RS256 con Vault persistente. Lo que sigue
+abajo (Fases 1–4) es el procedimiento de referencia; **no hay que volver a correrlo**.
+
+### Estado del que se partió
+
+nginx ya estaba `inactive` y `certbot.timer` `disabled` de cortes anteriores, así que la
+**Fase 1 y el paso 3.1 no se ejecutaron**. Solo se hizo la parte de Vault (Fase 2) más la
+recreación de `auth` y `gateway`.
+
+No hizo falta `--build`: entre `develop` y `cambiosCompose` el único cambio bajo
+`service_*/` fue `service_auth/tests/conftest.py`, y las imágenes ya traían `hvac`.
+Importante con 2 GB de RAM libres (`ollama` retiene ~4.5 GB de los 7.8 GB del VPS) —
+compilar 5 imágenes era el riesgo real de la ventana.
+
+### Verificación final
+
+| Prueba | Resultado |
+|---|---|
+| `vault status` | `Storage Type: file`, `Initialized true`, `Sealed false` |
+| Login real (`house@hospital.com`) | header `{"alg":"RS256","typ":"JWT"}`, firma de **256 bytes** (RSA-2048; HS256 daría 32) |
+| `/subscriptions/me`, `/chat/inbox` con ese token | 200 / 200 |
+| Token basura | 401 |
+| Anti-spoofing (headers `X-User-*` a mano) | 401 |
+| AppRole gateway → `jwt/public` | LEE |
+| AppRole gateway → `jwt/private` | **Forbidden** |
+| AppRole auth → ambas | LEE |
+| `docker restart vault` | sellado → el sidecar desella en ≤10 s, **la API respondió 200 durante todo el proceso** |
+
+Esa última fila es la que valida el cambio a Vault persistente: con dev-mode, ese mismo
+reinicio habría perdido las llaves y tumbado `auth` y `gateway`.
+
+### Tres fallos encontrados durante la ejecución
+
+**1. Vault en crash-loop: `bind: address already in use`.**
+El compose traía `command: ["server", "-config=/vault/config/config.hcl"]`, pero el
+`docker-entrypoint.sh` de la imagen ya añade `-config=/vault/config` (el **directorio**).
+Vault cargaba `config.hcl` dos veces → dos bloques `listener` en `:8200`.
+Fix: `command: ["server"]` a secas.
+
+**2. `invalid role or secret ID` al hacer login del AppRole.**
+El filtro que limpia el `.env` era `^(JWT_KEY_BACKEND|VAULT_ROLE_ID_|VAULT_SECRET_ID_)=`.
+Ese `=` final exige `VAULT_ROLE_ID_=`, que **nunca** casa con `VAULT_ROLE_ID_GATEWAY=`, así
+que las credenciales de intentos previos sobrevivían y quedaban **dos líneas por variable**;
+`$(grep ... | cut ...)` devolvía ambas concatenadas. Fix: quitar el `=` tras los prefijos
+(aplicado también en [`scripts/vault_recover.sh`](../scripts/vault_recover.sh)).
+Al limpiar el `.env` a mano, **verificar que cada variable aparece una sola vez**.
+
+**3. Falso positivo al comprobar `hvac`.**
+`hvac` no expone `__version__`; probarlo así da `AttributeError` y parece que falta la
+librería. Comprobar con `import hvac` a secas.
+
+### Estado del VPS tras el corte
+
+- `~/proyectos/.vault-init` (chmod 600) — unseal key + root token. **Si se pierde, el Vault
+  sellado es irrecuperable.** No está en git ni en backup: es el único ejemplar.
+- Backups: `~/backup-compose-precorte-*.yml`, `~/proyectos/.env.bak-*`.
+- Volumen `vault_data`. **Nunca `docker compose down -v`** en este stack: borra el par RSA.
+
+---
+
 ## Contexto del VPS (ya verificado 2026-07-17)
 
 - Repo en `~/proyectos/salud_prenatal_backend`, rama `cambiosGateway`. Compose activo en `~/proyectos/`.
@@ -77,6 +141,13 @@ docker exec -e VAULT_ADDR=http://127.0.0.1:8200 vault vault status || true   # I
 chmod +x salud_prenatal_backend/scripts/vault_init.sh
 ./salud_prenatal_backend/scripts/vault_init.sh
 
+# 2.2b Comprobar que Vault arrancó bien ANTES de seguir. Debe decir
+#   Storage Type: file / Initialized true / Sealed false, y Restarts=0.
+#   Si está en crash-loop con "address already in use", revisa que `command:`
+#   sea ["server"] a secas (ver fallo 1 del registro de arriba).
+docker inspect -f 'Restarts={{.RestartCount}}' vault
+docker exec -e VAULT_ADDR=http://127.0.0.1:8200 vault vault status | grep -E 'Storage|Initialized|Sealed'
+
 # 2.3 Bootstrapear con el ROOT TOKEN recién generado (ya NO es "root" como en
 #   dev-mode). Genera par RSA + políticas + AppRoles. Imprime 4 credenciales.
 export VAULT_TOKEN=$(grep '^VAULT_ROOT_TOKEN=' ~/proyectos/.vault-init | cut -d= -f2-)
@@ -103,6 +174,12 @@ VAULT_SECRET_ID_AUTH=<pega>
 VAULT_ROLE_ID_GATEWAY=<pega>
 VAULT_SECRET_ID_GATEWAY=<pega>
 EOF
+
+# 2.4b Si el .env ya traía creds de un intento previo, quedarán DUPLICADAS y el
+#   login del AppRole fallará con "invalid role or secret ID". Verificar 1 por variable:
+for v in JWT_KEY_BACKEND VAULT_ROLE_ID_AUTH VAULT_SECRET_ID_AUTH VAULT_ROLE_ID_GATEWAY VAULT_SECRET_ID_GATEWAY; do
+  printf '%-26s %s\n' "$v" "$(grep -c "^$v=" ~/proyectos/.env)"
+done
 
 # 2.5 Levantar el sidecar que mantiene Vault desellado tras cada reinicio.
 docker compose up -d vault_unsealer

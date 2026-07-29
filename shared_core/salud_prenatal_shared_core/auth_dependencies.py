@@ -37,7 +37,7 @@ from salud_prenatal_shared_core.time import now_cdmx
 # servicio auth y este módulo se usa desde todos los servicios. AUTH_LOGIN_URL debe
 # apuntar al EDGE (Traefik) para que el try-it-out funcione: los requests que salen
 # de Swagger tienen que pasar por el ForwardAuth para ganar identidad.
-AUTH_LOGIN_URL = os.getenv("AUTH_LOGIN_URL", "http://localhost:8000/api/v1/users/login")
+AUTH_LOGIN_URL = os.getenv("AUTH_LOGIN_URL", "https://salud-prenatal-auth.onrender.com/api/v1/users/login")
 
 # Esquemas SOLO-DECLARATIVOS: los servicios ya no consumen el token, pero mantener
 # la sub-dependencia hace que el esquema OAuth2 aparezca en el OpenAPI de cada

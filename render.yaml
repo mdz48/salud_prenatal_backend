@@ -55,7 +55,7 @@ services:
       - key: ENCRYPTION_KEY
         sync: false
       - key: TRANSACCIONAL_URL
-        value: http://salud-prenatal-transaccional:10000
+        value: https://salud-prenatal-transaccional.onrender.com
 
   # 4. Service Pagos
   - type: web

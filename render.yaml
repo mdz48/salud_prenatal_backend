@@ -1,0 +1,96 @@
+services:
+  # 1. Service Gateway (Entrypoint API / Docs)
+  - type: web
+    name: salud-prenatal-gateway
+    env: docker
+    dockerfilePath: service_gateway/Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: AUTH_URL
+        value: http://salud-prenatal-auth:10000
+      - key: USUARIOS_URL
+        value: http://salud-prenatal-usuarios:10000
+      - key: PAGOS_URL
+        value: http://salud-prenatal-pagos:10000
+      - key: TRANSACCIONAL_URL
+        value: http://salud-prenatal-transaccional:10000
+
+  # 2. Service Auth
+  - type: web
+    name: salud-prenatal-auth
+    env: docker
+    dockerfilePath: service_auth/Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+
+  # 3. Service Usuarios
+  - type: web
+    name: salud-prenatal-usuarios
+    env: docker
+    dockerfilePath: service_usuarios/Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: TRANSACCIONAL_URL
+        value: http://salud-prenatal-transaccional:10000
+
+  # 4. Service Pagos
+  - type: web
+    name: salud-prenatal-pagos
+    env: docker
+    dockerfilePath: service_pagos/Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+  # 5. Service Transaccional
+  - type: web
+    name: salud-prenatal-transaccional
+    env: docker
+    dockerfilePath: service_transaccional/Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ML_SERVICE_URL
+        sync: false

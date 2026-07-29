@@ -92,7 +92,8 @@ services:
       USUARIOS_URL: http://usuarios:8002
       PAGOS_URL: http://pagos:8003
       TRANSACCIONAL_URL: http://transaccional:8004
-      # Rollback a HS256 = poner JWT_KEY_BACKEND= (vacío) en ~/proyectos/.env.
+      # Rollback a HS256 = JWT_KEY_BACKEND=env en ~/proyectos/.env. Vaciarla NO
+      # sirve: ':-' aplica el default también con valor vacío.
       JWT_KEY_BACKEND: ${JWT_KEY_BACKEND:-vault}
       VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_ROLE_ID: ${VAULT_ROLE_ID_GATEWAY:-}

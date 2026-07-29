@@ -18,10 +18,10 @@ router = APIRouter()
 # servicio dentro de la red del compose; para correr el gateway en local (fuera
 # de docker) exporta las *_URL a localhost.
 SERVICE_URLS = {
-    "auth": os.getenv("AUTH_URL", "http://auth:8001"),
-    "usuarios": os.getenv("USUARIOS_URL", "http://usuarios:8002"),
-    "pagos": os.getenv("PAGOS_URL", "http://pagos:8003"),
-    "transaccional": os.getenv("TRANSACCIONAL_URL", "http://transaccional:8004"),
+    "auth": os.getenv("AUTH_URL", "https://salud-prenatal-auth.onrender.com"),
+    "usuarios": os.getenv("USUARIOS_URL", "https://salud-prenatal-usuarios.onrender.com"),
+    "pagos": os.getenv("PAGOS_URL", "https://salud-prenatal-pagos.onrender.com"),
+    "transaccional": os.getenv("TRANSACCIONAL_URL", "https://salud-prenatal-transaccional.onrender.com"),
 }
 
 # Selector de specs para el Swagger del gateway. NO se usa fastapi.openapi.docs.
@@ -83,7 +83,7 @@ async def get_service_openapi(service: str):
             res = await client.get(url)
             if res.status_code == 200:
                 openapi_data = res.json()
-                openapi_data["servers"] = [{"url": "/"}]
+                openapi_data["servers"] = [{"url": base}]
                 return openapi_data
     except Exception:
         pass

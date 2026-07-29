@@ -15,13 +15,13 @@ services:
       - key: ENCRYPTION_KEY
         sync: false
       - key: AUTH_URL
-        value: http://salud-prenatal-auth:10000
+        value: https://salud-prenatal-auth.onrender.com
       - key: USUARIOS_URL
-        value: http://salud-prenatal-usuarios:10000
+        value: https://salud-prenatal-usuarios.onrender.com
       - key: PAGOS_URL
-        value: http://salud-prenatal-pagos:10000
+        value: https://salud-prenatal-pagos.onrender.com
       - key: TRANSACCIONAL_URL
-        value: http://salud-prenatal-transaccional:10000
+        value: https://salud-prenatal-transaccional.onrender.com
 
   # 2. Service Auth
   - type: web

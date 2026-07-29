@@ -72,7 +72,7 @@ services:
         sync: false
       - key: ENCRYPTION_KEY
         sync: false
-      - key: STRIPE_SECRET_KEY
+      - key: STRIPE_PRIVATE_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
